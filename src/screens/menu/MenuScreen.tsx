@@ -1,100 +1,122 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
-import { Surface } from 'react-native-paper';
+import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialIcons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
-import { colors, spacing, borderRadius } from '../../theme/theme';
+import { palette, spacing, borderRadius, shadows, gradients } from '../../theme/theme';
 
 interface MenuItem {
   icon: keyof typeof MaterialIcons.glyphMap;
   label: string;
   screen: string;
   color: string;
+  bg: string;
   desc: string;
 }
 
 const menuItems: MenuItem[] = [
-  { icon: 'people', label: 'Clientes', screen: 'Clientes', color: '#1565C0', desc: 'Gerencie sua carteira' },
-  { icon: 'directions-car', label: 'Veículos', screen: 'Veiculos', color: '#0097A7', desc: 'Frota cadastrada' },
-  { icon: 'request-quote', label: 'Orçamentos', screen: 'Orcamentos', color: '#F57F17', desc: 'Propostas e aprovações' },
-  { icon: 'payments', label: 'Pagamentos', screen: 'Pagamentos', color: '#2E7D32', desc: 'Contas e extrato' },
-  { icon: 'inventory', label: 'Estoque', screen: 'Estoque', color: '#6A1B9A', desc: 'Peças e produtos' },
-  { icon: 'local-shipping', label: 'Fornecedores', screen: 'Fornecedores', color: '#E65100', desc: 'Parceiros e contatos' },
-  { icon: 'handyman', label: 'Serviços', screen: 'Servicos', color: '#37474F', desc: 'Tabela de serviços' },
-  { icon: 'bar-chart', label: 'Relatórios', screen: 'Relatorios', color: '#1B5E20', desc: 'Análises e exportações' },
-  { icon: 'settings', label: 'Configurações', screen: 'Configuracoes', color: '#424242', desc: 'Dados da oficina' },
-  { icon: 'manage-accounts', label: 'Usuários', screen: 'Usuarios', color: '#880E4F', desc: 'Equipe e permissões' },
+  { icon: 'people',          label: 'Clientes',      screen: 'Clientes',      color: palette.navy800,    bg: palette.navy50,      desc: 'Carteira de clientes' },
+  { icon: 'directions-car',  label: 'Veículos',      screen: 'Veiculos',      color: '#0891B2',          bg: '#ECFEFF',           desc: 'Frota cadastrada' },
+  { icon: 'request-quote',   label: 'Orçamentos',    screen: 'Orcamentos',    color: '#D97706',          bg: palette.amber50,     desc: 'Propostas e aprovações' },
+  { icon: 'payments',        label: 'Pagamentos',    screen: 'Pagamentos',    color: palette.emerald600, bg: palette.emerald100,  desc: 'Contas e extrato' },
+  { icon: 'inventory',       label: 'Estoque',       screen: 'Estoque',       color: palette.violet600,  bg: '#F5F3FF',           desc: 'Peças e produtos' },
+  { icon: 'local-shipping',  label: 'Fornecedores',  screen: 'Fornecedores',  color: '#EA580C',          bg: '#FFF7ED',           desc: 'Parceiros e contatos' },
+  { icon: 'handyman',        label: 'Serviços',      screen: 'Servicos',      color: '#475569',          bg: palette.slate100,    desc: 'Tabela de serviços' },
+  { icon: 'bar-chart',       label: 'Relatórios',    screen: 'Relatorios',    color: '#15803D',          bg: '#F0FDF4',           desc: 'Análises e métricas' },
+  { icon: 'settings',        label: 'Configurações', screen: 'Configuracoes', color: '#374151',          bg: '#F9FAFB',           desc: 'Dados da oficina' },
+  { icon: 'manage-accounts', label: 'Usuários',      screen: 'Usuarios',      color: '#9D174D',          bg: '#FFF1F2',           desc: 'Equipe e permissões' },
 ];
 
 export default function MenuScreen() {
+  const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
   const { user, signOut } = useAuth();
+  const initials = user?.nome?.substring(0, 2).toUpperCase() ?? 'AD';
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      {/* Perfil do usuário */}
-      <Surface style={styles.profileCard} elevation={1}>
-        <View style={[styles.avatarCircle, { backgroundColor: colors.primary }]}>
-          <Text style={styles.avatarText}>{user?.nome?.substring(0, 2).toUpperCase() ?? 'AD'}</Text>
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.userName}>{user?.nome ?? 'Administrador'}</Text>
-          <Text style={styles.userEmail}>{user?.email ?? ''}</Text>
-          <View style={styles.perfilBadge}>
-            <Text style={styles.perfilText}>{user?.perfil?.toUpperCase() ?? 'ADMIN'}</Text>
-          </View>
-        </View>
-      </Surface>
 
-      {/* Grid de menus */}
-      <Text style={styles.sectionTitle}>Módulos</Text>
-      <View style={styles.grid}>
-        {menuItems.map((item) => (
-          <TouchableOpacity
-            key={item.screen}
-            style={styles.gridItem}
-            onPress={() => navigation.navigate(item.screen)}
-            activeOpacity={0.7}
-          >
-            <Surface style={styles.gridCard} elevation={1}>
-              <View style={[styles.iconCircle, { backgroundColor: item.color + '15' }]}>
-                <MaterialIcons name={item.icon} size={28} color={item.color} />
+      {/* ── Profile Card com Gradiente ── */}
+      <LinearGradient colors={gradients.navyDark} style={[styles.profileHeader, { paddingTop: insets.top + 16 }]}>
+        <View style={styles.profileHeaderCircle} />
+        <View style={styles.avatarCircle}>
+          <Text style={styles.avatarText}>{initials}</Text>
+        </View>
+        <Text style={styles.userName}>{user?.nome ?? 'Administrador'}</Text>
+        <Text style={styles.userEmail}>{user?.email ?? 'admin@driveon.com'}</Text>
+        <View style={styles.perfilBadge}>
+          <MaterialIcons name="verified" size={11} color={palette.amber400} />
+          <Text style={styles.perfilText}>{user?.perfil?.toUpperCase() ?? 'ADMIN'}</Text>
+        </View>
+      </LinearGradient>
+
+      {/* ── Grid de Módulos ── */}
+      <View style={styles.gridSection}>
+        <Text style={styles.sectionTitle}>Módulos</Text>
+        <View style={styles.grid}>
+          {menuItems.map((item) => (
+            <TouchableOpacity
+              key={item.screen}
+              style={styles.gridItem}
+              onPress={() => navigation.navigate(item.screen)}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.gridCard, { backgroundColor: item.bg }]}>
+                <View style={[styles.iconBox, { backgroundColor: item.color + '18' }]}>
+                  <MaterialIcons name={item.icon} size={26} color={item.color} />
+                </View>
+                <Text style={[styles.gridLabel, { color: item.color }]}>{item.label}</Text>
+                <Text style={styles.gridDesc}>{item.desc}</Text>
               </View>
-              <Text style={styles.gridLabel}>{item.label}</Text>
-              <Text style={styles.gridDesc}>{item.desc}</Text>
-            </Surface>
-          </TouchableOpacity>
-        ))}
+            </TouchableOpacity>
+          ))}
+        </View>
       </View>
 
-      {/* Sair */}
-      <TouchableOpacity style={styles.logoutBtn} onPress={signOut}>
-        <MaterialIcons name="logout" size={20} color="#D32F2F" />
-        <Text style={styles.logoutText}>Sair da conta</Text>
-      </TouchableOpacity>
+      {/* ── Botão Sair ── */}
+      <View style={styles.logoutSection}>
+        <TouchableOpacity style={styles.logoutBtn} onPress={signOut} activeOpacity={0.7}>
+          <View style={styles.logoutIcon}>
+            <MaterialIcons name="logout" size={18} color={palette.rose600} />
+          </View>
+          <Text style={styles.logoutText}>Sair da conta</Text>
+          <MaterialIcons name="chevron-right" size={20} color={palette.rose600} />
+        </TouchableOpacity>
+      </View>
 
-      <View style={{ height: 32 }} />
+      <View style={{ height: 40 }} />
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
-  profileCard: { margin: spacing.lg, borderRadius: borderRadius.lg, padding: spacing.md, backgroundColor: '#FFF', flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  avatarCircle: { width: 56, height: 56, borderRadius: 28, justifyContent: 'center', alignItems: 'center' },
-  avatarText: { color: '#FFF', fontWeight: '700', fontSize: 18 },
-  userName: { fontSize: 16, fontWeight: '700', color: colors.onBackground },
-  userEmail: { fontSize: 12, color: '#757575', marginTop: 2 },
-  perfilBadge: { backgroundColor: '#E3F2FD', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8, alignSelf: 'flex-start', marginTop: 6 },
-  perfilText: { fontSize: 10, fontWeight: '700', color: colors.primary },
-  sectionTitle: { fontSize: 15, fontWeight: '700', color: colors.onBackground, marginHorizontal: spacing.lg, marginBottom: spacing.sm },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: spacing.md, gap: spacing.sm },
+  container: { flex: 1, backgroundColor: palette.slate100 },
+
+  // Profile Header
+  profileHeader: { paddingBottom: spacing.xl, alignItems: 'center', overflow: 'hidden' },
+  profileHeaderCircle: { position: 'absolute', width: 200, height: 200, borderRadius: 100, backgroundColor: 'rgba(255,255,255,0.05)', top: -60, right: -60 },
+  avatarCircle: { width: 72, height: 72, borderRadius: 36, backgroundColor: 'rgba(255,255,255,0.2)', borderWidth: 3, borderColor: 'rgba(255,255,255,0.4)', justifyContent: 'center', alignItems: 'center', marginBottom: spacing.sm },
+  avatarText: { color: palette.white, fontWeight: '800', fontSize: 22 },
+  userName: { fontSize: 18, fontWeight: '800', color: palette.white, marginBottom: 4 },
+  userEmail: { fontSize: 13, color: 'rgba(255,255,255,0.6)', marginBottom: spacing.sm },
+  perfilBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(245,158,11,0.2)', borderWidth: 1, borderColor: 'rgba(245,158,11,0.4)', paddingHorizontal: 12, paddingVertical: 5, borderRadius: borderRadius.full },
+  perfilText: { fontSize: 11, fontWeight: '700', color: palette.amber400, letterSpacing: 0.5 },
+
+  // Grid
+  gridSection: { padding: spacing.lg, paddingBottom: 0 },
+  sectionTitle: { fontSize: 13, fontWeight: '700', color: palette.slate500, marginBottom: spacing.md, letterSpacing: 0.5, textTransform: 'uppercase' },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   gridItem: { width: '47%' },
-  gridCard: { borderRadius: borderRadius.md, padding: spacing.md, backgroundColor: '#FFF', alignItems: 'flex-start' },
-  iconCircle: { width: 52, height: 52, borderRadius: 14, justifyContent: 'center', alignItems: 'center', marginBottom: spacing.sm },
-  gridLabel: { fontSize: 14, fontWeight: '700', color: colors.onBackground },
-  gridDesc: { fontSize: 11, color: '#9E9E9E', marginTop: 2 },
-  logoutBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, margin: spacing.lg, padding: spacing.md, borderRadius: borderRadius.md, backgroundColor: '#FFEBEE', borderWidth: 1, borderColor: '#FFCDD2' },
-  logoutText: { color: '#D32F2F', fontWeight: '700', fontSize: 15 },
+  gridCard: { borderRadius: borderRadius.lg, padding: spacing.md, borderWidth: 1, borderColor: 'rgba(0,0,0,0.04)', ...shadows.sm },
+  iconBox: { width: 48, height: 48, borderRadius: borderRadius.md, justifyContent: 'center', alignItems: 'center', marginBottom: spacing.sm },
+  gridLabel: { fontSize: 14, fontWeight: '700', marginBottom: 2 },
+  gridDesc: { fontSize: 11, color: palette.slate400, lineHeight: 15 },
+
+  // Logout
+  logoutSection: { padding: spacing.lg, paddingTop: spacing.md },
+  logoutBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF1F2', borderRadius: borderRadius.lg, padding: spacing.md, borderWidth: 1, borderColor: '#FECDD3', gap: spacing.sm },
+  logoutIcon: { width: 36, height: 36, borderRadius: 10, backgroundColor: '#FFE4E6', justifyContent: 'center', alignItems: 'center' },
+  logoutText: { flex: 1, color: palette.rose600, fontWeight: '700', fontSize: 15 },
 });

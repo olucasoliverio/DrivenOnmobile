@@ -1,13 +1,19 @@
 import React, { useState } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, KeyboardAvoidingView,
-  Platform, Image, StatusBar,
+  View, Text, StyleSheet, TouchableOpacity,
+  KeyboardAvoidingView, Platform, StatusBar, Dimensions,
 } from 'react-native';
-import { TextInput, Button, HelperText } from 'react-native-paper';
+import { TextInput, HelperText } from 'react-native-paper';
+import { LinearGradient } from 'expo-linear-gradient';
+import { MaterialIcons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
-import { colors, spacing, borderRadius } from '../../theme/theme';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { palette, spacing, borderRadius, shadows, gradients } from '../../theme/theme';
+
+const { height } = Dimensions.get('window');
 
 export default function LoginScreen() {
+  const insets = useSafeAreaInsets();
   const { signIn, isLoading } = useAuth();
   const [email, setEmail] = useState('admin@driveon.com');
   const [senha, setSenha] = useState('123456');
@@ -29,16 +35,27 @@ export default function LoginScreen() {
 
   return (
     <KeyboardAvoidingView style={styles.root} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <StatusBar barStyle="light-content" backgroundColor={colors.primary} />
-      <View style={styles.header}>
-        <View style={styles.logoContainer}>
-          <Text style={styles.logoIcon}>🔧</Text>
-        </View>
-        <Text style={styles.brand}>DriveOn</Text>
-        <Text style={styles.tagline}>Gestão de Oficinas Mecânicas</Text>
-      </View>
+      <StatusBar barStyle="light-content" backgroundColor={palette.navy900} />
 
+      {/* Fundo gradiente */}
+      <LinearGradient colors={gradients.navyDark} style={styles.gradient}>
+        {/* Círculos decorativos */}
+        <View style={styles.circle1} />
+        <View style={styles.circle2} />
+
+        {/* Logo e marca */}
+        <View style={[styles.brandArea, { paddingTop: insets.top + spacing.xl }]}>
+          <View style={styles.logoBox}>
+            <MaterialIcons name="car-repair" size={36} color={palette.white} />
+          </View>
+          <Text style={styles.brand}>DriveOn</Text>
+          <Text style={styles.tagline}>Gestão de Oficinas Mecânicas</Text>
+        </View>
+      </LinearGradient>
+
+      {/* Card de login */}
       <View style={styles.card}>
+        <View style={styles.cardHandle} />
         <Text style={styles.title}>Bem-vindo de volta</Text>
         <Text style={styles.subtitle}>Entre na sua conta para continuar</Text>
 
@@ -49,10 +66,12 @@ export default function LoginScreen() {
           mode="outlined"
           keyboardType="email-address"
           autoCapitalize="none"
-          left={<TextInput.Icon icon="email-outline" />}
+          left={<TextInput.Icon icon="email-outline" color={palette.navy800} />}
           style={styles.input}
-          outlineColor={colors.outline}
-          activeOutlineColor={colors.primary}
+          outlineColor={palette.slate200}
+          activeOutlineColor={palette.navy800}
+          outlineStyle={{ borderRadius: borderRadius.md }}
+          theme={{ colors: { background: palette.slate50 } }}
         />
 
         <TextInput
@@ -61,35 +80,53 @@ export default function LoginScreen() {
           onChangeText={setSenha}
           mode="outlined"
           secureTextEntry={!senhaVisivel}
-          left={<TextInput.Icon icon="lock-outline" />}
+          left={<TextInput.Icon icon="lock-outline" color={palette.navy800} />}
           right={
             <TextInput.Icon
               icon={senhaVisivel ? 'eye-off' : 'eye'}
               onPress={() => setSenhaVisivel(!senhaVisivel)}
+              color={palette.slate400}
             />
           }
           style={styles.input}
-          outlineColor={colors.outline}
-          activeOutlineColor={colors.primary}
+          outlineColor={palette.slate200}
+          activeOutlineColor={palette.navy800}
+          outlineStyle={{ borderRadius: borderRadius.md }}
+          theme={{ colors: { background: palette.slate50 } }}
         />
 
-        {erro ? <HelperText type="error" visible>{erro}</HelperText> : null}
+        {erro ? <HelperText type="error" visible style={styles.errorText}>{erro}</HelperText> : null}
 
-        <Button
-          mode="contained"
+        {/* Botão de login com gradiente */}
+        <TouchableOpacity
+          style={styles.loginBtn}
           onPress={handleLogin}
-          loading={isLoading}
           disabled={isLoading}
-          style={styles.button}
-          contentStyle={styles.buttonContent}
-          labelStyle={styles.buttonLabel}
-          buttonColor={colors.primary}
+          activeOpacity={0.85}
         >
-          Entrar
-        </Button>
+          <LinearGradient
+            colors={gradients.navyPrimary}
+            style={styles.loginBtnGradient}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+          >
+            {isLoading ? (
+              <MaterialIcons name="hourglass-empty" size={20} color={palette.white} />
+            ) : (
+              <>
+                <Text style={styles.loginBtnText}>Entrar</Text>
+                <MaterialIcons name="arrow-forward" size={20} color={palette.white} />
+              </>
+            )}
+          </LinearGradient>
+        </TouchableOpacity>
 
+        {/* Dica demo */}
         <View style={styles.hintBox}>
-          <Text style={styles.hintText}>💡 Acesso demo: qualquer e-mail + senha <Text style={styles.hintBold}>123456</Text></Text>
+          <MaterialIcons name="info-outline" size={14} color={palette.navy700} />
+          <Text style={styles.hintText}>
+            Demo: qualquer e-mail + senha <Text style={styles.hintBold}>123456</Text>
+          </Text>
         </View>
       </View>
     </KeyboardAvoidingView>
@@ -99,69 +136,129 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: colors.primary,
+    backgroundColor: palette.navy900,
   },
-  header: {
+  gradient: {
+    height: height * 0.42,
+    justifyContent: 'flex-end',
+    paddingBottom: spacing.xl,
+    overflow: 'hidden',
+  },
+  circle1: {
+    position: 'absolute',
+    width: 260,
+    height: 260,
+    borderRadius: 130,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    top: -80,
+    right: -60,
+  },
+  circle2: {
+    position: 'absolute',
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    top: 60,
+    left: -40,
+  },
+  brandArea: {
     alignItems: 'center',
-    paddingTop: 80,
-    paddingBottom: 40,
   },
-  logoContainer: {
-    width: 80,
-    height: 80,
+  logoBox: {
+    width: 72,
+    height: 72,
     borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.25)',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: spacing.md,
   },
-  logoIcon: { fontSize: 40 },
   brand: {
-    fontSize: 34,
+    fontSize: 36,
     fontWeight: '800',
-    color: '#FFFFFF',
-    letterSpacing: 1,
+    color: palette.white,
+    letterSpacing: 1.5,
   },
   tagline: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.8)',
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.65)',
     marginTop: 4,
+    letterSpacing: 0.5,
   },
   card: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: palette.white,
     borderTopLeftRadius: 32,
     borderTopRightRadius: 32,
     padding: spacing.xl,
-    paddingTop: spacing.xl,
+    paddingTop: spacing.lg,
+    ...shadows.lg,
+  },
+  cardHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: palette.slate200,
+    alignSelf: 'center',
+    marginBottom: spacing.lg,
   },
   title: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: colors.onBackground,
+    fontSize: 26,
+    fontWeight: '800',
+    color: palette.slate900,
     marginBottom: 4,
   },
   subtitle: {
     fontSize: 14,
-    color: '#757575',
+    color: palette.slate500,
     marginBottom: spacing.xl,
   },
   input: {
     marginBottom: spacing.md,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: palette.slate50,
   },
-  button: {
+  errorText: {
+    marginTop: -8,
+    marginBottom: spacing.sm,
+  },
+  loginBtn: {
     marginTop: spacing.sm,
     borderRadius: borderRadius.md,
+    overflow: 'hidden',
+    ...shadows.md,
   },
-  buttonContent: { paddingVertical: 6 },
-  buttonLabel: { fontSize: 16, fontWeight: '700' },
+  loginBtnGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    paddingVertical: 16,
+    paddingHorizontal: spacing.xl,
+  },
+  loginBtnText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: palette.white,
+    letterSpacing: 0.5,
+  },
   hintBox: {
     marginTop: spacing.lg,
-    backgroundColor: '#E3F2FD',
-    borderRadius: borderRadius.sm,
+    backgroundColor: palette.navy50,
+    borderRadius: borderRadius.md,
     padding: spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    borderWidth: 1,
+    borderColor: palette.navy100,
   },
-  hintText: { fontSize: 13, color: '#1565C0', textAlign: 'center' },
+  hintText: {
+    fontSize: 13,
+    color: palette.navy800,
+    flex: 1,
+  },
   hintBold: { fontWeight: '700' },
 });

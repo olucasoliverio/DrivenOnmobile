@@ -1,12 +1,16 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, FlatList } from 'react-native';
-import { Surface, Chip, FAB, Portal, Modal, TextInput, Button } from 'react-native-paper';
+import { View, Text, StyleSheet, TouchableOpacity, FlatList, Dimensions } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialIcons } from '@expo/vector-icons';
+import { FAB } from 'react-native-paper';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { mockAgendamentos, mockClientes, mockVeiculos } from '../../data/mockData';
-import { colors, spacing, borderRadius } from '../../theme/theme';
+import { palette, spacing, borderRadius, shadows, gradients } from '../../theme/theme';
 import dayjs from 'dayjs';
 import 'dayjs/locale/pt-br';
 dayjs.locale('pt-br');
+
+const { width } = Dimensions.get('window');
 
 function getDaysOfWeek() {
   const days = [];
@@ -17,8 +21,8 @@ function getDaysOfWeek() {
 }
 
 export default function AgendaScreen() {
+  const insets = useSafeAreaInsets();
   const [selectedDate, setSelectedDate] = useState(dayjs());
-  const [modalVisible, setModalVisible] = useState(false);
   const days = getDaysOfWeek();
 
   const agendamentosDodia = mockAgendamentos.filter(a =>
@@ -27,43 +31,62 @@ export default function AgendaScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Seletor de dias */}
-      <View style={styles.weekHeader}>
-        <Text style={styles.mesAno}>{selectedDate.format('MMMM YYYY').replace(/^\w/, c => c.toUpperCase())}</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.daysRow}>
-          {days.map((day) => {
+
+      {/* ── Week Header com Gradiente ── */}
+      <LinearGradient colors={gradients.navyDark} style={[styles.weekHeader, { paddingTop: insets.top + 12 }]}>
+        <Text style={styles.mesAno}>
+          {selectedDate.format('MMMM YYYY').replace(/^\w/, c => c.toUpperCase())}
+        </Text>
+        <FlatList
+          horizontal
+          data={days}
+          keyExtractor={d => d.toISOString()}
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.daysRow}
+          renderItem={({ item: day }) => {
             const isSelected = day.isSame(selectedDate, 'day');
             const isToday = day.isSame(dayjs(), 'day');
-            const temAgendamento = mockAgendamentos.some(a => dayjs(a.data).isSame(day, 'day'));
+            const temAg = mockAgendamentos.some(a => dayjs(a.data).isSame(day, 'day'));
             return (
               <TouchableOpacity
-                key={day.toISOString()}
                 style={[styles.dayBtn, isSelected && styles.dayBtnSelected]}
                 onPress={() => setSelectedDate(day)}
+                activeOpacity={0.7}
               >
-                <Text style={[styles.dayName, isSelected && styles.dayTextSelected]}>
+                <Text style={[styles.dayName, isSelected && styles.dayTextSelected, !isSelected && isToday && styles.dayNameToday]}>
                   {day.format('ddd').replace('.', '').substring(0, 3).toUpperCase()}
                 </Text>
-                <Text style={[styles.dayNum, isSelected && styles.dayTextSelected, isToday && !isSelected && { color: colors.primary, fontWeight: '700' }]}>
+                <Text style={[styles.dayNum, isSelected && styles.dayTextSelected, !isSelected && isToday && styles.dayNumToday]}>
                   {day.format('D')}
                 </Text>
-                {temAgendamento && (
-                  <View style={[styles.dot, isSelected && { backgroundColor: '#FFF' }]} />
+                {temAg && (
+                  <View style={[styles.dot, isSelected ? styles.dotSelected : styles.dotDefault]} />
                 )}
               </TouchableOpacity>
             );
-          })}
-        </ScrollView>
+          }}
+        />
+      </LinearGradient>
+
+      {/* ── Contador do dia ── */}
+      <View style={styles.dayInfoBar}>
+        <Text style={styles.dayInfoText}>
+          {agendamentosDodia.length === 0
+            ? 'Nenhum agendamento'
+            : `${agendamentosDodia.length} agendamento${agendamentosDodia.length > 1 ? 's' : ''}`}
+        </Text>
       </View>
 
-      {/* Lista de agendamentos */}
+      {/* ── Lista de agendamentos ── */}
       <FlatList
         data={agendamentosDodia}
         keyExtractor={(item) => String(item.id)}
-        contentContainerStyle={{ padding: spacing.lg, gap: spacing.sm, paddingBottom: 80 }}
+        contentContainerStyle={styles.listContent}
+        showsVerticalScrollIndicator={false}
         ListEmptyComponent={() => (
           <View style={styles.empty}>
-            <MaterialIcons name="event-available" size={48} color="#BDBDBD" />
+            <MaterialIcons name="event-available" size={56} color={palette.slate200} />
+            <Text style={styles.emptyTitle}>Dia livre!</Text>
             <Text style={styles.emptyText}>Nenhum agendamento nesta data</Text>
           </View>
         )}
@@ -72,33 +95,50 @@ export default function AgendaScreen() {
           const veiculo = mockVeiculos.find(v => v.id === item.veiculoId);
           const isConfirmado = item.status === 'confirmado';
           return (
-            <Surface style={styles.card} elevation={1}>
-              <View style={styles.cardLeft}>
-                <View style={[styles.colorBar, { backgroundColor: isConfirmado ? colors.primary : colors.secondary }]} />
-              </View>
-              <View style={{ flex: 1, paddingLeft: spacing.sm }}>
-                <View style={styles.cardRow}>
-                  <Text style={styles.hora}>{item.hora}</Text>
-                  <View style={[styles.badge, { backgroundColor: isConfirmado ? '#E8F5E9' : '#FFF3E0' }]}>
-                    <Text style={[styles.badgeText, { color: isConfirmado ? '#2E7D32' : '#E65100' }]}>
+            <View style={styles.card}>
+              {/* Barra lateral colorida */}
+              <LinearGradient
+                colors={isConfirmado ? gradients.navyPrimary : gradients.amber}
+                style={styles.colorBar}
+              />
+              <View style={styles.cardBody}>
+                {/* Linha superior: hora + badge */}
+                <View style={styles.cardTop}>
+                  <View style={styles.horaBox}>
+                    <MaterialIcons name="schedule" size={13} color={palette.slate400} />
+                    <Text style={styles.hora}>{item.hora}</Text>
+                  </View>
+                  <View style={[styles.badge, { backgroundColor: isConfirmado ? palette.emerald100 : palette.amber100 }]}>
+                    <Text style={[styles.badgeText, { color: isConfirmado ? palette.emerald600 : '#92400E' }]}>
                       {isConfirmado ? 'CONFIRMADO' : 'PENDENTE'}
                     </Text>
                   </View>
                 </View>
+
                 <Text style={styles.clienteName}>{cliente?.nome}</Text>
-                <Text style={styles.veiculoText}>{veiculo ? `${veiculo.marca} ${veiculo.modelo} • ${veiculo.placa}` : ''}</Text>
-                <View style={styles.servicoRow}>
-                  <MaterialIcons name="build" size={13} color="#9E9E9E" />
-                  <Text style={styles.servicoText}>{item.servico}</Text>
+
+                {veiculo && (
+                  <View style={styles.infoRow}>
+                    <MaterialIcons name="directions-car" size={13} color={palette.slate400} />
+                    <Text style={styles.infoText}>
+                      {veiculo.marca} {veiculo.modelo} · {veiculo.placa}
+                    </Text>
+                  </View>
+                )}
+
+                <View style={styles.infoRow}>
+                  <MaterialIcons name="build" size={13} color={palette.slate400} />
+                  <Text style={styles.infoText}>{item.servico}</Text>
                 </View>
-                {item.observacao ? (
-                  <View style={styles.obsRow}>
-                    <MaterialIcons name="notes" size={13} color="#9E9E9E" />
+
+                {item.observacao && (
+                  <View style={[styles.infoRow, styles.obsRow]}>
+                    <MaterialIcons name="notes" size={13} color={palette.slate400} />
                     <Text style={styles.obsText}>{item.observacao}</Text>
                   </View>
-                ) : null}
+                )}
               </View>
-            </Surface>
+            </View>
           );
         }}
       />
@@ -106,38 +146,58 @@ export default function AgendaScreen() {
       <FAB
         icon="plus"
         style={styles.fab}
-        color="#FFF"
-        onPress={() => setModalVisible(true)}
+        color={palette.white}
+        onPress={() => {}}
       />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
-  weekHeader: { backgroundColor: '#FFF', paddingTop: spacing.md, paddingBottom: spacing.md, elevation: 2, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4 },
-  mesAno: { fontSize: 15, fontWeight: '700', color: colors.onBackground, textAlign: 'center', marginBottom: spacing.sm, textTransform: 'capitalize' },
-  daysRow: { paddingHorizontal: spacing.md, gap: 8 },
-  dayBtn: { width: 52, height: 68, borderRadius: 14, alignItems: 'center', justifyContent: 'center', gap: 4, backgroundColor: '#F5F5F5' },
-  dayBtnSelected: { backgroundColor: colors.primary },
-  dayName: { fontSize: 10, fontWeight: '600', color: '#9E9E9E' },
-  dayNum: { fontSize: 18, fontWeight: '700', color: colors.onBackground },
-  dayTextSelected: { color: '#FFF' },
-  dot: { width: 5, height: 5, borderRadius: 3, backgroundColor: colors.primary },
-  empty: { flex: 1, alignItems: 'center', marginTop: 80, gap: spacing.md },
-  emptyText: { color: '#9E9E9E', fontSize: 14 },
-  card: { borderRadius: borderRadius.md, backgroundColor: '#FFF', flexDirection: 'row', overflow: 'hidden' },
-  cardLeft: { width: 6 },
-  colorBar: { flex: 1 },
-  cardRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4, paddingTop: spacing.md, paddingRight: spacing.md },
-  hora: { fontSize: 18, fontWeight: '800', color: colors.onBackground },
-  badge: { borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3 },
+  container: { flex: 1, backgroundColor: palette.slate100 },
+
+  // Week header
+  weekHeader: { paddingBottom: spacing.md, overflow: 'hidden' },
+  mesAno: { fontSize: 14, fontWeight: '700', color: 'rgba(255,255,255,0.7)', textAlign: 'center', marginBottom: spacing.sm, textTransform: 'capitalize', letterSpacing: 0.5 },
+  daysRow: { paddingHorizontal: spacing.md, gap: 8, paddingBottom: 4 },
+  dayBtn: { width: 54, height: 72, borderRadius: 16, alignItems: 'center', justifyContent: 'center', gap: 2, backgroundColor: 'rgba(255,255,255,0.1)' },
+  dayBtnSelected: { backgroundColor: palette.white },
+  dayName: { fontSize: 10, fontWeight: '600', color: 'rgba(255,255,255,0.6)' },
+  dayNameToday: { color: palette.amber400 },
+  dayNum: { fontSize: 20, fontWeight: '800', color: 'rgba(255,255,255,0.9)' },
+  dayNumToday: { color: palette.amber400 },
+  dayTextSelected: { color: palette.navy800 },
+  dot: { width: 5, height: 5, borderRadius: 3 },
+  dotDefault: { backgroundColor: palette.amber400 },
+  dotSelected: { backgroundColor: palette.navy800 },
+
+  // Info bar
+  dayInfoBar: { paddingHorizontal: spacing.lg, paddingVertical: spacing.sm },
+  dayInfoText: { fontSize: 12, fontWeight: '600', color: palette.slate500 },
+
+  // List
+  listContent: { padding: spacing.lg, paddingTop: spacing.sm, gap: spacing.sm, paddingBottom: 90 },
+
+  // Card
+  card: { backgroundColor: palette.white, borderRadius: borderRadius.lg, flexDirection: 'row', overflow: 'hidden', ...shadows.sm },
+  colorBar: { width: 5 },
+  cardBody: { flex: 1, padding: spacing.md },
+  cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm },
+  horaBox: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  hora: { fontSize: 16, fontWeight: '800', color: palette.slate900 },
+  badge: { borderRadius: borderRadius.full, paddingHorizontal: 10, paddingVertical: 4 },
   badgeText: { fontSize: 10, fontWeight: '700' },
-  clienteName: { fontSize: 15, fontWeight: '700', color: colors.onBackground, paddingRight: spacing.md },
-  veiculoText: { fontSize: 12, color: '#757575', marginTop: 2, paddingRight: spacing.md },
-  servicoRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 6 },
-  servicoText: { fontSize: 12, color: '#9E9E9E' },
-  obsRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4, marginBottom: spacing.md },
-  obsText: { fontSize: 12, color: '#9E9E9E', fontStyle: 'italic', flex: 1 },
-  fab: { position: 'absolute', bottom: 24, right: 24, backgroundColor: colors.primary },
+  clienteName: { fontSize: 15, fontWeight: '700', color: palette.slate900, marginBottom: 6 },
+  infoRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },
+  infoText: { fontSize: 12, color: palette.slate500, flex: 1 },
+  obsRow: { marginTop: 6, padding: spacing.sm, backgroundColor: palette.slate50, borderRadius: borderRadius.sm },
+  obsText: { fontSize: 12, color: palette.slate500, fontStyle: 'italic', flex: 1 },
+
+  // Empty
+  empty: { alignItems: 'center', marginTop: 60, gap: spacing.sm },
+  emptyTitle: { fontSize: 18, fontWeight: '700', color: palette.slate700 },
+  emptyText: { fontSize: 14, color: palette.slate400 },
+
+  // FAB
+  fab: { position: 'absolute', bottom: 24, right: 24, backgroundColor: palette.navy800 },
 });

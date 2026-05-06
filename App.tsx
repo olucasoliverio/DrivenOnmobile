@@ -12,7 +12,7 @@ export default function App() {
     <SafeAreaProvider>
       <PaperProvider theme={theme}>
         <AuthProvider>
-          <StatusBar style="auto" />
+          <StatusBar style="light" />
           <RootNavigator />
         </AuthProvider>
       </PaperProvider>

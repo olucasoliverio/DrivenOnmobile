@@ -1,5 +1,6 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import MenuScreen from '../../screens/menu/MenuScreen';
 import ClientesScreen from '../../screens/clientes/ClientesScreen';
 import ClienteDetalhesScreen from '../../screens/clientes/ClienteDetalhesScreen';
@@ -12,15 +13,26 @@ import ServicosScreen from '../../screens/servicos/ServicosScreen';
 import RelatoriosScreen from '../../screens/relatorios/RelatoriosScreen';
 import ConfiguracoesScreen from '../../screens/configuracoes/ConfiguracoesScreen';
 import UsuariosScreen from '../../screens/usuarios/UsuariosScreen';
-import { colors } from '../../theme/theme';
+import { palette } from '../../theme/theme';
 
 const Stack = createNativeStackNavigator();
 
 export default function MenuStack() {
+  const insets = useSafeAreaInsets();
+
   return (
-    <Stack.Navigator screenOptions={{ headerTintColor: colors.primary }}>
-      <Stack.Screen name="Menu" component={MenuScreen} options={{ title: 'Menu' }} />
-      <Stack.Screen name="Clientes" component={ClientesScreen} options={{ title: 'Clientes' }} />
+    <Stack.Navigator
+      screenOptions={{
+        headerStyle: { backgroundColor: palette.navy800 },
+        headerTintColor: palette.white,
+        headerTitleStyle: { fontWeight: '700', fontSize: 17 },
+        headerShadowVisible: false,
+        headerStatusBarHeight: insets.top,
+      }}
+    >
+      <Stack.Screen name="Menu" component={MenuScreen} options={{ headerShown: false }} />
+
+      <Stack.Screen name="Clientes" component={ClientesScreen} options={{ headerShown: false }} />
       <Stack.Screen name="ClienteDetalhes" component={ClienteDetalhesScreen} options={{ title: 'Detalhes do Cliente' }} />
       <Stack.Screen name="Veiculos" component={VeiculosScreen} options={{ title: 'Veículos' }} />
       <Stack.Screen name="Orcamentos" component={OrcamentosScreen} options={{ title: 'Orçamentos' }} />

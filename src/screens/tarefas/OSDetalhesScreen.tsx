@@ -1,23 +1,25 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
-import { Surface, Button, Divider } from 'react-native-paper';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRoute } from '@react-navigation/native';
-import { mockOrdens, mockClientes, mockVeiculos, mockServicos } from '../../data/mockData';
-import { colors, spacing, borderRadius } from '../../theme/theme';
+import { mockOrdens, mockClientes, mockVeiculos } from '../../data/mockData';
+import { palette, spacing, borderRadius, shadows, gradients } from '../../theme/theme';
 import dayjs from 'dayjs';
 
-const statusConfig: Record<string, { label: string; color: string; bg: string }> = {
-  em_andamento: { label: 'Em Andamento', color: '#1565C0', bg: '#E3F2FD' },
-  aguardando: { label: 'Aguardando', color: '#E65100', bg: '#FFF3E0' },
-  aguardando_pecas: { label: 'Aguard. Peças', color: '#6A1B9A', bg: '#F3E5F5' },
-  concluido: { label: 'Concluído', color: '#2E7D32', bg: '#E8F5E9' },
+const STATUS_MAP: Record<string, { label: string; color: string; bg: string; icon: keyof typeof MaterialIcons.glyphMap }> = {
+  em_andamento:    { label: 'Em Andamento',  color: palette.navy700,    bg: palette.navy50,     icon: 'autorenew' },
+  aguardando:      { label: 'Aguardando',    color: '#C2410C',          bg: '#FFF7ED',          icon: 'schedule' },
+  aguardando_pecas:{ label: 'Aguard. Peças', color: palette.violet600,  bg: '#F5F3FF',          icon: 'inventory' },
+  concluido:       { label: 'Concluído',     color: palette.emerald600, bg: palette.emerald100, icon: 'check-circle' },
 };
 
-function InfoRow({ icon, label, value }: { icon: any; label: string; value: string }) {
+function InfoRow({ icon, label, value }: { icon: keyof typeof MaterialIcons.glyphMap; label: string; value: string }) {
   return (
     <View style={styles.infoRow}>
-      <MaterialIcons name={icon} size={18} color={colors.primary} style={{ width: 24 }} />
+      <View style={styles.infoIconBox}>
+        <MaterialIcons name={icon} size={16} color={palette.navy700} />
+      </View>
       <View style={{ flex: 1 }}>
         <Text style={styles.infoLabel}>{label}</Text>
         <Text style={styles.infoValue}>{value}</Text>
@@ -32,59 +34,76 @@ export default function OSDetalhesScreen() {
   const os = mockOrdens.find(o => o.id === osId) ?? mockOrdens[0];
   const cliente = mockClientes.find(c => c.id === os.clienteId);
   const veiculo = mockVeiculos.find(v => v.id === os.veiculoId);
-  const st = statusConfig[os.status] ?? { label: os.status, color: '#757575', bg: '#F5F5F5' };
+  const st = STATUS_MAP[os.status] ?? { label: os.status, color: palette.slate500, bg: palette.slate100, icon: 'info' as any };
+
+  const itens = [
+    { nome: 'Diagnóstico', qtd: 1, valor: 150.0 },
+    { nome: 'Mão de Obra', qtd: 1, valor: os.valor - 150 },
+  ];
 
   return (
-    <ScrollView style={styles.container}>
-      {/* Header OS */}
-      <View style={styles.headerBox}>
-        <View style={styles.headerRow}>
-          <Text style={styles.osNum}>OS #{String(os.id).padStart(3, '0')}</Text>
-          <View style={[styles.badge, { backgroundColor: st.bg }]}>
-            <Text style={[styles.badgeText, { color: st.color }]}>{st.label}</Text>
+    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+
+      {/* ── Hero Card ── */}
+      <View style={styles.heroCard}>
+        <View style={styles.heroTop}>
+          <View style={styles.osNumBox}>
+            <Text style={styles.osNumText}>OS #{String(os.id).padStart(3, '0')}</Text>
+          </View>
+          <View style={[styles.statusBadge, { backgroundColor: st.bg }]}>
+            <MaterialIcons name={st.icon} size={12} color={st.color} />
+            <Text style={[styles.statusText, { color: st.color }]}>{st.label}</Text>
           </View>
         </View>
         <Text style={styles.descricao}>{os.descricao}</Text>
-        <Text style={styles.valor}>R$ {os.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</Text>
+        <View style={styles.valorRow}>
+          <Text style={styles.valorLabel}>Total</Text>
+          <Text style={styles.valor}>R$ {os.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</Text>
+        </View>
       </View>
 
-      {/* Cliente */}
-      <Surface style={styles.section} elevation={1}>
-        <Text style={styles.sectionTitle}>Cliente</Text>
-        <Divider style={{ marginBottom: spacing.md }} />
-        <InfoRow icon="person" label="Nome" value={cliente?.nome ?? '—'} />
+      {/* ── Cliente ── */}
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <MaterialIcons name="person" size={16} color={palette.navy800} />
+          <Text style={styles.sectionTitle}>Cliente</Text>
+        </View>
+        <InfoRow icon="person-outline" label="Nome" value={cliente?.nome ?? '—'} />
         <InfoRow icon="phone" label="Telefone" value={cliente?.telefone ?? '—'} />
         <InfoRow icon="email" label="E-mail" value={cliente?.email ?? '—'} />
-      </Surface>
+      </View>
 
-      {/* Veículo */}
-      <Surface style={styles.section} elevation={1}>
-        <Text style={styles.sectionTitle}>Veículo</Text>
-        <Divider style={{ marginBottom: spacing.md }} />
-        <InfoRow icon="directions-car" label="Modelo" value={veiculo ? `${veiculo.marca} ${veiculo.modelo} ${veiculo.ano}` : '—'} />
+      {/* ── Veículo ── */}
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <MaterialIcons name="directions-car" size={16} color={palette.navy800} />
+          <Text style={styles.sectionTitle}>Veículo</Text>
+        </View>
+        <InfoRow icon="car-repair" label="Modelo" value={veiculo ? `${veiculo.marca} ${veiculo.modelo} ${veiculo.ano}` : '—'} />
         <InfoRow icon="pin" label="Placa" value={veiculo?.placa ?? '—'} />
         <InfoRow icon="palette" label="Cor" value={veiculo?.cor ?? '—'} />
         <InfoRow icon="speed" label="KM" value={veiculo ? `${veiculo.km.toLocaleString()} km` : '—'} />
-      </Surface>
+      </View>
 
-      {/* Datas e Mecânico */}
-      <Surface style={styles.section} elevation={1}>
-        <Text style={styles.sectionTitle}>Informações</Text>
-        <Divider style={{ marginBottom: spacing.md }} />
+      {/* ── Informações ── */}
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <MaterialIcons name="info-outline" size={16} color={palette.navy800} />
+          <Text style={styles.sectionTitle}>Informações</Text>
+        </View>
         <InfoRow icon="login" label="Entrada" value={dayjs(os.dataEntrada).format('DD/MM/YYYY HH:mm')} />
         <InfoRow icon="event" label="Previsão" value={dayjs(os.dataPrevista).format('DD/MM/YYYY')} />
         <InfoRow icon="engineering" label="Mecânico" value={os.mecanico} />
-      </Surface>
+      </View>
 
-      {/* Serviços executados */}
-      <Surface style={styles.section} elevation={1}>
-        <Text style={styles.sectionTitle}>Serviços / Peças</Text>
-        <Divider style={{ marginBottom: spacing.md }} />
-        {[
-          { nome: 'Diagnóstico', qtd: 1, valor: 150.0 },
-          { nome: 'Mão de Obra', qtd: 1, valor: os.valor - 150 },
-        ].map((item, idx) => (
-          <View key={idx} style={styles.itemRow}>
+      {/* ── Serviços / Peças ── */}
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <MaterialIcons name="build" size={16} color={palette.navy800} />
+          <Text style={styles.sectionTitle}>Serviços / Peças</Text>
+        </View>
+        {itens.map((item, idx) => (
+          <View key={idx} style={[styles.itemRow, idx < itens.length - 1 && styles.itemBorder]}>
             <View style={{ flex: 1 }}>
               <Text style={styles.itemNome}>{item.nome}</Text>
               <Text style={styles.itemQtd}>Qtd: {item.qtd}</Text>
@@ -92,23 +111,26 @@ export default function OSDetalhesScreen() {
             <Text style={styles.itemValor}>R$ {item.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</Text>
           </View>
         ))}
-        <Divider style={{ marginVertical: spacing.md }} />
         <View style={styles.totalRow}>
           <Text style={styles.totalLabel}>Total</Text>
           <Text style={styles.totalValor}>R$ {os.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</Text>
         </View>
-      </Surface>
+      </View>
 
-      {/* Ações */}
+      {/* ── Ações ── */}
       <View style={styles.actions}>
         {os.status !== 'concluido' && (
-          <Button mode="contained" buttonColor={colors.primary} style={{ flex: 1 }} onPress={() => {}}>
-            Marcar como Concluído
-          </Button>
+          <TouchableOpacity style={styles.btnPrimary} activeOpacity={0.8} onPress={() => {}}>
+            <LinearGradient colors={gradients.navyPrimary} style={styles.btnGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
+              <MaterialIcons name="check-circle" size={18} color={palette.white} />
+              <Text style={styles.btnPrimaryText}>Marcar como Concluído</Text>
+            </LinearGradient>
+          </TouchableOpacity>
         )}
-        <Button mode="outlined" textColor={colors.primary} style={{ flex: 1 }} onPress={() => {}}>
-          Gerar PDF
-        </Button>
+        <TouchableOpacity style={styles.btnOutline} activeOpacity={0.7} onPress={() => {}}>
+          <MaterialIcons name="picture-as-pdf" size={18} color={palette.navy800} />
+          <Text style={styles.btnOutlineText}>Gerar PDF</Text>
+        </TouchableOpacity>
       </View>
 
       <View style={{ height: 32 }} />
@@ -117,25 +139,46 @@ export default function OSDetalhesScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
-  headerBox: { backgroundColor: colors.primary, padding: spacing.lg, paddingTop: spacing.md },
-  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm },
-  osNum: { fontSize: 22, fontWeight: '800', color: '#FFF' },
-  badge: { borderRadius: 12, paddingHorizontal: 10, paddingVertical: 5 },
-  badgeText: { fontSize: 12, fontWeight: '700' },
-  descricao: { fontSize: 14, color: 'rgba(255,255,255,0.85)', marginBottom: spacing.sm },
-  valor: { fontSize: 26, fontWeight: '800', color: '#FFF' },
-  section: { marginHorizontal: spacing.lg, marginTop: spacing.md, borderRadius: borderRadius.md, padding: spacing.md, backgroundColor: '#FFF' },
-  sectionTitle: { fontSize: 15, fontWeight: '700', color: colors.onBackground, marginBottom: spacing.sm },
+  container: { flex: 1, backgroundColor: palette.slate100 },
+
+  // Hero card
+  heroCard: { margin: spacing.lg, backgroundColor: palette.white, borderRadius: borderRadius.lg, padding: spacing.lg, ...shadows.md },
+  heroTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.md },
+  osNumBox: { backgroundColor: palette.navy50, borderRadius: borderRadius.sm, paddingHorizontal: 12, paddingVertical: 6 },
+  osNumText: { fontSize: 15, fontWeight: '800', color: palette.navy800 },
+  statusBadge: { flexDirection: 'row', alignItems: 'center', gap: 5, borderRadius: borderRadius.full, paddingHorizontal: 12, paddingVertical: 6 },
+  statusText: { fontSize: 12, fontWeight: '700' },
+  descricao: { fontSize: 15, color: palette.slate500, marginBottom: spacing.md, lineHeight: 22 },
+  valorRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: spacing.md, borderTopWidth: 1, borderTopColor: palette.slate100 },
+  valorLabel: { fontSize: 13, color: palette.slate500, fontWeight: '600' },
+  valor: { fontSize: 24, fontWeight: '800', color: palette.navy800 },
+
+  // Sections
+  section: { marginHorizontal: spacing.lg, marginBottom: spacing.sm, backgroundColor: palette.white, borderRadius: borderRadius.lg, padding: spacing.md, ...shadows.sm },
+  sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.md, paddingBottom: spacing.sm, borderBottomWidth: 1, borderBottomColor: palette.slate100 },
+  sectionTitle: { fontSize: 14, fontWeight: '700', color: palette.slate900 },
+
+  // Info rows
   infoRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: spacing.sm, gap: spacing.sm },
-  infoLabel: { fontSize: 11, color: '#9E9E9E', fontWeight: '600' },
-  infoValue: { fontSize: 14, color: colors.onBackground, fontWeight: '500' },
-  itemRow: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.sm },
-  itemNome: { fontSize: 14, fontWeight: '600', color: colors.onBackground },
-  itemQtd: { fontSize: 12, color: '#9E9E9E' },
-  itemValor: { fontSize: 14, fontWeight: '700', color: colors.onBackground },
-  totalRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  totalLabel: { fontSize: 16, fontWeight: '700', color: colors.onBackground },
-  totalValor: { fontSize: 20, fontWeight: '800', color: colors.primary },
-  actions: { flexDirection: 'row', gap: spacing.md, margin: spacing.lg },
+  infoIconBox: { width: 32, height: 32, borderRadius: 8, backgroundColor: palette.navy50, justifyContent: 'center', alignItems: 'center' },
+  infoLabel: { fontSize: 11, color: palette.slate400, fontWeight: '600', marginBottom: 1 },
+  infoValue: { fontSize: 14, color: palette.slate900, fontWeight: '500' },
+
+  // Item rows (serviços)
+  itemRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.sm },
+  itemBorder: { borderBottomWidth: 1, borderBottomColor: palette.slate100 },
+  itemNome: { fontSize: 14, fontWeight: '600', color: palette.slate900 },
+  itemQtd: { fontSize: 12, color: palette.slate400, marginTop: 1 },
+  itemValor: { fontSize: 14, fontWeight: '700', color: palette.slate700 },
+  totalRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: spacing.sm, marginTop: spacing.xs, borderTopWidth: 2, borderTopColor: palette.slate100 },
+  totalLabel: { fontSize: 15, fontWeight: '700', color: palette.slate900 },
+  totalValor: { fontSize: 20, fontWeight: '800', color: palette.navy800 },
+
+  // Actions
+  actions: { marginHorizontal: spacing.lg, gap: spacing.sm },
+  btnPrimary: { borderRadius: borderRadius.md, overflow: 'hidden', ...shadows.sm },
+  btnGradient: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, paddingVertical: 14 },
+  btnPrimaryText: { fontSize: 15, fontWeight: '700', color: palette.white },
+  btnOutline: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, paddingVertical: 14, borderRadius: borderRadius.md, borderWidth: 1.5, borderColor: palette.navy800, backgroundColor: palette.white },
+  btnOutlineText: { fontSize: 15, fontWeight: '700', color: palette.navy800 },
 });
