@@ -1,10 +1,10 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import MenuScreen from '../../screens/menu/MenuScreen';
 import ClientesScreen from '../../screens/clientes/ClientesScreen';
 import ClienteDetalhesScreen from '../../screens/clientes/ClienteDetalhesScreen';
 import VeiculosScreen from '../../screens/veiculos/VeiculosScreen';
+import PlacaScannerScreen from '../../screens/veiculos/PlacaScannerScreen';
 import OrcamentosScreen from '../../screens/orcamentos/OrcamentosScreen';
 import PagamentosScreen from '../../screens/pagamentos/PagamentosScreen';
 import EstoqueScreen from '../../screens/estoque/EstoqueScreen';
@@ -18,8 +18,6 @@ import { palette } from '../../theme/theme';
 const Stack = createNativeStackNavigator();
 
 export default function MenuStack() {
-  const insets = useSafeAreaInsets();
-
   return (
     <Stack.Navigator
       screenOptions={{
@@ -27,7 +25,6 @@ export default function MenuStack() {
         headerTintColor: palette.white,
         headerTitleStyle: { fontWeight: '700', fontSize: 17 },
         headerShadowVisible: false,
-        headerStatusBarHeight: insets.top,
       }}
     >
       <Stack.Screen name="Menu" component={MenuScreen} options={{ headerShown: false }} />
@@ -43,6 +40,7 @@ export default function MenuStack() {
       <Stack.Screen name="Relatorios" component={RelatoriosScreen} options={{ title: 'Relatórios' }} />
       <Stack.Screen name="Configuracoes" component={ConfiguracoesScreen} options={{ title: 'Configurações' }} />
       <Stack.Screen name="Usuarios" component={UsuariosScreen} options={{ title: 'Usuários' }} />
+      <Stack.Screen name="PlacaScanner" component={PlacaScannerScreen} options={{ title: 'Leitura de Placa' }} />
     </Stack.Navigator>
   );
 }

@@ -27,6 +27,14 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Permita que o DriveOn use a camera para ler placas de veiculos."
+        }
+      ]
+    ]
   }
 }

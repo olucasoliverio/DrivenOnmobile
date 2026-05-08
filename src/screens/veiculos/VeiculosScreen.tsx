@@ -1,12 +1,24 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, FlatList, TextInput as RNTextInput } from 'react-native';
 import { Surface, FAB } from 'react-native-paper';
 import { MaterialIcons } from '@expo/vector-icons';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { mockVeiculos, mockClientes } from '../../data/mockData';
 import { colors, spacing, borderRadius } from '../../theme/theme';
 
 export default function VeiculosScreen() {
+  const navigation = useNavigation<any>();
+  const route = useRoute<any>();
   const [busca, setBusca] = useState('');
+
+  useEffect(() => {
+    const detectedPlate = route.params?.detectedPlate;
+
+    if (typeof detectedPlate === 'string') {
+      setBusca(detectedPlate);
+    }
+  }, [route.params?.detectedPlate]);
+
   const veiculos = mockVeiculos.filter(v => {
     const cliente = mockClientes.find(c => c.id === v.clienteId);
     return v.placa.toLowerCase().includes(busca.toLowerCase()) ||
@@ -50,6 +62,7 @@ export default function VeiculosScreen() {
           );
         }}
       />
+      <FAB icon="camera" style={styles.cameraFab} color="#FFF" onPress={() => navigation.navigate('PlacaScanner')} />
       <FAB icon="plus" style={styles.fab} color="#FFF" onPress={() => {}} />
     </View>
   );
@@ -71,4 +84,5 @@ const styles = StyleSheet.create({
   clienteText: { fontSize: 12, color: '#757575' },
   kmText: { fontSize: 12, color: '#757575' },
   fab: { position: 'absolute', bottom: 24, right: 24, backgroundColor: colors.primary },
+  cameraFab: { position: 'absolute', bottom: 92, right: 24, backgroundColor: colors.secondary },
 });
