@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-nati
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRoute } from '@react-navigation/native';
-import { mockClientes, mockVeiculos, mockOrdens, mockPagamentos } from '../../data/mockData';
+import { useDriveOnData } from '../../context/DriveOnDataContext';
 import { palette, spacing, borderRadius, shadows, gradients } from '../../theme/theme';
 import dayjs from 'dayjs';
 
@@ -23,12 +23,21 @@ const AVATAR_COLORS = [
 export default function ClienteDetalhesScreen() {
   const route = useRoute<any>();
   const { clienteId } = route.params ?? { clienteId: 1 };
-  const cliente = mockClientes.find(c => c.id === clienteId) ?? mockClientes[0];
-  const veiculos = mockVeiculos.filter(v => v.clienteId === cliente.id);
-  const ordens = mockOrdens.filter(o => o.clienteId === cliente.id);
-  const pagamentos = mockPagamentos.filter(p => p.clienteId === cliente.id);
-  const totalGasto = pagamentos.filter(p => p.status === 'pago').reduce((acc, p) => acc + p.valor, 0);
+  const { clientes, veiculos: veiculosData, ordens: ordensData, pagamentos } = useDriveOnData();
+  const cliente = clientes.find(c => c.id === clienteId) ?? clientes[0];
+  const veiculos = cliente ? veiculosData.filter(v => v.clienteId === cliente.id) : [];
+  const ordens = cliente ? ordensData.filter(o => o.clienteId === cliente.id) : [];
+  const pagamentosCliente = cliente ? pagamentos.filter(p => p.clienteId === cliente.id) : [];
+  const totalGasto = pagamentosCliente.filter(p => p.status === 'pago').reduce((acc, p) => acc + p.valor, 0);
   const avatarColors = AVATAR_COLORS[clienteId % AVATAR_COLORS.length];
+
+  if (!cliente) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.emptyText}>Cliente nao encontrado.</Text>
+      </View>
+    );
+  }
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>

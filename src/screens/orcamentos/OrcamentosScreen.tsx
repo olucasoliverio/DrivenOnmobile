@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
 import { Surface, FAB } from 'react-native-paper';
 import { MaterialIcons } from '@expo/vector-icons';
-import { mockOrcamentos, mockClientes, mockVeiculos } from '../../data/mockData';
+import { useDriveOnData } from '../../context/DriveOnDataContext';
 import { colors, spacing, borderRadius } from '../../theme/theme';
 import dayjs from 'dayjs';
 
@@ -13,9 +13,10 @@ const statusConfig: Record<string, { label: string; color: string; bg: string }>
 };
 
 export default function OrcamentosScreen() {
+  const { orcamentos: orcamentosData, clientes, veiculos } = useDriveOnData();
   const [filtro, setFiltro] = useState<'todos' | 'aprovado' | 'pendente' | 'recusado'>('todos');
 
-  const orcamentos = mockOrcamentos.filter(o => filtro === 'todos' || o.status === filtro);
+  const orcamentos = orcamentosData.filter(o => filtro === 'todos' || o.status === filtro);
 
   return (
     <View style={styles.container}>
@@ -34,8 +35,8 @@ export default function OrcamentosScreen() {
         keyExtractor={item => String(item.id)}
         contentContainerStyle={{ padding: spacing.lg, gap: spacing.sm, paddingBottom: 80 }}
         renderItem={({ item: o }) => {
-          const cliente = mockClientes.find(c => c.id === o.clienteId);
-          const veiculo = mockVeiculos.find(v => v.id === o.veiculoId);
+          const cliente = clientes.find(c => c.id === o.clienteId);
+          const veiculo = veiculos.find(v => v.id === o.veiculoId);
           const st = statusConfig[o.status] ?? { label: o.status, color: '#757575', bg: '#F5F5F5' };
           const isVencido = dayjs(o.validade).isBefore(dayjs()) && o.status === 'pendente';
           return (

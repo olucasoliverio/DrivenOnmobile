@@ -2,18 +2,19 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
 import { Surface } from 'react-native-paper';
 import { MaterialIcons } from '@expo/vector-icons';
-import { mockPagamentos } from '../../data/mockData';
+import { useDriveOnData } from '../../context/DriveOnDataContext';
 import { colors, spacing, borderRadius } from '../../theme/theme';
 import dayjs from 'dayjs';
 
 type Tab = 'extrato' | 'pagar' | 'receber';
 
 export default function PagamentosScreen() {
+  const { pagamentos } = useDriveOnData();
   const [tab, setTab] = useState<Tab>('extrato');
 
   const dados = tab === 'extrato'
-    ? mockPagamentos
-    : mockPagamentos.filter(p => p.tipo === (tab === 'pagar' ? 'pagar' : 'receber'));
+    ? pagamentos
+    : pagamentos.filter(p => p.tipo === (tab === 'pagar' ? 'pagar' : 'receber'));
 
   const total = dados.reduce((acc, p) => acc + (p.tipo === 'receber' ? p.valor : -p.valor), 0);
   const pendentes = dados.filter(p => p.status === 'pendente').reduce((acc, p) => acc + p.valor, 0);

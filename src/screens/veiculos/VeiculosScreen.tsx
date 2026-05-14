@@ -3,12 +3,13 @@ import { View, Text, StyleSheet, FlatList, TextInput as RNTextInput } from 'reac
 import { Surface, FAB } from 'react-native-paper';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { mockVeiculos, mockClientes } from '../../data/mockData';
+import { useDriveOnData } from '../../context/DriveOnDataContext';
 import { colors, spacing, borderRadius } from '../../theme/theme';
 
 export default function VeiculosScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
+  const { veiculos: veiculosData, clientes } = useDriveOnData();
   const [busca, setBusca] = useState('');
 
   useEffect(() => {
@@ -19,8 +20,8 @@ export default function VeiculosScreen() {
     }
   }, [route.params?.detectedPlate]);
 
-  const veiculos = mockVeiculos.filter(v => {
-    const cliente = mockClientes.find(c => c.id === v.clienteId);
+  const veiculos = veiculosData.filter(v => {
+    const cliente = clientes.find(c => c.id === v.clienteId);
     return v.placa.toLowerCase().includes(busca.toLowerCase()) ||
       v.modelo.toLowerCase().includes(busca.toLowerCase()) ||
       cliente?.nome.toLowerCase().includes(busca.toLowerCase());
@@ -37,7 +38,7 @@ export default function VeiculosScreen() {
         keyExtractor={item => String(item.id)}
         contentContainerStyle={{ padding: spacing.lg, gap: spacing.sm, paddingBottom: 80 }}
         renderItem={({ item: v }) => {
-          const cliente = mockClientes.find(c => c.id === v.clienteId);
+          const cliente = clientes.find(c => c.id === v.clienteId);
           return (
             <Surface style={styles.card} elevation={1}>
               <View style={styles.cardRow}>
@@ -54,7 +55,7 @@ export default function VeiculosScreen() {
                   </View>
                   <View style={styles.infoRow}>
                     <MaterialIcons name="speed" size={13} color="#9E9E9E" />
-                    <Text style={styles.kmText}>{v.km.toLocaleString()} km</Text>
+                    <Text style={styles.kmText}>{v.km.toLocaleString('pt-BR')} km</Text>
                   </View>
                 </View>
               </View>

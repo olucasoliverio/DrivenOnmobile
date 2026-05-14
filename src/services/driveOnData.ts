@@ -1,0 +1,390 @@
+import dayjs from 'dayjs';
+import api from '../api/api';
+import {
+  mockAgendamentos,
+  mockClientes,
+  mockConfiguracoes,
+  mockDashboard,
+  mockEstoque,
+  mockFornecedores,
+  mockOrcamentos,
+  mockOrdens,
+  mockPagamentos,
+  mockServicos,
+  mockUsuarios,
+  mockVeiculos,
+} from '../data/mockData';
+
+export type Cliente = {
+  id: number;
+  nome: string;
+  cpf: string;
+  telefone: string;
+  email: string;
+  cidade: string;
+  endereco: string;
+};
+
+export type Veiculo = {
+  id: number;
+  clienteId: number;
+  marca: string;
+  modelo: string;
+  ano: number;
+  placa: string;
+  cor: string;
+  km: number;
+};
+
+export type Ordem = {
+  id: number;
+  clienteId: number;
+  veiculoId: number;
+  status: string;
+  descricao: string;
+  dataEntrada: string;
+  dataPrevista: string;
+  valor: number;
+  mecanico: string;
+};
+
+export type Agendamento = {
+  id: number;
+  clienteId: number;
+  veiculoId: number;
+  data: string;
+  hora: string;
+  servico: string;
+  status: string;
+  observacao: string;
+};
+
+export type Orcamento = {
+  id: number;
+  clienteId: number;
+  veiculoId: number;
+  status: string;
+  total: number;
+  dataCriacao: string;
+  validade: string;
+  itens: { descricao: string; qtd: number; valor: number }[];
+};
+
+export type Pagamento = {
+  id: number;
+  clienteId: number | null;
+  ordemId: number | null;
+  tipo: string;
+  descricao: string;
+  valor: number;
+  data: string;
+  status: string;
+  formaPagamento: string;
+};
+
+export type EstoqueItem = {
+  id: number;
+  nome: string;
+  categoria: string;
+  quantidade: number;
+  unidade: string;
+  valorUnitario: number;
+  estoqueMinimo: number;
+};
+
+export type Fornecedor = {
+  id: number;
+  nome: string;
+  cnpj: string;
+  telefone: string;
+  email: string;
+  cidade: string;
+  categoria: string;
+};
+
+export type Servico = {
+  id: number;
+  nome: string;
+  descricao: string;
+  valor: number;
+  tempoEstimado: string;
+  categoria: string;
+};
+
+export type Usuario = {
+  id: number;
+  nome: string;
+  email: string;
+  perfil: string;
+  telefone: string;
+  status: string;
+};
+export type Configuracoes = typeof mockConfiguracoes;
+export type Dashboard = typeof mockDashboard;
+
+export type DriveOnData = {
+  clientes: Cliente[];
+  veiculos: Veiculo[];
+  ordens: Ordem[];
+  agendamentos: Agendamento[];
+  orcamentos: Orcamento[];
+  pagamentos: Pagamento[];
+  estoque: EstoqueItem[];
+  fornecedores: Fornecedor[];
+  servicos: Servico[];
+  usuarios: Usuario[];
+  configuracoes: Configuracoes;
+  dashboard: Dashboard;
+};
+
+export const fallbackDriveOnData: DriveOnData = {
+  clientes: mockClientes,
+  veiculos: mockVeiculos,
+  ordens: mockOrdens,
+  agendamentos: mockAgendamentos,
+  orcamentos: mockOrcamentos,
+  pagamentos: mockPagamentos,
+  estoque: mockEstoque,
+  fornecedores: mockFornecedores,
+  servicos: mockServicos,
+  usuarios: mockUsuarios,
+  configuracoes: mockConfiguracoes,
+  dashboard: mockDashboard,
+};
+
+const numberValue = (value: unknown, fallback = 0) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
+
+const textValue = (value: unknown, fallback = '') => {
+  if (value == null) return fallback;
+  return String(value);
+};
+
+const normalizeStatusOS = (status?: string) => {
+  if (status === 'aberta') return 'aguardando';
+  if (status === 'concluida') return 'concluido';
+  if (status === 'cancelada') return 'concluido';
+  return status || 'aguardando';
+};
+
+const formatTime = (value: unknown) => {
+  const parsed = dayjs(String(value));
+  return parsed.isValid() ? parsed.format('HH:mm') : '';
+};
+
+export function adaptCliente(item: any): Cliente {
+  return {
+    id: numberValue(item.id),
+    nome: textValue(item.nome, 'Cliente sem nome'),
+    cpf: textValue(item.cpf, ''),
+    telefone: textValue(item.telefone, ''),
+    email: textValue(item.email, ''),
+    cidade: textValue(item.cidade?.nome ?? item.cidade, ''),
+    endereco: textValue(item.endereco ?? item.logradouro ?? item.observacao, ''),
+  };
+}
+
+export function adaptVeiculo(item: any): Veiculo {
+  return {
+    id: numberValue(item.id),
+    clienteId: numberValue(item.cliente_id ?? item.clienteId),
+    marca: textValue(item.marca, ''),
+    modelo: textValue(item.modelo, ''),
+    ano: numberValue(item.ano),
+    placa: textValue(item.placa, ''),
+    cor: textValue(item.cor, ''),
+    km: numberValue(item.km ?? item.quilometragem),
+  };
+}
+
+export function adaptOrdem(item: any): Ordem {
+  const dataEntrada = textValue(item.data_abertura ?? item.created_at, dayjs().toISOString());
+  const dataPrevista = textValue(item.data_fechamento ?? item.updated_at ?? item.data_abertura, dataEntrada);
+  return {
+    id: numberValue(item.id),
+    clienteId: numberValue(item.cliente_id ?? item.clienteId),
+    veiculoId: numberValue(item.veiculo_id ?? item.veiculoId),
+    status: normalizeStatusOS(item.status),
+    descricao: textValue(item.observacoes ?? item.descricao, 'Ordem de servico'),
+    dataEntrada,
+    dataPrevista,
+    valor: numberValue(item.valor_total ?? item.valor),
+    mecanico: textValue(item.funcionario?.nome ?? item.mecanico, 'Nao informado'),
+  };
+}
+
+export function adaptAgendamento(item: any): Agendamento {
+  const inicio = textValue(item.data_inicio ?? item.data ?? item.start, dayjs().toISOString());
+  return {
+    id: numberValue(item.id),
+    clienteId: numberValue(item.cliente_id ?? item.clienteId),
+    veiculoId: numberValue(item.veiculo_id ?? item.veiculoId),
+    data: inicio,
+    hora: textValue(item.hora, formatTime(inicio)),
+    servico: textValue(item.titulo ?? item.servico, 'Agendamento'),
+    status: textValue(item.status, 'pendente'),
+    observacao: textValue(item.observacao ?? item.descricao, ''),
+  };
+}
+
+export function adaptPagamento(item: any): Pagamento {
+  return {
+    id: numberValue(item.id),
+    clienteId: item.cliente_id == null ? null : numberValue(item.cliente_id),
+    ordemId: item.ordem_servico_id == null ? null : numberValue(item.ordem_servico_id),
+    tipo: textValue(item.tipo, 'receber') as Pagamento['tipo'],
+    descricao: textValue(item.descricao, ''),
+    valor: numberValue(item.valor),
+    data: textValue(item.data_vencimento ?? item.data_pagamento ?? item.created_at, dayjs().toISOString()),
+    status: textValue(item.status, 'pendente') as Pagamento['status'],
+    formaPagamento: textValue(item.metodo, ''),
+  };
+}
+
+export function adaptEstoque(item: any): EstoqueItem {
+  return {
+    id: numberValue(item.id),
+    nome: textValue(item.nome, ''),
+    categoria: textValue(item.categoria ?? 'Geral'),
+    quantidade: numberValue(item.estoque_qtd ?? item.quantidade),
+    unidade: textValue(item.unidade, 'un'),
+    valorUnitario: numberValue(item.preco_venda ?? item.valorUnitario),
+    estoqueMinimo: numberValue(item.estoque_minimo ?? item.estoqueMinimo, 1),
+  };
+}
+
+export function adaptFornecedor(item: any): Fornecedor {
+  return {
+    id: numberValue(item.id),
+    nome: textValue(item.nome, ''),
+    cnpj: textValue(item.cnpj, ''),
+    telefone: textValue(item.telefone ?? item.contato, ''),
+    email: textValue(item.email, ''),
+    cidade: textValue(item.cidade?.nome ?? item.cidade, ''),
+    categoria: textValue(item.categoria, 'Geral'),
+  };
+}
+
+export function adaptServico(item: any): Servico {
+  return {
+    id: numberValue(item.id),
+    nome: textValue(item.nome, ''),
+    descricao: textValue(item.descricao, ''),
+    valor: numberValue(item.preco ?? item.valor),
+    tempoEstimado: textValue(item.tempo_estimado ?? item.tempoEstimado, '-'),
+    categoria: textValue(item.categoria, 'Geral'),
+  };
+}
+
+export function adaptUsuario(item: any): Usuario {
+  return {
+    id: numberValue(item.id),
+    nome: textValue(item.nome, ''),
+    email: textValue(item.email, ''),
+    perfil: textValue(item.tipo ?? item.perfil, ''),
+    telefone: textValue(item.telefone, ''),
+    status: textValue(item.status, 'ativo'),
+  };
+}
+
+export function adaptOrcamento(item: any): Orcamento {
+  return {
+    id: numberValue(item.id),
+    clienteId: numberValue(item.cliente_id ?? item.clienteId),
+    veiculoId: numberValue(item.veiculo_id ?? item.veiculoId),
+    status: textValue(item.status, 'pendente') as Orcamento['status'],
+    total: numberValue(item.valor ?? item.total),
+    dataCriacao: textValue(item.data ?? item.created_at, dayjs().toISOString()),
+    validade: textValue(item.validade ?? item.data ?? item.created_at, dayjs().add(7, 'day').toISOString()),
+    itens: Array.isArray(item.itens) ? item.itens : [],
+  };
+}
+
+function buildDashboard(data: Omit<DriveOnData, 'dashboard' | 'configuracoes'>): Dashboard {
+  const osAbertas = data.ordens.filter((ordem) => ordem.status !== 'concluido').length;
+  const osConcluidas = data.ordens.filter((ordem) => ordem.status === 'concluido').length;
+  const receitaMes = data.pagamentos
+    .filter((pagamento) => pagamento.tipo === 'receber' && pagamento.status === 'pago' && dayjs(pagamento.data).isSame(dayjs(), 'month'))
+    .reduce((sum, pagamento) => sum + pagamento.valor, 0);
+  const receitaAnterior = data.pagamentos
+    .filter((pagamento) => pagamento.tipo === 'receber' && pagamento.status === 'pago' && dayjs(pagamento.data).isSame(dayjs().subtract(1, 'month'), 'month'))
+    .reduce((sum, pagamento) => sum + pagamento.valor, 0);
+
+  return {
+    ...mockDashboard,
+    osAbertas,
+    osConcluidas,
+    agendamentosHoje: data.agendamentos.filter((agendamento) => dayjs(agendamento.data).isSame(dayjs(), 'day')).length,
+    receitaMes,
+    receitaAnterior: receitaAnterior || receitaMes || 1,
+    clientesAtivos: data.clientes.length,
+    ticketMedio: osConcluidas ? receitaMes / osConcluidas : 0,
+  };
+}
+
+async function getList<T>(path: string, adapter: (item: any) => T): Promise<T[]> {
+  const { data } = await api.get(path);
+  const list = Array.isArray(data) ? data : data?.items ?? data?.data ?? [];
+  return list.map(adapter);
+}
+
+export async function fetchDriveOnData(): Promise<DriveOnData> {
+  const [
+    clientesResult,
+    veiculosResult,
+    ordensResult,
+    agendamentosResult,
+    orcamentosResult,
+    pagamentosResult,
+    estoqueResult,
+    fornecedoresResult,
+    servicosResult,
+    usuariosResult,
+  ] = await Promise.allSettled([
+    getList('/clientes', adaptCliente),
+    getList('/veiculos', adaptVeiculo),
+    getList('/ordens', adaptOrdem),
+    getList('/agendamentos', adaptAgendamento),
+    getList('/orcamentos', adaptOrcamento),
+    getList('/pagamentos', adaptPagamento),
+    getList('/estoque', adaptEstoque),
+    getList('/fornecedores', adaptFornecedor),
+    getList('/servicos', adaptServico),
+    getList('/usuario', adaptUsuario),
+  ]);
+
+  const valueOrFallback = <T,>(result: PromiseSettledResult<T[]>, fallback: T[]) =>
+    result.status === 'fulfilled' ? result.value : fallback;
+
+  const clientes = valueOrFallback(clientesResult, []);
+  const veiculos = valueOrFallback(veiculosResult, []);
+  const ordens = valueOrFallback(ordensResult, []);
+  const agendamentos = valueOrFallback(agendamentosResult, []);
+  const orcamentos = valueOrFallback(orcamentosResult, []);
+  const pagamentos = valueOrFallback(pagamentosResult, []);
+  const estoque = valueOrFallback(estoqueResult, []);
+  const fornecedores = valueOrFallback(fornecedoresResult, []);
+  const servicos = valueOrFallback(servicosResult, []);
+  const usuarios = valueOrFallback(usuariosResult, []);
+
+  const baseData = {
+    clientes,
+    veiculos,
+    ordens,
+    agendamentos,
+    orcamentos,
+    pagamentos,
+    estoque,
+    fornecedores,
+    servicos,
+    usuarios,
+  };
+
+  return {
+    ...baseData,
+    configuracoes: mockConfiguracoes,
+    dashboard: buildDashboard(baseData),
+  };
+}

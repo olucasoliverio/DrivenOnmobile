@@ -7,6 +7,7 @@ import { TextInput, HelperText } from 'react-native-paper';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
+import { API_BASE_URL } from '../../api/api';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { palette, spacing, borderRadius, shadows, gradients } from '../../theme/theme';
 
@@ -16,7 +17,7 @@ export default function LoginScreen() {
   const insets = useSafeAreaInsets();
   const { signIn, isLoading } = useAuth();
   const [email, setEmail] = useState('admin@driveon.com');
-  const [senha, setSenha] = useState('123456');
+  const [senha, setSenha] = useState('');
   const [senhaVisivel, setSenhaVisivel] = useState(false);
   const [erro, setErro] = useState('');
 
@@ -28,8 +29,8 @@ export default function LoginScreen() {
     }
     try {
       await signIn(email.trim(), senha);
-    } catch {
-      setErro('E-mail ou senha incorretos.');
+    } catch (error: any) {
+      setErro(error?.response?.data?.message ?? error?.message ?? 'E-mail ou senha incorretos.');
     }
   };
 
@@ -121,11 +122,10 @@ export default function LoginScreen() {
           </LinearGradient>
         </TouchableOpacity>
 
-        {/* Dica demo */}
         <View style={styles.hintBox}>
           <MaterialIcons name="info-outline" size={14} color={palette.navy700} />
           <Text style={styles.hintText}>
-            Demo: qualquer e-mail + senha <Text style={styles.hintBold}>123456</Text>
+            API configurada em <Text style={styles.hintBold}>{API_BASE_URL}</Text>
           </Text>
         </View>
       </View>

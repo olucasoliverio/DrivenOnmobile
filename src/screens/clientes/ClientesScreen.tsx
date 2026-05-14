@@ -5,7 +5,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { FAB } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
-import { mockClientes, mockVeiculos, mockOrdens } from '../../data/mockData';
+import { useDriveOnData } from '../../context/DriveOnDataContext';
 import { palette, spacing, borderRadius, shadows, gradients } from '../../theme/theme';
 
 // Cores de avatar por índice (rotação)
@@ -20,9 +20,10 @@ const AVATAR_COLORS = [
 export default function ClientesScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
+  const { clientes: clientesData, veiculos, ordens } = useDriveOnData();
   const [busca, setBusca] = useState('');
 
-  const clientes = mockClientes.filter(c =>
+  const clientes = clientesData.filter(c =>
     c.nome.toLowerCase().includes(busca.toLowerCase()) ||
     c.telefone.includes(busca) ||
     c.cpf.includes(busca)
@@ -34,7 +35,7 @@ export default function ClientesScreen() {
       {/* ── Header ── */}
       <LinearGradient colors={gradients.navyDark} style={[styles.topHeader, { paddingTop: insets.top + 12 }]}>
         <Text style={styles.headerTitle}>Clientes</Text>
-        <Text style={styles.headerSub}>{mockClientes.length} cadastrado{mockClientes.length !== 1 ? 's' : ''}</Text>
+        <Text style={styles.headerSub}>{clientesData.length} cadastrado{clientesData.length !== 1 ? 's' : ''}</Text>
       </LinearGradient>
 
       {/* ── Search (overlapping) ── */}
@@ -70,8 +71,8 @@ export default function ClientesScreen() {
           </View>
         )}
         renderItem={({ item: cliente, index }) => {
-          const veiculosCount = mockVeiculos.filter(v => v.clienteId === cliente.id).length;
-          const ordensCount = mockOrdens.filter(o => o.clienteId === cliente.id).length;
+          const veiculosCount = veiculos.filter(v => v.clienteId === cliente.id).length;
+          const ordensCount = ordens.filter(o => o.clienteId === cliente.id).length;
           const avatarColors = AVATAR_COLORS[index % AVATAR_COLORS.length];
           return (
             <TouchableOpacity

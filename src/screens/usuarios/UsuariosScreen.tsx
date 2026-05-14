@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, FlatList } from 'react-native';
 import { Surface, FAB } from 'react-native-paper';
 import { MaterialIcons } from '@expo/vector-icons';
-import { mockUsuarios } from '../../data/mockData';
+import { useDriveOnData } from '../../context/DriveOnDataContext';
 import { colors, spacing, borderRadius } from '../../theme/theme';
 
 const perfilConfig: Record<string, { label: string; color: string }> = {
@@ -12,10 +12,12 @@ const perfilConfig: Record<string, { label: string; color: string }> = {
 };
 
 export default function UsuariosScreen() {
+  const { usuarios } = useDriveOnData();
+
   return (
     <View style={styles.container}>
       <FlatList
-        data={mockUsuarios}
+        data={usuarios}
         keyExtractor={item => String(item.id)}
         contentContainerStyle={{ padding: spacing.lg, gap: spacing.sm, paddingBottom: 80 }}
         renderItem={({ item: u }) => {

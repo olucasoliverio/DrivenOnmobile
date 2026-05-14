@@ -2,12 +2,13 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, FlatList, TextInput as RNTextInput } from 'react-native';
 import { Surface, FAB } from 'react-native-paper';
 import { MaterialIcons } from '@expo/vector-icons';
-import { mockFornecedores } from '../../data/mockData';
+import { useDriveOnData } from '../../context/DriveOnDataContext';
 import { colors, spacing, borderRadius } from '../../theme/theme';
 
 export default function FornecedoresScreen() {
+  const { fornecedores: fornecedoresData } = useDriveOnData();
   const [busca, setBusca] = useState('');
-  const fornecedores = mockFornecedores.filter(f =>
+  const fornecedores = fornecedoresData.filter(f =>
     f.nome.toLowerCase().includes(busca.toLowerCase()) || f.categoria.toLowerCase().includes(busca.toLowerCase())
   );
 

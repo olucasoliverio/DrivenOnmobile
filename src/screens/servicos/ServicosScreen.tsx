@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, FlatList } from 'react-native';
 import { Surface, FAB } from 'react-native-paper';
 import { MaterialIcons } from '@expo/vector-icons';
-import { mockServicos } from '../../data/mockData';
+import { useDriveOnData } from '../../context/DriveOnDataContext';
 import { colors, spacing, borderRadius } from '../../theme/theme';
 
 const categoriaCores: Record<string, string> = {
@@ -15,10 +15,12 @@ const categoriaCores: Record<string, string> = {
 };
 
 export default function ServicosScreen() {
+  const { servicos } = useDriveOnData();
+
   return (
     <View style={styles.container}>
       <FlatList
-        data={mockServicos}
+        data={servicos}
         keyExtractor={item => String(item.id)}
         contentContainerStyle={{ padding: spacing.lg, gap: spacing.sm, paddingBottom: 80 }}
         renderItem={({ item: s }) => {

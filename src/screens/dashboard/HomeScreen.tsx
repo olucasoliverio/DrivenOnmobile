@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, ScrollView, Dimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { mockDashboard, mockOrdens, mockAgendamentos, mockClientes, mockVeiculos } from '../../data/mockData';
+import { useDriveOnData } from '../../context/DriveOnDataContext';
 import { palette, spacing, borderRadius, shadows, gradients } from '../../theme/theme';
 import dayjs from 'dayjs';
 import 'dayjs/locale/pt-br';
@@ -49,10 +49,16 @@ function KpiCard({ icon, label, value, sub, iconBg, iconColor }: {
 // ─── Screen ──────────────────────────────────────────────────────────────────
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
-  const d = mockDashboard;
+  const {
+    dashboard: d,
+    ordens,
+    agendamentos,
+    clientes,
+    veiculos,
+  } = useDriveOnData();
   const variacao = ((d.receitaMes - d.receitaAnterior) / d.receitaAnterior * 100).toFixed(1);
-  const ordensAbertas = mockOrdens.filter(o => o.status !== 'concluido');
-  const agendamentosHoje = mockAgendamentos.filter(a => dayjs(a.data).isSame(dayjs(), 'day'));
+  const ordensAbertas = ordens.filter(o => o.status !== 'concluido');
+  const agendamentosHoje = agendamentos.filter(a => dayjs(a.data).isSame(dayjs(), 'day'));
   const maxReceita = Math.max(...d.receitaMensal.map(r => r.valor));
   const hora = dayjs().hour();
   const saudacao = hora < 12 ? 'Bom dia' : hora < 18 ? 'Boa tarde' : 'Boa noite';
@@ -156,8 +162,8 @@ export default function HomeScreen() {
           </View>
         </View>
         {ordensAbertas.map((os) => {
-          const cliente = mockClientes.find(c => c.id === os.clienteId);
-          const veiculo = mockVeiculos.find(v => v.id === os.veiculoId);
+          const cliente = clientes.find(c => c.id === os.clienteId);
+          const veiculo = veiculos.find(v => v.id === os.veiculoId);
           const statusColor = STATUS_MAP[os.status]?.color ?? palette.slate500;
           return (
             <View key={os.id} style={styles.osCard}>
@@ -201,8 +207,8 @@ export default function HomeScreen() {
           </View>
         ) : (
           agendamentosHoje.map((ag) => {
-            const cliente = mockClientes.find(c => c.id === ag.clienteId);
-            const veiculo = mockVeiculos.find(v => v.id === ag.veiculoId);
+            const cliente = clientes.find(c => c.id === ag.clienteId);
+            const veiculo = veiculos.find(v => v.id === ag.veiculoId);
             const isConfirmado = ag.status === 'confirmado';
             return (
               <View key={ag.id} style={styles.agCard}>

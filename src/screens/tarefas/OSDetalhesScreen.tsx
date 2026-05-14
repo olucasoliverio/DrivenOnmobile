@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-nati
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRoute } from '@react-navigation/native';
-import { mockOrdens, mockClientes, mockVeiculos } from '../../data/mockData';
+import { useDriveOnData } from '../../context/DriveOnDataContext';
 import { palette, spacing, borderRadius, shadows, gradients } from '../../theme/theme';
 import dayjs from 'dayjs';
 
@@ -31,9 +31,18 @@ function InfoRow({ icon, label, value }: { icon: keyof typeof MaterialIcons.glyp
 export default function OSDetalhesScreen() {
   const route = useRoute<any>();
   const { osId } = route.params ?? { osId: 1 };
-  const os = mockOrdens.find(o => o.id === osId) ?? mockOrdens[0];
-  const cliente = mockClientes.find(c => c.id === os.clienteId);
-  const veiculo = mockVeiculos.find(v => v.id === os.veiculoId);
+  const { ordens, clientes, veiculos } = useDriveOnData();
+  const os = ordens.find(o => o.id === osId) ?? ordens[0];
+  const cliente = os ? clientes.find(c => c.id === os.clienteId) : undefined;
+  const veiculo = os ? veiculos.find(v => v.id === os.veiculoId) : undefined;
+
+  if (!os) {
+    return (
+      <View style={styles.container}>
+        <Text>Ordem de servico nao encontrada.</Text>
+      </View>
+    );
+  }
   const st = STATUS_MAP[os.status] ?? { label: os.status, color: palette.slate500, bg: palette.slate100, icon: 'info' as any };
 
   const itens = [

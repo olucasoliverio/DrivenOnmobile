@@ -1,14 +1,19 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { Surface, TextInput, Button, Divider } from 'react-native-paper';
 import { MaterialIcons } from '@expo/vector-icons';
-import { mockConfiguracoes } from '../../data/mockData';
 import { useAuth } from '../../context/AuthContext';
+import { useDriveOnData } from '../../context/DriveOnDataContext';
 import { colors, spacing, borderRadius } from '../../theme/theme';
 
 export default function ConfiguracoesScreen() {
   const { user, signOut } = useAuth();
-  const [config, setConfig] = useState(mockConfiguracoes);
+  const { configuracoes } = useDriveOnData();
+  const [config, setConfig] = useState(configuracoes);
+
+  useEffect(() => {
+    setConfig(configuracoes);
+  }, [configuracoes]);
 
   return (
     <ScrollView style={styles.container}>

@@ -1,8 +1,8 @@
 import axios from 'axios';
+import api, { API_BASE_URL } from '../api/api';
 import { LicensePlatePattern } from './licensePlateRecognition';
 
 type Env = {
-  EXPO_PUBLIC_BACKEND_URL?: string;
   EXPO_PUBLIC_PLATE_LOOKUP_PATH?: string;
 };
 
@@ -21,24 +21,12 @@ export type PlateLookupResponse = {
 
 const env = ((globalThis as { process?: { env?: Env } }).process?.env ?? {}) as Env;
 
-const backendBaseUrl = env.EXPO_PUBLIC_BACKEND_URL?.replace(/\/$/, '');
 const plateLookupPath = env.EXPO_PUBLIC_PLATE_LOOKUP_PATH ?? '/api/placas/consulta';
+const normalizedPlateLookupPath = plateLookupPath.replace(/^\/api\//, '/');
 
 export async function lookupPlate(request: PlateLookupRequest): Promise<PlateLookupResponse> {
-  if (!backendBaseUrl) {
-    return {
-      plate: request.plate,
-      status: 'mock',
-      message: 'Backend ainda nao configurado. Defina EXPO_PUBLIC_BACKEND_URL para ativar a consulta.',
-      data: {
-        receivedPayload: request,
-        nextEndpoint: plateLookupPath,
-      },
-    };
-  }
-
   try {
-    const response = await axios.post(`${backendBaseUrl}${plateLookupPath}`, request);
+    const response = await api.post(normalizedPlateLookupPath, request);
 
     return {
       plate: request.plate,
@@ -54,7 +42,7 @@ export async function lookupPlate(request: PlateLookupRequest): Promise<PlateLoo
     return {
       plate: request.plate,
       status: 'error',
-      message,
+      message: `${message} (${API_BASE_URL}${normalizedPlateLookupPath})`,
     };
   }
 }

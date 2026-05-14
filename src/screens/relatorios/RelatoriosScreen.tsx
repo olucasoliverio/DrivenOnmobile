@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { Surface } from 'react-native-paper';
 import { MaterialIcons } from '@expo/vector-icons';
-import { mockDashboard, mockOrdens, mockClientes, mockPagamentos } from '../../data/mockData';
+import { useDriveOnData } from '../../context/DriveOnDataContext';
 import { colors, spacing, borderRadius } from '../../theme/theme';
 
 const relatorios = [
@@ -13,10 +13,11 @@ const relatorios = [
 ];
 
 export default function RelatoriosScreen() {
-  const receitaTotal = mockPagamentos.filter(p => p.tipo === 'receber' && p.status === 'pago').reduce((a, p) => a + p.valor, 0);
-  const despesaTotal = mockPagamentos.filter(p => p.tipo === 'pagar' && p.status === 'pago').reduce((a, p) => a + p.valor, 0);
-  const osConcluidas = mockOrdens.filter(o => o.status === 'concluido').length;
-  const ticketMedio = osConcluidas > 0 ? mockOrdens.filter(o => o.status === 'concluido').reduce((a, o) => a + o.valor, 0) / osConcluidas : 0;
+  const { dashboard, ordens, pagamentos } = useDriveOnData();
+  const receitaTotal = pagamentos.filter(p => p.tipo === 'receber' && p.status === 'pago').reduce((a, p) => a + p.valor, 0);
+  const despesaTotal = pagamentos.filter(p => p.tipo === 'pagar' && p.status === 'pago').reduce((a, p) => a + p.valor, 0);
+  const osConcluidas = ordens.filter(o => o.status === 'concluido').length;
+  const ticketMedio = osConcluidas > 0 ? ordens.filter(o => o.status === 'concluido').reduce((a, o) => a + o.valor, 0) / osConcluidas : 0;
 
   return (
     <ScrollView style={styles.container}>
@@ -59,12 +60,12 @@ export default function RelatoriosScreen() {
       {/* Distribuição status OS */}
       <Surface style={styles.chartSection} elevation={1}>
         <Text style={styles.chartTitle}>Distribuição de OS</Text>
-        {mockDashboard.statusOS.map(s => (
+        {dashboard.statusOS.map(s => (
           <View key={s.status} style={styles.barRow}>
             <Text style={styles.barLabel}>{s.status}</Text>
             <View style={styles.barTrack}>
               <View style={[styles.barFill, { flex: s.count, backgroundColor: s.color }]} />
-              <View style={{ flex: mockOrdens.length - s.count }} />
+              <View style={{ flex: Math.max(ordens.length - s.count, 0) }} />
             </View>
             <Text style={[styles.barCount, { color: s.color }]}>{s.count}</Text>
           </View>

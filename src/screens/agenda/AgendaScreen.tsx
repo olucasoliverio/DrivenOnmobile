@@ -4,7 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialIcons } from '@expo/vector-icons';
 import { FAB } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { mockAgendamentos, mockClientes, mockVeiculos } from '../../data/mockData';
+import { useDriveOnData } from '../../context/DriveOnDataContext';
 import { palette, spacing, borderRadius, shadows, gradients } from '../../theme/theme';
 import dayjs from 'dayjs';
 import 'dayjs/locale/pt-br';
@@ -22,10 +22,11 @@ function getDaysOfWeek() {
 
 export default function AgendaScreen() {
   const insets = useSafeAreaInsets();
+  const { agendamentos, clientes, veiculos } = useDriveOnData();
   const [selectedDate, setSelectedDate] = useState(dayjs());
   const days = getDaysOfWeek();
 
-  const agendamentosDodia = mockAgendamentos.filter(a =>
+  const agendamentosDodia = agendamentos.filter(a =>
     dayjs(a.data).isSame(selectedDate, 'day')
   );
 
@@ -46,7 +47,7 @@ export default function AgendaScreen() {
           renderItem={({ item: day }) => {
             const isSelected = day.isSame(selectedDate, 'day');
             const isToday = day.isSame(dayjs(), 'day');
-            const temAg = mockAgendamentos.some(a => dayjs(a.data).isSame(day, 'day'));
+            const temAg = agendamentos.some(a => dayjs(a.data).isSame(day, 'day'));
             return (
               <TouchableOpacity
                 style={[styles.dayBtn, isSelected && styles.dayBtnSelected]}
@@ -91,8 +92,8 @@ export default function AgendaScreen() {
           </View>
         )}
         renderItem={({ item }) => {
-          const cliente = mockClientes.find(c => c.id === item.clienteId);
-          const veiculo = mockVeiculos.find(v => v.id === item.veiculoId);
+          const cliente = clientes.find(c => c.id === item.clienteId);
+          const veiculo = veiculos.find(v => v.id === item.veiculoId);
           const isConfirmado = item.status === 'confirmado';
           return (
             <View style={styles.card}>

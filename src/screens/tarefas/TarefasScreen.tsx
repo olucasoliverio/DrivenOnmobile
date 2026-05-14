@@ -5,7 +5,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { FAB } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
-import { mockOrdens, mockClientes, mockVeiculos } from '../../data/mockData';
+import { useDriveOnData } from '../../context/DriveOnDataContext';
 import { palette, spacing, borderRadius, shadows, gradients } from '../../theme/theme';
 import dayjs from 'dayjs';
 
@@ -31,6 +31,7 @@ function StatusBadge({ status }: { status: string }) {
 export default function TarefasScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
+  const { ordens: ordensData, clientes, veiculos } = useDriveOnData();
   const [filtroStatus, setFiltroStatus] = useState<StatusKey>('todos');
   const [busca, setBusca] = useState('');
 
@@ -42,8 +43,8 @@ export default function TarefasScreen() {
     { key: 'concluido', label: 'Concluído' },
   ];
 
-  const ordens = mockOrdens.filter(os => {
-    const cliente = mockClientes.find(c => c.id === os.clienteId);
+  const ordens = ordensData.filter(os => {
+    const cliente = clientes.find(c => c.id === os.clienteId);
     const matchBusca = busca === '' || cliente?.nome.toLowerCase().includes(busca.toLowerCase()) || String(os.id).includes(busca);
     const matchStatus = filtroStatus === 'todos' || os.status === filtroStatus;
     return matchBusca && matchStatus;
@@ -120,8 +121,8 @@ export default function TarefasScreen() {
           </View>
         )}
         renderItem={({ item: os }) => {
-          const cliente = mockClientes.find(c => c.id === os.clienteId);
-          const veiculo = mockVeiculos.find(v => v.id === os.veiculoId);
+          const cliente = clientes.find(c => c.id === os.clienteId);
+          const veiculo = veiculos.find(v => v.id === os.veiculoId);
           const barColor = statusConfig[os.status]?.barColor ?? palette.slate400;
           return (
             <TouchableOpacity onPress={() => navigation.navigate('OSDetalhes', { osId: os.id })} activeOpacity={0.7}>

@@ -2,12 +2,13 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, FlatList, TextInput as RNTextInput } from 'react-native';
 import { Surface, FAB } from 'react-native-paper';
 import { MaterialIcons } from '@expo/vector-icons';
-import { mockEstoque } from '../../data/mockData';
+import { useDriveOnData } from '../../context/DriveOnDataContext';
 import { colors, spacing, borderRadius } from '../../theme/theme';
 
 export default function EstoqueScreen() {
+  const { estoque } = useDriveOnData();
   const [busca, setBusca] = useState('');
-  const itens = mockEstoque.filter(e => e.nome.toLowerCase().includes(busca.toLowerCase()) || e.categoria.toLowerCase().includes(busca.toLowerCase()));
+  const itens = estoque.filter(e => e.nome.toLowerCase().includes(busca.toLowerCase()) || e.categoria.toLowerCase().includes(busca.toLowerCase()));
   const baixoEstoque = itens.filter(e => e.quantidade <= e.estoqueMinimo);
 
   return (
