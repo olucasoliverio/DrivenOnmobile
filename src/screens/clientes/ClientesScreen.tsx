@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput as RNTextInput } from 'react-native';
+import { Alert, View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput as RNTextInput } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialIcons } from '@expo/vector-icons';
-import { FAB } from 'react-native-paper';
+import { Button, Dialog, FAB, Portal, TextInput } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useDriveOnData } from '../../context/DriveOnDataContext';
@@ -20,14 +20,58 @@ const AVATAR_COLORS = [
 export default function ClientesScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
-  const { clientes: clientesData, veiculos, ordens } = useDriveOnData();
+  const { clientes: clientesData, veiculos, ordens, createCliente } = useDriveOnData();
   const [busca, setBusca] = useState('');
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [form, setForm] = useState({
+    nome: '',
+    telefone: '',
+    email: '',
+    cpf: '',
+    observacoes: '',
+  });
 
   const clientes = clientesData.filter(c =>
     c.nome.toLowerCase().includes(busca.toLowerCase()) ||
     c.telefone.includes(busca) ||
     c.cpf.includes(busca)
   );
+
+  const updateForm = (field: keyof typeof form, value: string) => {
+    setForm((current) => ({ ...current, [field]: value }));
+  };
+
+  const resetForm = () => {
+    setForm({ nome: '', telefone: '', email: '', cpf: '', observacoes: '' });
+  };
+
+  const handleCreateCliente = async () => {
+    if (!form.nome.trim()) {
+      Alert.alert('Nome obrigatorio', 'Informe o nome do cliente para cadastrar.');
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      await createCliente({
+        nome: form.nome.trim(),
+        telefone: form.telefone.trim(),
+        email: form.email.trim(),
+        cpf: form.cpf.trim(),
+        observacoes: form.observacoes.trim(),
+      });
+      resetForm();
+      setIsFormOpen(false);
+    } catch (error: any) {
+      Alert.alert(
+        'Nao foi possivel cadastrar',
+        error?.response?.data?.error ?? error?.response?.data?.message ?? error?.message ?? 'Tente novamente.',
+      );
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -118,7 +162,60 @@ export default function ClientesScreen() {
         }}
       />
 
-      <FAB icon="plus" style={styles.fab} color={palette.white} onPress={() => {}} />
+      <Portal>
+        <Dialog visible={isFormOpen} onDismiss={() => !isSaving && setIsFormOpen(false)}>
+          <Dialog.Title>Novo cliente</Dialog.Title>
+          <Dialog.Content>
+            <TextInput
+              label="Nome"
+              value={form.nome}
+              onChangeText={(value) => updateForm('nome', value)}
+              mode="outlined"
+              style={styles.formInput}
+              autoCapitalize="words"
+            />
+            <TextInput
+              label="Telefone"
+              value={form.telefone}
+              onChangeText={(value) => updateForm('telefone', value)}
+              mode="outlined"
+              style={styles.formInput}
+              keyboardType="phone-pad"
+            />
+            <TextInput
+              label="E-mail"
+              value={form.email}
+              onChangeText={(value) => updateForm('email', value)}
+              mode="outlined"
+              style={styles.formInput}
+              keyboardType="email-address"
+              autoCapitalize="none"
+            />
+            <TextInput
+              label="CPF"
+              value={form.cpf}
+              onChangeText={(value) => updateForm('cpf', value)}
+              mode="outlined"
+              style={styles.formInput}
+              keyboardType="number-pad"
+            />
+            <TextInput
+              label="Observacoes"
+              value={form.observacoes}
+              onChangeText={(value) => updateForm('observacoes', value)}
+              mode="outlined"
+              style={styles.formInput}
+              multiline
+            />
+          </Dialog.Content>
+          <Dialog.Actions>
+            <Button disabled={isSaving} onPress={() => setIsFormOpen(false)}>Cancelar</Button>
+            <Button loading={isSaving} disabled={isSaving} onPress={handleCreateCliente}>Salvar</Button>
+          </Dialog.Actions>
+        </Dialog>
+      </Portal>
+
+      <FAB icon="plus" style={styles.fab} color={palette.white} onPress={() => setIsFormOpen(true)} />
     </View>
   );
 }
@@ -152,6 +249,7 @@ const styles = StyleSheet.create({
   empty: { alignItems: 'center', marginTop: 60, gap: spacing.sm },
   emptyTitle: { fontSize: 18, fontWeight: '700', color: palette.slate700 },
   emptyText: { fontSize: 14, color: palette.slate400 },
+  formInput: { marginBottom: spacing.sm, backgroundColor: palette.white },
 
   fab: { position: 'absolute', bottom: 24, right: 24, backgroundColor: palette.navy800 },
 });

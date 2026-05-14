@@ -1,11 +1,21 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { fetchDriveOnData, fallbackDriveOnData, type DriveOnData } from '../services/driveOnData';
+import {
+  createCliente as createClienteRequest,
+  fetchDriveOnData,
+  fallbackDriveOnData,
+  type ClientePayload,
+  type DriveOnData,
+} from '../services/driveOnData';
 import { useAuth } from './AuthContext';
 
 type DriveOnDataContextData = DriveOnData & {
   isLoading: boolean;
   error: string | null;
   refresh: () => Promise<void>;
+  createCliente: (payload: ClientePayload) => Promise<void>;
+  createRecord: (path: string, payload: Record<string, unknown>) => Promise<void>;
+  updateRecord: (path: string, id: number, payload: Record<string, unknown>) => Promise<void>;
+  deleteRecord: (path: string, id: number) => Promise<void>;
 };
 
 const DriveOnDataContext = createContext<DriveOnDataContextData | null>(null);
@@ -32,6 +42,37 @@ export function DriveOnDataProvider({ children }: { children: React.ReactNode })
     }
   }, [isAuthenticated]);
 
+  const createCliente = useCallback(async (payload: ClientePayload) => {
+    const cliente = await createClienteRequest(payload);
+    setData((current) => ({
+      ...current,
+      clientes: [cliente, ...current.clientes].sort((a, b) => a.nome.localeCompare(b.nome)),
+      dashboard: {
+        ...current.dashboard,
+        clientesAtivos: current.dashboard.clientesAtivos + 1,
+      },
+    }));
+    void refresh();
+  }, [refresh]);
+
+  const createRecord = useCallback(async (path: string, payload: Record<string, unknown>) => {
+    const { default: api } = await import('../api/api');
+    await api.post(path, payload);
+    await refresh();
+  }, [refresh]);
+
+  const updateRecord = useCallback(async (path: string, id: number, payload: Record<string, unknown>) => {
+    const { default: api } = await import('../api/api');
+    await api.put(`${path}/${id}`, payload);
+    await refresh();
+  }, [refresh]);
+
+  const deleteRecord = useCallback(async (path: string, id: number) => {
+    const { default: api } = await import('../api/api');
+    await api.delete(`${path}/${id}`);
+    await refresh();
+  }, [refresh]);
+
   useEffect(() => {
     if (isAuthenticated) {
       void refresh();
@@ -47,8 +88,12 @@ export function DriveOnDataProvider({ children }: { children: React.ReactNode })
       isLoading,
       error,
       refresh,
+      createCliente,
+      createRecord,
+      updateRecord,
+      deleteRecord,
     }),
-    [data, error, isLoading, refresh],
+    [createCliente, createRecord, data, deleteRecord, error, isLoading, refresh, updateRecord],
   );
 
   return <DriveOnDataContext.Provider value={value}>{children}</DriveOnDataContext.Provider>;

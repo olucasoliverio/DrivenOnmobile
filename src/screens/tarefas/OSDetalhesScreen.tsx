@@ -1,11 +1,12 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { Alert, Linking, View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRoute } from '@react-navigation/native';
 import { useDriveOnData } from '../../context/DriveOnDataContext';
 import { palette, spacing, borderRadius, shadows, gradients } from '../../theme/theme';
 import dayjs from 'dayjs';
+import { API_BASE_URL } from '../../api/api';
 
 const STATUS_MAP: Record<string, { label: string; color: string; bg: string; icon: keyof typeof MaterialIcons.glyphMap }> = {
   em_andamento:    { label: 'Em Andamento',  color: palette.navy700,    bg: palette.navy50,     icon: 'autorenew' },
@@ -31,7 +32,7 @@ function InfoRow({ icon, label, value }: { icon: keyof typeof MaterialIcons.glyp
 export default function OSDetalhesScreen() {
   const route = useRoute<any>();
   const { osId } = route.params ?? { osId: 1 };
-  const { ordens, clientes, veiculos } = useDriveOnData();
+  const { ordens, clientes, veiculos, updateRecord, refresh } = useDriveOnData();
   const os = ordens.find(o => o.id === osId) ?? ordens[0];
   const cliente = os ? clientes.find(c => c.id === os.clienteId) : undefined;
   const veiculo = os ? veiculos.find(v => v.id === os.veiculoId) : undefined;
@@ -49,6 +50,30 @@ export default function OSDetalhesScreen() {
     { nome: 'Diagnóstico', qtd: 1, valor: 150.0 },
     { nome: 'Mão de Obra', qtd: 1, valor: os.valor - 150 },
   ];
+
+  const concluirOS = () => {
+    Alert.alert('Concluir OS?', 'A ordem sera marcada como concluida.', [
+      { text: 'Cancelar', style: 'cancel' },
+      { text: 'Concluir', onPress: async () => {
+        try {
+          await updateRecord('/ordens', os.id, {
+            status: 'concluida',
+            data_fechamento: new Date().toISOString(),
+          });
+          await refresh();
+        } catch (error: any) {
+          Alert.alert('Nao foi possivel concluir', error?.response?.data?.error ?? error?.message ?? 'Tente novamente.');
+        }
+      } },
+    ]);
+  };
+
+  const abrirPdf = async () => {
+    const url = `${API_BASE_URL}/ordens/${os.id}/pdf`;
+    const supported = await Linking.canOpenURL(url);
+    if (supported) await Linking.openURL(url);
+    else Alert.alert('PDF indisponivel', url);
+  };
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
@@ -129,14 +154,14 @@ export default function OSDetalhesScreen() {
       {/* ── Ações ── */}
       <View style={styles.actions}>
         {os.status !== 'concluido' && (
-          <TouchableOpacity style={styles.btnPrimary} activeOpacity={0.8} onPress={() => {}}>
+          <TouchableOpacity style={styles.btnPrimary} activeOpacity={0.8} onPress={concluirOS}>
             <LinearGradient colors={gradients.navyPrimary} style={styles.btnGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
               <MaterialIcons name="check-circle" size={18} color={palette.white} />
               <Text style={styles.btnPrimaryText}>Marcar como Concluído</Text>
             </LinearGradient>
           </TouchableOpacity>
         )}
-        <TouchableOpacity style={styles.btnOutline} activeOpacity={0.7} onPress={() => {}}>
+        <TouchableOpacity style={styles.btnOutline} activeOpacity={0.7} onPress={abrirPdf}>
           <MaterialIcons name="picture-as-pdf" size={18} color={palette.navy800} />
           <Text style={styles.btnOutlineText}>Gerar PDF</Text>
         </TouchableOpacity>

@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
-import { Surface, FAB } from 'react-native-paper';
+import { Alert, View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
+import { Surface, FAB, IconButton } from 'react-native-paper';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useDriveOnData } from '../../context/DriveOnDataContext';
 import { colors, spacing, borderRadius } from '../../theme/theme';
 import dayjs from 'dayjs';
+import CrudDialog, { type CrudField } from '../../components/CrudDialog';
 
 const statusConfig: Record<string, { label: string; color: string; bg: string }> = {
   aprovado: { label: 'Aprovado', color: '#2E7D32', bg: '#E8F5E9' },
@@ -12,11 +13,73 @@ const statusConfig: Record<string, { label: string; color: string; bg: string }>
   recusado: { label: 'Recusado', color: '#D32F2F', bg: '#FFEBEE' },
 };
 
+const fields: CrudField[] = [
+  { key: 'clienteId', label: 'ID do cliente', keyboardType: 'number-pad' },
+  { key: 'veiculoId', label: 'ID do veiculo', keyboardType: 'number-pad' },
+  { key: 'descricao', label: 'Descricao', multiline: true },
+  { key: 'valor', label: 'Valor', keyboardType: 'decimal-pad' },
+  { key: 'data', label: 'Data (YYYY-MM-DD)' },
+];
+
 export default function OrcamentosScreen() {
-  const { orcamentos: orcamentosData, clientes, veiculos } = useDriveOnData();
+  const { orcamentos: orcamentosData, clientes, veiculos, createRecord, updateRecord, deleteRecord } = useDriveOnData();
   const [filtro, setFiltro] = useState<'todos' | 'aprovado' | 'pendente' | 'recusado'>('todos');
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState<Record<string, string>>({});
 
   const orcamentos = orcamentosData.filter(o => filtro === 'todos' || o.status === filtro);
+
+  const openForm = (item?: (typeof orcamentosData)[number]) => {
+    setEditingId(item?.id ?? null);
+    setForm(item ? {
+      clienteId: String(item.clienteId),
+      veiculoId: String(item.veiculoId),
+      descricao: item.itens?.[0]?.descricao ?? '',
+      valor: String(item.total),
+      data: dayjs(item.dataCriacao).format('YYYY-MM-DD'),
+    } : {
+      clienteId: clientes[0]?.id ? String(clientes[0].id) : '',
+      veiculoId: veiculos[0]?.id ? String(veiculos[0].id) : '',
+      data: dayjs().format('YYYY-MM-DD'),
+    });
+    setDialogOpen(true);
+  };
+
+  const save = async () => {
+    if (!form.clienteId || !form.veiculoId || !form.descricao?.trim() || !form.valor) {
+      Alert.alert('Campos obrigatorios', 'Informe cliente, veiculo, descricao e valor.');
+      return;
+    }
+    setSaving(true);
+    try {
+      const payload = {
+        clienteId: Number(form.clienteId),
+        veiculoId: Number(form.veiculoId),
+        descricao: form.descricao.trim(),
+        valor: Number(String(form.valor).replace(',', '.')),
+        data: form.data || dayjs().format('YYYY-MM-DD'),
+      };
+      if (editingId) await updateRecord('/orcamentos', editingId, payload);
+      else await createRecord('/orcamentos', payload);
+      setDialogOpen(false);
+    } catch (error: any) {
+      Alert.alert('Nao foi possivel salvar', error?.response?.data?.error ?? error?.message ?? 'Tente novamente.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const remove = (id: number) => {
+    Alert.alert('Remover orcamento?', 'Essa acao desativa o registro.', [
+      { text: 'Cancelar', style: 'cancel' },
+      { text: 'Remover', style: 'destructive', onPress: async () => {
+        try { await deleteRecord('/orcamentos', id); }
+        catch (error: any) { Alert.alert('Nao foi possivel remover', error?.response?.data?.error ?? error?.message ?? 'Tente novamente.'); }
+      } },
+    ]);
+  };
 
   return (
     <View style={styles.container}>
@@ -40,9 +103,11 @@ export default function OrcamentosScreen() {
           const st = statusConfig[o.status] ?? { label: o.status, color: '#757575', bg: '#F5F5F5' };
           const isVencido = dayjs(o.validade).isBefore(dayjs()) && o.status === 'pendente';
           return (
+            <TouchableOpacity onPress={() => openForm(o)} activeOpacity={0.8}>
             <Surface style={styles.card} elevation={1}>
               <View style={styles.cardHeader}>
                 <Text style={styles.orcNum}>ORC #{String(o.id).padStart(3, '0')}</Text>
+                <IconButton icon="delete-outline" size={18} iconColor="#D32F2F" onPress={() => remove(o.id)} />
                 <View style={[styles.badge, { backgroundColor: st.bg }]}>
                   <Text style={[styles.badgeText, { color: st.color }]}>{st.label}</Text>
                 </View>
@@ -72,10 +137,12 @@ export default function OrcamentosScreen() {
                 <Text style={styles.total}>R$ {o.total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</Text>
               </View>
             </Surface>
+            </TouchableOpacity>
           );
         }}
       />
-      <FAB icon="plus" style={styles.fab} color="#FFF" onPress={() => {}} />
+      <CrudDialog visible={dialogOpen} title={editingId ? 'Editar orcamento' : 'Novo orcamento'} fields={fields} values={form} isSaving={saving} onChange={(key, value) => setForm((current) => ({ ...current, [key]: value }))} onCancel={() => setDialogOpen(false)} onSave={save} />
+      <FAB icon="plus" style={styles.fab} color="#FFF" onPress={() => openForm()} />
     </View>
   );
 }

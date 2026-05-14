@@ -1,16 +1,30 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, TextInput as RNTextInput } from 'react-native';
-import { Surface, FAB } from 'react-native-paper';
+import { Alert, View, Text, StyleSheet, FlatList, TextInput as RNTextInput, TouchableOpacity } from 'react-native';
+import { Surface, FAB, IconButton } from 'react-native-paper';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useDriveOnData } from '../../context/DriveOnDataContext';
 import { colors, spacing, borderRadius } from '../../theme/theme';
+import CrudDialog, { type CrudField } from '../../components/CrudDialog';
+
+const fields: CrudField[] = [
+  { key: 'cliente_id', label: 'ID do cliente', keyboardType: 'number-pad' },
+  { key: 'marca', label: 'Marca', autoCapitalize: 'words' },
+  { key: 'modelo', label: 'Modelo', autoCapitalize: 'words' },
+  { key: 'placa', label: 'Placa', autoCapitalize: 'characters' },
+  { key: 'ano', label: 'Ano', keyboardType: 'number-pad' },
+  { key: 'cor', label: 'Cor', autoCapitalize: 'words' },
+];
 
 export default function VeiculosScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
-  const { veiculos: veiculosData, clientes } = useDriveOnData();
+  const { veiculos: veiculosData, clientes, createRecord, updateRecord, deleteRecord } = useDriveOnData();
   const [busca, setBusca] = useState('');
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState<Record<string, string>>({});
 
   useEffect(() => {
     const detectedPlate = route.params?.detectedPlate;
@@ -27,6 +41,54 @@ export default function VeiculosScreen() {
       cliente?.nome.toLowerCase().includes(busca.toLowerCase());
   });
 
+  const openForm = (item?: (typeof veiculosData)[number]) => {
+    setEditingId(item?.id ?? null);
+    setForm(item ? {
+      cliente_id: String(item.clienteId),
+      marca: item.marca,
+      modelo: item.modelo,
+      placa: item.placa,
+      ano: String(item.ano || ''),
+      cor: item.cor,
+    } : { cliente_id: clientes[0]?.id ? String(clientes[0].id) : '' });
+    setDialogOpen(true);
+  };
+
+  const save = async () => {
+    if (!form.cliente_id || !form.marca?.trim() || !form.modelo?.trim() || !form.placa?.trim()) {
+      Alert.alert('Campos obrigatorios', 'Informe cliente, marca, modelo e placa.');
+      return;
+    }
+    setSaving(true);
+    try {
+      const payload = {
+        cliente_id: Number(form.cliente_id),
+        marca: form.marca.trim(),
+        modelo: form.modelo.trim(),
+        placa: form.placa.trim(),
+        ano: form.ano ? Number(form.ano) : null,
+        cor: form.cor?.trim() || null,
+      };
+      if (editingId) await updateRecord('/veiculos', editingId, payload);
+      else await createRecord('/veiculos', payload);
+      setDialogOpen(false);
+    } catch (error: any) {
+      Alert.alert('Nao foi possivel salvar', error?.response?.data?.error ?? error?.message ?? 'Tente novamente.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const remove = (id: number) => {
+    Alert.alert('Remover veiculo?', 'Essa acao desativa o registro.', [
+      { text: 'Cancelar', style: 'cancel' },
+      { text: 'Remover', style: 'destructive', onPress: async () => {
+        try { await deleteRecord('/veiculos', id); }
+        catch (error: any) { Alert.alert('Nao foi possivel remover', error?.response?.data?.error ?? error?.message ?? 'Tente novamente.'); }
+      } },
+    ]);
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.searchBox}>
@@ -40,6 +102,7 @@ export default function VeiculosScreen() {
         renderItem={({ item: v }) => {
           const cliente = clientes.find(c => c.id === v.clienteId);
           return (
+            <TouchableOpacity onPress={() => openForm(v)} activeOpacity={0.8}>
             <Surface style={styles.card} elevation={1}>
               <View style={styles.cardRow}>
                 <View style={styles.carIcon}><MaterialIcons name="directions-car" size={28} color={colors.primary} /></View>
@@ -58,13 +121,16 @@ export default function VeiculosScreen() {
                     <Text style={styles.kmText}>{v.km.toLocaleString('pt-BR')} km</Text>
                   </View>
                 </View>
+                <IconButton icon="delete-outline" size={20} iconColor="#D32F2F" onPress={() => remove(v.id)} />
               </View>
             </Surface>
+            </TouchableOpacity>
           );
         }}
       />
       <FAB icon="camera" style={styles.cameraFab} color="#FFF" onPress={() => navigation.navigate('PlacaScanner')} />
-      <FAB icon="plus" style={styles.fab} color="#FFF" onPress={() => {}} />
+      <CrudDialog visible={dialogOpen} title={editingId ? 'Editar veiculo' : 'Novo veiculo'} fields={fields} values={form} isSaving={saving} onChange={(key, value) => setForm((current) => ({ ...current, [key]: value }))} onCancel={() => setDialogOpen(false)} onSave={save} />
+      <FAB icon="plus" style={styles.fab} color="#FFF" onPress={() => openForm()} />
     </View>
   );
 }

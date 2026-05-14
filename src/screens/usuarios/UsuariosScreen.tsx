@@ -1,9 +1,10 @@
 import React from 'react';
-import { View, Text, StyleSheet, FlatList } from 'react-native';
-import { Surface, FAB } from 'react-native-paper';
+import { Alert, View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
+import { Surface, FAB, IconButton } from 'react-native-paper';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useDriveOnData } from '../../context/DriveOnDataContext';
 import { colors, spacing, borderRadius } from '../../theme/theme';
+import CrudDialog, { type CrudField } from '../../components/CrudDialog';
 
 const perfilConfig: Record<string, { label: string; color: string }> = {
   admin: { label: 'Administrador', color: '#1565C0' },
@@ -11,8 +12,66 @@ const perfilConfig: Record<string, { label: string; color: string }> = {
   atendente: { label: 'Atendente', color: '#2E7D32' },
 };
 
+const fields: CrudField[] = [
+  { key: 'nome', label: 'Nome', autoCapitalize: 'words' },
+  { key: 'email', label: 'E-mail', keyboardType: 'email-address', autoCapitalize: 'none' },
+  { key: 'senha', label: 'Senha' },
+  { key: 'tipo', label: 'Tipo (funcionario, gestoroficina)' },
+  { key: 'status', label: 'Status (ativo, inativo)' },
+];
+
 export default function UsuariosScreen() {
-  const { usuarios } = useDriveOnData();
+  const { usuarios, createRecord, updateRecord, deleteRecord } = useDriveOnData();
+  const [dialogOpen, setDialogOpen] = React.useState(false);
+  const [editingId, setEditingId] = React.useState<number | null>(null);
+  const [saving, setSaving] = React.useState(false);
+  const [form, setForm] = React.useState<Record<string, string>>({});
+
+  const openForm = (item?: (typeof usuarios)[number]) => {
+    setEditingId(item?.id ?? null);
+    setForm(item ? {
+      nome: item.nome,
+      email: item.email,
+      senha: '',
+      tipo: item.perfil || 'funcionario',
+      status: item.status || 'ativo',
+    } : { tipo: 'funcionario', status: 'ativo' });
+    setDialogOpen(true);
+  };
+
+  const save = async () => {
+    if (!form.nome?.trim() || !form.email?.trim() || (!editingId && !form.senha?.trim())) {
+      Alert.alert('Campos obrigatorios', 'Informe nome, e-mail e senha.');
+      return;
+    }
+    setSaving(true);
+    try {
+      const payload: Record<string, unknown> = {
+        nome: form.nome.trim(),
+        email: form.email.trim(),
+        tipo: form.tipo?.trim() || 'funcionario',
+        status: form.status?.trim() || 'ativo',
+      };
+      if (form.senha?.trim()) payload.senha = form.senha.trim();
+      if (editingId) await updateRecord('/usuario', editingId, payload);
+      else await createRecord('/usuario', payload);
+      setDialogOpen(false);
+    } catch (error: any) {
+      Alert.alert('Nao foi possivel salvar', error?.response?.data?.error ?? error?.message ?? 'Tente novamente.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const remove = (id: number) => {
+    Alert.alert('Remover usuario?', 'Essa acao desativa o usuario.', [
+      { text: 'Cancelar', style: 'cancel' },
+      { text: 'Remover', style: 'destructive', onPress: async () => {
+        try { await deleteRecord('/usuario', id); }
+        catch (error: any) { Alert.alert('Nao foi possivel remover', error?.response?.data?.error ?? error?.message ?? 'Tente novamente.'); }
+      } },
+    ]);
+  };
 
   return (
     <View style={styles.container}>
@@ -23,6 +82,7 @@ export default function UsuariosScreen() {
         renderItem={({ item: u }) => {
           const perfil = perfilConfig[u.perfil] ?? { label: u.perfil, color: '#757575' };
           return (
+            <TouchableOpacity onPress={() => openForm(u)} activeOpacity={0.8}>
             <Surface style={styles.card} elevation={1}>
               <View style={styles.cardRow}>
                 <View style={[styles.avatar, { backgroundColor: perfil.color }]}>
@@ -43,12 +103,15 @@ export default function UsuariosScreen() {
                     </View>
                   </View>
                 </View>
+                <IconButton icon="delete-outline" size={20} iconColor="#D32F2F" onPress={() => remove(u.id)} />
               </View>
             </Surface>
+            </TouchableOpacity>
           );
         }}
       />
-      <FAB icon="plus" style={styles.fab} color="#FFF" onPress={() => {}} />
+      <CrudDialog visible={dialogOpen} title={editingId ? 'Editar usuario' : 'Novo usuario'} fields={fields} values={form} isSaving={saving} onChange={(key, value) => setForm((current) => ({ ...current, [key]: value }))} onCancel={() => setDialogOpen(false)} onSave={save} />
+      <FAB icon="plus" style={styles.fab} color="#FFF" onPress={() => openForm()} />
     </View>
   );
 }

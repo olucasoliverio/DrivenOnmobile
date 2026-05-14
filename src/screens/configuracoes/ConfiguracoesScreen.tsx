@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import { Alert, View, Text, StyleSheet, ScrollView } from 'react-native';
 import { Surface, TextInput, Button, Divider } from 'react-native-paper';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
@@ -60,7 +60,7 @@ export default function ConfiguracoesScreen() {
         </View>
       </Surface>
 
-      <Button mode="contained" buttonColor={colors.primary} style={styles.saveBtn} onPress={() => {}}>
+      <Button mode="contained" buttonColor={colors.primary} style={styles.saveBtn} onPress={() => Alert.alert('Configuracoes', 'O backend atual ainda nao expoe edicao da oficina pelo mobile. As alteracoes ficaram apenas nesta tela.')}>
         Salvar Alterações
       </Button>
 

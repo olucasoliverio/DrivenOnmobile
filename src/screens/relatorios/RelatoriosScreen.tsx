@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { Alert, View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { Surface } from 'react-native-paper';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useDriveOnData } from '../../context/DriveOnDataContext';
@@ -43,7 +43,7 @@ export default function RelatoriosScreen() {
 
       <Text style={styles.sectionTitle}>Relatórios Disponíveis</Text>
       {relatorios.map(r => (
-        <TouchableOpacity key={r.id} onPress={() => {}}>
+        <TouchableOpacity key={r.id} onPress={() => Alert.alert(r.label, 'Relatorio detalhado ainda precisa de endpoint/exportacao no backend. Os indicadores resumidos ja usam dados reais.')}>
           <Surface style={styles.relCard} elevation={1}>
             <View style={[styles.iconCircle, { backgroundColor: r.color + '15' }]}>
               <MaterialIcons name={r.icon as any} size={28} color={r.color} />

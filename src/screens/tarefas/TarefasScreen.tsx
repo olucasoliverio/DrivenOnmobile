@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput as RNTextInput } from 'react-native';
+import { Alert, View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput as RNTextInput } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialIcons } from '@expo/vector-icons';
 import { FAB } from 'react-native-paper';
@@ -8,8 +8,17 @@ import { useNavigation } from '@react-navigation/native';
 import { useDriveOnData } from '../../context/DriveOnDataContext';
 import { palette, spacing, borderRadius, shadows, gradients } from '../../theme/theme';
 import dayjs from 'dayjs';
+import CrudDialog, { type CrudField } from '../../components/CrudDialog';
 
 type StatusKey = 'todos' | 'em_andamento' | 'aguardando' | 'aguardando_pecas' | 'concluido';
+
+const osFields: CrudField[] = [
+  { key: 'cliente_id', label: 'ID do cliente', keyboardType: 'number-pad' },
+  { key: 'veiculo_id', label: 'ID do veiculo', keyboardType: 'number-pad' },
+  { key: 'funcionario_id', label: 'ID do mecanico/funcionario', keyboardType: 'number-pad' },
+  { key: 'observacoes', label: 'Descricao', multiline: true },
+  { key: 'valor_total', label: 'Valor total', keyboardType: 'decimal-pad' },
+];
 
 const statusConfig: Record<string, { label: string; color: string; bg: string; icon: keyof typeof MaterialIcons.glyphMap; barColor: string }> = {
   em_andamento:    { label: 'Em Andamento',  color: palette.navy700,    bg: palette.navy50,      icon: 'autorenew',    barColor: palette.navy700 },
@@ -31,9 +40,12 @@ function StatusBadge({ status }: { status: string }) {
 export default function TarefasScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
-  const { ordens: ordensData, clientes, veiculos } = useDriveOnData();
+  const { ordens: ordensData, clientes, veiculos, createRecord } = useDriveOnData();
   const [filtroStatus, setFiltroStatus] = useState<StatusKey>('todos');
   const [busca, setBusca] = useState('');
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState<Record<string, string>>({});
 
   const filtros: { key: StatusKey; label: string }[] = [
     { key: 'todos', label: 'Todas' },
@@ -49,6 +61,37 @@ export default function TarefasScreen() {
     const matchStatus = filtroStatus === 'todos' || os.status === filtroStatus;
     return matchBusca && matchStatus;
   });
+
+  const openForm = () => {
+    setForm({
+      cliente_id: clientes[0]?.id ? String(clientes[0].id) : '',
+      veiculo_id: veiculos[0]?.id ? String(veiculos[0].id) : '',
+    });
+    setDialogOpen(true);
+  };
+
+  const save = async () => {
+    if (!form.cliente_id || !form.veiculo_id || !form.funcionario_id) {
+      Alert.alert('Campos obrigatorios', 'Informe cliente, veiculo e funcionario.');
+      return;
+    }
+    setSaving(true);
+    try {
+      await createRecord('/ordens', {
+        cliente_id: Number(form.cliente_id),
+        veiculo_id: Number(form.veiculo_id),
+        funcionario_id: Number(form.funcionario_id),
+        observacoes: form.observacoes?.trim() || '',
+        valor_total: Number(String(form.valor_total || '0').replace(',', '.')),
+        itens: [],
+      });
+      setDialogOpen(false);
+    } catch (error: any) {
+      Alert.alert('Nao foi possivel salvar', error?.response?.data?.error ?? error?.message ?? 'Tente novamente.');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -161,7 +204,8 @@ export default function TarefasScreen() {
         }}
       />
 
-      <FAB icon="plus" style={styles.fab} color={palette.white} onPress={() => {}} />
+      <CrudDialog visible={dialogOpen} title="Nova ordem de servico" fields={osFields} values={form} isSaving={saving} onChange={(key, value) => setForm((current) => ({ ...current, [key]: value }))} onCancel={() => setDialogOpen(false)} onSave={save} />
+      <FAB icon="plus" style={styles.fab} color={palette.white} onPress={openForm} />
     </View>
   );
 }

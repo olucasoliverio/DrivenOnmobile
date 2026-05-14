@@ -1,16 +1,32 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
-import { Surface } from 'react-native-paper';
+import { Alert, View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
+import { FAB, IconButton, Surface } from 'react-native-paper';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useDriveOnData } from '../../context/DriveOnDataContext';
 import { colors, spacing, borderRadius } from '../../theme/theme';
 import dayjs from 'dayjs';
+import CrudDialog, { type CrudField } from '../../components/CrudDialog';
 
 type Tab = 'extrato' | 'pagar' | 'receber';
 
+const fields: CrudField[] = [
+  { key: 'tipo', label: 'Tipo (pagar ou receber)' },
+  { key: 'valor', label: 'Valor', keyboardType: 'decimal-pad' },
+  { key: 'data_vencimento', label: 'Vencimento (YYYY-MM-DD)' },
+  { key: 'descricao', label: 'Descricao', multiline: true },
+  { key: 'cliente_id', label: 'ID cliente (receber)', keyboardType: 'number-pad' },
+  { key: 'ordem_servico_id', label: 'ID OS (opcional)', keyboardType: 'number-pad' },
+  { key: 'metodo', label: 'Metodo (pix, dinheiro, cartao, boleto)' },
+  { key: 'status', label: 'Status (pendente, pago)' },
+];
+
 export default function PagamentosScreen() {
-  const { pagamentos } = useDriveOnData();
+  const { pagamentos, createRecord, updateRecord, deleteRecord } = useDriveOnData();
   const [tab, setTab] = useState<Tab>('extrato');
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState<Record<string, string>>({});
 
   const dados = tab === 'extrato'
     ? pagamentos
@@ -18,6 +34,63 @@ export default function PagamentosScreen() {
 
   const total = dados.reduce((acc, p) => acc + (p.tipo === 'receber' ? p.valor : -p.valor), 0);
   const pendentes = dados.filter(p => p.status === 'pendente').reduce((acc, p) => acc + p.valor, 0);
+
+  const openForm = (item?: (typeof pagamentos)[number]) => {
+    setEditingId(item?.id ?? null);
+    setForm(item ? {
+      tipo: item.tipo,
+      valor: String(item.valor),
+      data_vencimento: dayjs(item.data).format('YYYY-MM-DD'),
+      descricao: item.descricao,
+      cliente_id: item.clienteId ? String(item.clienteId) : '',
+      ordem_servico_id: item.ordemId ? String(item.ordemId) : '',
+      metodo: item.formaPagamento || 'pix',
+      status: item.status || 'pendente',
+    } : {
+      tipo: tab === 'pagar' ? 'pagar' : 'receber',
+      data_vencimento: dayjs().format('YYYY-MM-DD'),
+      metodo: 'pix',
+      status: 'pendente',
+    });
+    setDialogOpen(true);
+  };
+
+  const save = async () => {
+    if (!form.tipo || !form.valor || !form.data_vencimento) {
+      Alert.alert('Campos obrigatorios', 'Informe tipo, valor e vencimento.');
+      return;
+    }
+    setSaving(true);
+    try {
+      const payload = {
+        tipo: form.tipo.trim(),
+        valor: Number(String(form.valor).replace(',', '.')),
+        data_vencimento: form.data_vencimento,
+        descricao: form.descricao?.trim() || null,
+        cliente_id: form.cliente_id ? Number(form.cliente_id) : null,
+        ordem_servico_id: form.ordem_servico_id ? Number(form.ordem_servico_id) : null,
+        metodo: form.metodo?.trim() || 'pix',
+        status: form.status?.trim() || 'pendente',
+      };
+      if (editingId) await updateRecord('/pagamentos', editingId, payload);
+      else await createRecord('/pagamentos', payload);
+      setDialogOpen(false);
+    } catch (error: any) {
+      Alert.alert('Nao foi possivel salvar', error?.response?.data?.error ?? error?.message ?? 'Tente novamente.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const remove = (id: number) => {
+    Alert.alert('Remover pagamento?', 'Essa acao cancela o registro.', [
+      { text: 'Cancelar', style: 'cancel' },
+      { text: 'Remover', style: 'destructive', onPress: async () => {
+        try { await deleteRecord('/pagamentos', id); }
+        catch (error: any) { Alert.alert('Nao foi possivel remover', error?.response?.data?.error ?? error?.message ?? 'Tente novamente.'); }
+      } },
+    ]);
+  };
 
   const tabs: { key: Tab; label: string; icon: string }[] = [
     { key: 'extrato', label: 'Extrato', icon: 'list-alt' },
@@ -60,6 +133,7 @@ export default function PagamentosScreen() {
           const isReceber = p.tipo === 'receber';
           const isPago = p.status === 'pago';
           return (
+            <TouchableOpacity onPress={() => openForm(p)} activeOpacity={0.8}>
             <Surface style={styles.card} elevation={1}>
               <View style={styles.cardRow}>
                 <View style={[styles.iconBox, { backgroundColor: isReceber ? '#E8F5E9' : '#FFEBEE' }]}>
@@ -80,11 +154,15 @@ export default function PagamentosScreen() {
                     </Text>
                   </View>
                 </View>
+                <IconButton icon="delete-outline" size={20} iconColor="#D32F2F" onPress={() => remove(p.id)} />
               </View>
             </Surface>
+            </TouchableOpacity>
           );
         }}
       />
+      <CrudDialog visible={dialogOpen} title={editingId ? 'Editar pagamento' : 'Novo pagamento'} fields={fields} values={form} isSaving={saving} onChange={(key, value) => setForm((current) => ({ ...current, [key]: value }))} onCancel={() => setDialogOpen(false)} onSave={save} />
+      <FAB icon="plus" style={styles.fab} color="#FFF" onPress={() => openForm()} />
     </View>
   );
 }
@@ -110,4 +188,5 @@ const styles = StyleSheet.create({
   valor: { fontSize: 15, fontWeight: '800' },
   statusBadge: { borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3, marginTop: 4 },
   statusText: { fontSize: 10, fontWeight: '700' },
+  fab: { position: 'absolute', bottom: 24, right: 24, backgroundColor: colors.primary },
 });

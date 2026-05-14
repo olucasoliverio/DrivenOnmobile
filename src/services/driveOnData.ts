@@ -137,6 +137,15 @@ export type DriveOnData = {
   dashboard: Dashboard;
 };
 
+export type ClientePayload = {
+  nome: string;
+  email?: string;
+  telefone?: string;
+  cpf?: string;
+  data_nascimento?: string;
+  observacoes?: string;
+};
+
 export const fallbackDriveOnData: DriveOnData = {
   clientes: mockClientes,
   veiculos: mockVeiculos,
@@ -387,4 +396,17 @@ export async function fetchDriveOnData(): Promise<DriveOnData> {
     configuracoes: mockConfiguracoes,
     dashboard: buildDashboard(baseData),
   };
+}
+
+export async function createCliente(payload: ClientePayload): Promise<Cliente> {
+  const { data } = await api.post('/clientes', {
+    nome: payload.nome,
+    email: payload.email || undefined,
+    telefone: payload.telefone || undefined,
+    cpf: payload.cpf || undefined,
+    data_nascimento: payload.data_nascimento || undefined,
+    observacoes: payload.observacoes || undefined,
+  });
+
+  return adaptCliente(data);
 }

@@ -1,11 +1,12 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useState } from 'react';
+import { Alert, View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialIcons } from '@expo/vector-icons';
-import { useRoute } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { useDriveOnData } from '../../context/DriveOnDataContext';
 import { palette, spacing, borderRadius, shadows, gradients } from '../../theme/theme';
 import dayjs from 'dayjs';
+import CrudDialog, { type CrudField } from '../../components/CrudDialog';
 
 const STATUS_MAP: Record<string, { label: string; color: string }> = {
   em_andamento:    { label: 'Em Andamento', color: palette.navy700 },
@@ -20,10 +21,21 @@ const AVATAR_COLORS = [
   ['#059669', '#10B981'],
 ] as [string, string][];
 
+const editFields: CrudField[] = [
+  { key: 'nome', label: 'Nome', autoCapitalize: 'words' },
+  { key: 'telefone', label: 'Telefone', keyboardType: 'phone-pad' },
+  { key: 'email', label: 'E-mail', keyboardType: 'email-address', autoCapitalize: 'none' },
+  { key: 'observacoes', label: 'Observacoes', multiline: true },
+];
+
 export default function ClienteDetalhesScreen() {
   const route = useRoute<any>();
+  const navigation = useNavigation<any>();
   const { clienteId } = route.params ?? { clienteId: 1 };
-  const { clientes, veiculos: veiculosData, ordens: ordensData, pagamentos } = useDriveOnData();
+  const { clientes, veiculos: veiculosData, ordens: ordensData, pagamentos, updateRecord } = useDriveOnData();
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState<Record<string, string>>({});
   const cliente = clientes.find(c => c.id === clienteId) ?? clientes[0];
   const veiculos = cliente ? veiculosData.filter(v => v.clienteId === cliente.id) : [];
   const ordens = cliente ? ordensData.filter(o => o.clienteId === cliente.id) : [];
@@ -38,6 +50,37 @@ export default function ClienteDetalhesScreen() {
       </View>
     );
   }
+
+  const openEdit = () => {
+    setForm({
+      nome: cliente.nome,
+      telefone: cliente.telefone,
+      email: cliente.email,
+      observacoes: '',
+    });
+    setDialogOpen(true);
+  };
+
+  const save = async () => {
+    if (!form.nome?.trim()) {
+      Alert.alert('Nome obrigatorio', 'Informe o nome do cliente.');
+      return;
+    }
+    setSaving(true);
+    try {
+      await updateRecord('/clientes', cliente.id, {
+        nome: form.nome.trim(),
+        telefone: form.telefone?.trim() || null,
+        email: form.email?.trim() || null,
+        observacoes: form.observacoes?.trim() || null,
+      });
+      setDialogOpen(false);
+    } catch (error: any) {
+      Alert.alert('Nao foi possivel salvar', error?.response?.data?.error ?? error?.message ?? 'Tente novamente.');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
@@ -143,17 +186,19 @@ export default function ClienteDetalhesScreen() {
 
       {/* ── Ações ── */}
       <View style={styles.actions}>
-        <TouchableOpacity style={styles.btnPrimary} activeOpacity={0.8} onPress={() => {}}>
+        <TouchableOpacity style={styles.btnPrimary} activeOpacity={0.8} onPress={() => navigation.navigate('OS')}>
           <LinearGradient colors={gradients.navyPrimary} style={styles.btnGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
             <MaterialIcons name="build" size={18} color={palette.white} />
             <Text style={styles.btnPrimaryText}>Nova OS</Text>
           </LinearGradient>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.btnOutline} activeOpacity={0.7} onPress={() => {}}>
+        <TouchableOpacity style={styles.btnOutline} activeOpacity={0.7} onPress={openEdit}>
           <MaterialIcons name="edit" size={18} color={palette.navy800} />
           <Text style={styles.btnOutlineText}>Editar</Text>
         </TouchableOpacity>
       </View>
+
+      <CrudDialog visible={dialogOpen} title="Editar cliente" fields={editFields} values={form} isSaving={saving} onChange={(key, value) => setForm((current) => ({ ...current, [key]: value }))} onCancel={() => setDialogOpen(false)} onSave={save} />
 
       <View style={{ height: 32 }} />
     </ScrollView>

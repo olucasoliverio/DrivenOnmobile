@@ -1,16 +1,26 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, FlatList, Dimensions } from 'react-native';
+import { Alert, View, Text, StyleSheet, TouchableOpacity, FlatList, Dimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialIcons } from '@expo/vector-icons';
-import { FAB } from 'react-native-paper';
+import { FAB, IconButton } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDriveOnData } from '../../context/DriveOnDataContext';
 import { palette, spacing, borderRadius, shadows, gradients } from '../../theme/theme';
+import CrudDialog, { type CrudField } from '../../components/CrudDialog';
 import dayjs from 'dayjs';
 import 'dayjs/locale/pt-br';
 dayjs.locale('pt-br');
 
 const { width } = Dimensions.get('window');
+
+const fields: CrudField[] = [
+  { key: 'titulo', label: 'Titulo', autoCapitalize: 'sentences' },
+  { key: 'cliente_id', label: 'ID do cliente', keyboardType: 'number-pad' },
+  { key: 'veiculo_id', label: 'ID do veiculo', keyboardType: 'number-pad' },
+  { key: 'data_inicio', label: 'Inicio (YYYY-MM-DD HH:mm)' },
+  { key: 'data_fim', label: 'Fim (YYYY-MM-DD HH:mm)' },
+  { key: 'observacao', label: 'Observacao', multiline: true },
+];
 
 function getDaysOfWeek() {
   const days = [];
@@ -22,13 +32,72 @@ function getDaysOfWeek() {
 
 export default function AgendaScreen() {
   const insets = useSafeAreaInsets();
-  const { agendamentos, clientes, veiculos } = useDriveOnData();
+  const { agendamentos, clientes, veiculos, createRecord, updateRecord, deleteRecord } = useDriveOnData();
   const [selectedDate, setSelectedDate] = useState(dayjs());
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState<Record<string, string>>({});
   const days = getDaysOfWeek();
 
   const agendamentosDodia = agendamentos.filter(a =>
     dayjs(a.data).isSame(selectedDate, 'day')
   );
+
+  const openForm = (item?: (typeof agendamentos)[number]) => {
+    setEditingId(item?.id ?? null);
+    setForm(item ? {
+      titulo: item.servico,
+      cliente_id: String(item.clienteId),
+      veiculo_id: String(item.veiculoId),
+      data_inicio: dayjs(item.data).format('YYYY-MM-DD') + ` ${item.hora || '09:00'}`,
+      data_fim: dayjs(item.data).add(1, 'hour').format('YYYY-MM-DD HH:mm'),
+      observacao: item.observacao,
+    } : {
+      cliente_id: clientes[0]?.id ? String(clientes[0].id) : '',
+      veiculo_id: veiculos[0]?.id ? String(veiculos[0].id) : '',
+      data_inicio: selectedDate.hour(9).minute(0).format('YYYY-MM-DD HH:mm'),
+      data_fim: selectedDate.hour(10).minute(0).format('YYYY-MM-DD HH:mm'),
+    });
+    setDialogOpen(true);
+  };
+
+  const parseDate = (value: string) => dayjs(value.trim().replace(' ', 'T')).toISOString();
+
+  const save = async () => {
+    if (!form.titulo?.trim() || !form.cliente_id || !form.veiculo_id || !form.data_inicio || !form.data_fim) {
+      Alert.alert('Campos obrigatorios', 'Informe titulo, cliente, veiculo, inicio e fim.');
+      return;
+    }
+    setSaving(true);
+    try {
+      const payload = {
+        titulo: form.titulo.trim(),
+        cliente_id: Number(form.cliente_id),
+        veiculo_id: Number(form.veiculo_id),
+        data_inicio: parseDate(form.data_inicio),
+        data_fim: parseDate(form.data_fim),
+        observacao: form.observacao?.trim() || null,
+      };
+      if (editingId) await updateRecord('/agendamentos', editingId, payload);
+      else await createRecord('/agendamentos', payload);
+      setDialogOpen(false);
+    } catch (error: any) {
+      Alert.alert('Nao foi possivel salvar', error?.response?.data?.error ?? error?.message ?? 'Tente novamente.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const remove = (id: number) => {
+    Alert.alert('Remover agendamento?', 'Essa acao cancela o registro.', [
+      { text: 'Cancelar', style: 'cancel' },
+      { text: 'Remover', style: 'destructive', onPress: async () => {
+        try { await deleteRecord('/agendamentos', id); }
+        catch (error: any) { Alert.alert('Nao foi possivel remover', error?.response?.data?.error ?? error?.message ?? 'Tente novamente.'); }
+      } },
+    ]);
+  };
 
   return (
     <View style={styles.container}>
@@ -96,6 +165,7 @@ export default function AgendaScreen() {
           const veiculo = veiculos.find(v => v.id === item.veiculoId);
           const isConfirmado = item.status === 'confirmado';
           return (
+            <TouchableOpacity onPress={() => openForm(item)} activeOpacity={0.8}>
             <View style={styles.card}>
               {/* Barra lateral colorida */}
               <LinearGradient
@@ -139,16 +209,19 @@ export default function AgendaScreen() {
                   </View>
                 )}
               </View>
+              <IconButton icon="delete-outline" size={20} iconColor="#D32F2F" onPress={() => remove(item.id)} />
             </View>
+            </TouchableOpacity>
           );
         }}
       />
 
+      <CrudDialog visible={dialogOpen} title={editingId ? 'Editar agendamento' : 'Novo agendamento'} fields={fields} values={form} isSaving={saving} onChange={(key, value) => setForm((current) => ({ ...current, [key]: value }))} onCancel={() => setDialogOpen(false)} onSave={save} />
       <FAB
         icon="plus"
         style={styles.fab}
         color={palette.white}
-        onPress={() => {}}
+        onPress={() => openForm()}
       />
     </View>
   );
