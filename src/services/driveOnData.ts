@@ -161,6 +161,41 @@ export const fallbackDriveOnData: DriveOnData = {
   dashboard: mockDashboard,
 };
 
+export const emptyDriveOnData: DriveOnData = {
+  clientes: [],
+  veiculos: [],
+  ordens: [],
+  agendamentos: [],
+  orcamentos: [],
+  pagamentos: [],
+  estoque: [],
+  fornecedores: [],
+  servicos: [],
+  usuarios: [],
+  configuracoes: {
+    nomeOficina: 'DriveOn',
+    cnpj: '',
+    telefone: '',
+    email: '',
+    endereco: '',
+    cidade: '',
+    estado: '',
+    cep: '',
+    logo: null,
+  },
+  dashboard: {
+    osAbertas: 0,
+    osConcluidas: 0,
+    agendamentosHoje: 0,
+    receitaMes: 0,
+    receitaAnterior: 1,
+    clientesAtivos: 0,
+    ticketMedio: 0,
+    receitaMensal: [],
+    statusOS: [],
+  },
+};
+
 const numberValue = (value: unknown, fallback = 0) => {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : fallback;

@@ -2,7 +2,7 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useS
 import {
   createCliente as createClienteRequest,
   fetchDriveOnData,
-  fallbackDriveOnData,
+  emptyDriveOnData,
   type ClientePayload,
   type DriveOnData,
 } from '../services/driveOnData';
@@ -22,7 +22,7 @@ const DriveOnDataContext = createContext<DriveOnDataContextData | null>(null);
 
 export function DriveOnDataProvider({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuth();
-  const [data, setData] = useState<DriveOnData>(fallbackDriveOnData);
+  const [data, setData] = useState<DriveOnData>(emptyDriveOnData);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -84,7 +84,7 @@ export function DriveOnDataProvider({ children }: { children: React.ReactNode })
     if (isAuthenticated) {
       void refresh();
     } else {
-      setData(fallbackDriveOnData);
+      setData(emptyDriveOnData);
       setError(null);
     }
   }, [isAuthenticated, refresh]);

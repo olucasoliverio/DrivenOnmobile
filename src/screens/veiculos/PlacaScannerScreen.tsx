@@ -4,7 +4,7 @@ import { Button, Surface } from 'react-native-paper';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
-import { borderRadius, colors, palette, spacing } from '../../theme/theme';
+import { borderRadius, colors, palette, spacing, shadows } from '../../theme/theme';
 import { lookupPlate, PlateLookupResponse } from '../../services/licensePlateApi';
 import {
   extractPlateCandidates,
@@ -202,9 +202,49 @@ export default function PlacaScannerScreen() {
 
       {lookupResult ? (
         <Surface style={styles.resultPanel} elevation={1}>
-          <Text style={styles.resultTitle}>{lookupResult.plate}</Text>
-          <Text style={styles.resultStatus}>{lookupResult.status.toUpperCase()}</Text>
+          <View style={styles.resultHeader}>
+            <Text style={styles.resultTitle}>{lookupResult.plate}</Text>
+            <View style={[
+              styles.statusBadge,
+              lookupResult.status === 'found' && styles.statusBadgeFound,
+              lookupResult.status === 'error' && styles.statusBadgeError,
+            ]}>
+              <Text style={[
+                styles.statusBadgeText,
+                lookupResult.status === 'found' && styles.statusBadgeTextFound,
+                lookupResult.status === 'error' && styles.statusBadgeTextError,
+              ]}>
+                {lookupResult.status === 'found' ? 'ENCONTRADA' : lookupResult.status.toUpperCase()}
+              </Text>
+            </View>
+          </View>
+          
           <Text style={styles.resultMessage}>{lookupResult.message}</Text>
+
+          {(() => {
+            const data = lookupResult.data as any;
+            if (!data) return null;
+            const vehicle = data.veiculo || data;
+            const details = [];
+            if (vehicle.marca) details.push({ label: 'Marca', value: vehicle.marca });
+            if (vehicle.modelo) details.push({ label: 'Modelo', value: vehicle.modelo });
+            if (vehicle.ano) details.push({ label: 'Ano', value: String(vehicle.ano) });
+            if (vehicle.cor) details.push({ label: 'Cor', value: vehicle.cor });
+            if (vehicle.placa && vehicle.placa !== lookupResult.plate) details.push({ label: 'Placa', value: vehicle.placa });
+
+            if (details.length === 0) return null;
+
+            return (
+              <View style={styles.detailList}>
+                {details.map((item, idx) => (
+                  <View key={idx} style={styles.detailRow}>
+                    <Text style={styles.detailLabel}>{item.label}:</Text>
+                    <Text style={styles.detailValue}>{item.value}</Text>
+                  </View>
+                ))}
+              </View>
+            );
+          })()}
         </Surface>
       ) : null}
     </ScrollView>
@@ -274,8 +314,18 @@ const styles = StyleSheet.create({
   statusRow: { alignItems: 'center', flexDirection: 'row', gap: spacing.xs, marginTop: spacing.sm },
   statusText: { color: palette.slate500, fontSize: 12 },
   actionRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginTop: spacing.md },
-  resultPanel: { backgroundColor: palette.navy50, borderRadius: borderRadius.md, padding: spacing.md },
-  resultTitle: { color: colors.primary, fontSize: 18, fontWeight: '800', letterSpacing: 1 },
-  resultStatus: { color: palette.slate700, fontSize: 12, fontWeight: '700', marginTop: 3 },
-  resultMessage: { color: palette.slate700, fontSize: 13, marginTop: spacing.sm },
+  resultPanel: { backgroundColor: palette.white, borderRadius: borderRadius.md, padding: spacing.md, borderWidth: 1, borderColor: palette.slate200, ...shadows.sm },
+  resultHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm },
+  resultTitle: { color: palette.navy900, fontSize: 18, fontWeight: '800', letterSpacing: 1 },
+  statusBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: borderRadius.sm, backgroundColor: palette.slate100 },
+  statusBadgeFound: { backgroundColor: '#E8F5E9' },
+  statusBadgeError: { backgroundColor: '#FFEBEE' },
+  statusBadgeText: { fontSize: 10, fontWeight: '700', color: palette.slate500 },
+  statusBadgeTextFound: { color: '#2E7D32' },
+  statusBadgeTextError: { color: '#D32F2F' },
+  resultMessage: { color: palette.slate500, fontSize: 13, marginBottom: spacing.sm },
+  detailList: { backgroundColor: palette.slate50, borderRadius: borderRadius.sm, padding: spacing.md, borderWidth: 1, borderColor: '#ECEFF2' },
+  detailRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4, borderBottomWidth: 1, borderBottomColor: '#ECEFF2' },
+  detailLabel: { color: palette.slate500, fontSize: 13, fontWeight: '600' },
+  detailValue: { color: palette.navy900, fontSize: 13, fontWeight: '700' },
 });
