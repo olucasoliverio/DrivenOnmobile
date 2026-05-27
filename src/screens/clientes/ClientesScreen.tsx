@@ -2,8 +2,9 @@ import React, { useState } from 'react';
 import { Alert, View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput as RNTextInput } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialIcons } from '@expo/vector-icons';
-import { Button, Dialog, FAB, Portal, TextInput } from 'react-native-paper';
+import { Button, FAB, Portal } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import CrudDialog, { type CrudField } from '../../components/CrudDialog';
 import { useNavigation } from '@react-navigation/native';
 import { useDriveOnData } from '../../context/DriveOnDataContext';
 import { palette, spacing, borderRadius, shadows, gradients } from '../../theme/theme';
@@ -16,6 +17,14 @@ const AVATAR_COLORS = [
   ['#DC2626', '#F87171'],
   ['#D97706', '#FBBF24'],
 ] as [string, string][];
+
+const fields: CrudField[] = [
+  { key: 'nome', label: 'Nome', autoCapitalize: 'words' },
+  { key: 'telefone', label: 'Telefone', keyboardType: 'phone-pad' },
+  { key: 'email', label: 'E-mail', keyboardType: 'email-address', autoCapitalize: 'none' },
+  { key: 'cpf', label: 'CPF', keyboardType: 'number-pad' },
+  { key: 'observacoes', label: 'Observações', multiline: true },
+];
 
 export default function ClientesScreen() {
   const insets = useSafeAreaInsets();
@@ -78,8 +87,15 @@ export default function ClientesScreen() {
 
       {/* ── Header ── */}
       <LinearGradient colors={gradients.navyDark} style={[styles.topHeader, { paddingTop: insets.top + 12 }]}>
-        <Text style={styles.headerTitle}>Clientes</Text>
-        <Text style={styles.headerSub}>{clientesData.length} cadastrado{clientesData.length !== 1 ? 's' : ''}</Text>
+        <View style={styles.headerRow}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} activeOpacity={0.7}>
+            <MaterialIcons name="arrow-back" size={24} color={palette.white} />
+          </TouchableOpacity>
+          <View>
+            <Text style={styles.headerTitle}>Clientes</Text>
+            <Text style={styles.headerSub}>{clientesData.length} cadastrado{clientesData.length !== 1 ? 's' : ''}</Text>
+          </View>
+        </View>
       </LinearGradient>
 
       {/* ── Search (overlapping) ── */}
@@ -162,58 +178,16 @@ export default function ClientesScreen() {
         }}
       />
 
-      <Portal>
-        <Dialog visible={isFormOpen} onDismiss={() => !isSaving && setIsFormOpen(false)}>
-          <Dialog.Title>Novo cliente</Dialog.Title>
-          <Dialog.Content>
-            <TextInput
-              label="Nome"
-              value={form.nome}
-              onChangeText={(value) => updateForm('nome', value)}
-              mode="outlined"
-              style={styles.formInput}
-              autoCapitalize="words"
-            />
-            <TextInput
-              label="Telefone"
-              value={form.telefone}
-              onChangeText={(value) => updateForm('telefone', value)}
-              mode="outlined"
-              style={styles.formInput}
-              keyboardType="phone-pad"
-            />
-            <TextInput
-              label="E-mail"
-              value={form.email}
-              onChangeText={(value) => updateForm('email', value)}
-              mode="outlined"
-              style={styles.formInput}
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
-            <TextInput
-              label="CPF"
-              value={form.cpf}
-              onChangeText={(value) => updateForm('cpf', value)}
-              mode="outlined"
-              style={styles.formInput}
-              keyboardType="number-pad"
-            />
-            <TextInput
-              label="Observacoes"
-              value={form.observacoes}
-              onChangeText={(value) => updateForm('observacoes', value)}
-              mode="outlined"
-              style={styles.formInput}
-              multiline
-            />
-          </Dialog.Content>
-          <Dialog.Actions>
-            <Button disabled={isSaving} onPress={() => setIsFormOpen(false)}>Cancelar</Button>
-            <Button loading={isSaving} disabled={isSaving} onPress={handleCreateCliente}>Salvar</Button>
-          </Dialog.Actions>
-        </Dialog>
-      </Portal>
+      <CrudDialog
+        visible={isFormOpen}
+        title="Novo cliente"
+        fields={fields}
+        values={form}
+        isSaving={isSaving}
+        onChange={(key, value) => updateForm(key as any, value)}
+        onCancel={() => setIsFormOpen(false)}
+        onSave={handleCreateCliente}
+      />
 
       <FAB icon="plus" style={styles.fab} color={palette.white} onPress={() => setIsFormOpen(true)} />
     </View>
@@ -249,7 +223,19 @@ const styles = StyleSheet.create({
   empty: { alignItems: 'center', marginTop: 60, gap: spacing.sm },
   emptyTitle: { fontSize: 18, fontWeight: '700', color: palette.slate700 },
   emptyText: { fontSize: 14, color: palette.slate400 },
-  formInput: { marginBottom: spacing.sm, backgroundColor: palette.white },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  backBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
 
   fab: { position: 'absolute', bottom: 24, right: 24, backgroundColor: palette.navy800 },
 });

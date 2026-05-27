@@ -56,6 +56,13 @@ export default function HomeScreen() {
     clientes,
     veiculos,
   } = useDriveOnData();
+  console.log('[HomeScreen] Rendering with dashboard data:', {
+    receitaMes: d?.receitaMes,
+    osAbertas: d?.osAbertas,
+    clientesCount: clientes?.length,
+    veiculosCount: veiculos?.length,
+    ordensCount: ordens?.length
+  });
   const variacao = ((d.receitaMes - d.receitaAnterior) / d.receitaAnterior * 100).toFixed(1);
   const ordensAbertas = ordens.filter(o => o.status !== 'concluido');
   const agendamentosHoje = agendamentos.filter(a => dayjs(a.data).isSame(dayjs(), 'day'));

@@ -27,18 +27,25 @@ export function DriveOnDataProvider({ children }: { children: React.ReactNode })
   const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated) {
+      console.log('[DriveOnDataContext] refresh skipped: user is not authenticated.');
+      return;
+    }
 
+    console.log('[DriveOnDataContext] refresh starting data fetch...');
     setIsLoading(true);
     setError(null);
     try {
       const nextData = await fetchDriveOnData();
+      console.log('[DriveOnDataContext] refresh data fetch completed successfully.');
       setData(nextData);
     } catch (err) {
+      console.error('[DriveOnDataContext] refresh data fetch failed:', err);
       const message = err instanceof Error ? err.message : 'Nao foi possivel carregar os dados do DriveOn.';
       setError(message);
     } finally {
       setIsLoading(false);
+      console.log('[DriveOnDataContext] refresh finished, isLoading set to false.');
     }
   }, [isAuthenticated]);
 

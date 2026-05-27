@@ -1,16 +1,17 @@
 import { MD3LightTheme } from 'react-native-paper';
 
-// ─── Paleta Principal ───────────────────────────────────────────────────────
+// ─── Paleta Principal (Alinhada com o DriveOn WEB) ──────────────────────────
 export const palette = {
-  navy900: '#0F1E3C',
-  navy800: '#1E3A8A',
-  navy700: '#1D4ED8',
+  navy900: '#18202F', // brand.ink
+  navy800: '#1D4ED8', // brand.primary
+  navy700: '#173EA5', // brand.primaryDark
   navy600: '#2563EB',
   navy500: '#3B82F6',
   navy100: '#DBEAFE',
+  navy5:  '#EFF6FF',
   navy50:  '#EFF6FF',
 
-  amber500: '#F59E0B',
+  amber500: '#D97706', // brand.amber
   amber400: '#FBBF24',
   amber100: '#FEF3C7',
   amber50:  '#FFFBEB',
@@ -24,13 +25,13 @@ export const palette = {
   violet600: '#7C3AED',
   violet100: '#EDE9FE',
 
-  slate900: '#0F172A',
-  slate700: '#334155',
-  slate500: '#64748B',
+  slate900: '#18202F',
+  slate700: '#475569',
+  slate500: '#667085', // brand.muted
   slate400: '#94A3B8',
   slate300: '#CBD5E1',
-  slate200: '#E2E8F0',
-  slate100: '#F1F5F9',
+  slate200: '#DDE3EA', // brand.line
+  slate100: '#F5F7FA', // brand.page
   slate50:  '#F8FAFC',
 
   white: '#FFFFFF',
@@ -73,42 +74,42 @@ export const spacing = {
 
 // ─── Border Radius ──────────────────────────────────────────────────────────
 export const borderRadius = {
-  sm: 8,
-  md: 12,
-  lg: 16,
-  xl: 24,
+  sm: 6, // Alinhado com o Web (borderRadius: 6/8)
+  md: 8,
+  lg: 12,
+  xl: 16,
   full: 999,
 };
 
-// ─── Sombras ────────────────────────────────────────────────────────────────
+// ─── Sombras Neutras (Alinhadas com o Web) ──────────────────────────────────
 export const shadows = {
   sm: {
-    shadowColor: '#1E3A8A',
+    shadowColor: '#101828',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
     elevation: 2,
   },
   md: {
-    shadowColor: '#1E3A8A',
+    shadowColor: '#101828',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.10,
-    shadowRadius: 12,
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
     elevation: 4,
   },
   lg: {
-    shadowColor: '#1E3A8A',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.15,
-    shadowRadius: 20,
+    shadowColor: '#101828',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.10,
+    shadowRadius: 24,
     elevation: 8,
   },
 };
 
-// ─── Gradientes (para uso com LinearGradient) ───────────────────────────────
+// ─── Gradientes (Alinhados com o Web) ───────────────────────────────────────
 export const gradients = {
-  navyPrimary: ['#1E3A8A', '#1D4ED8'] as [string, string],
-  navyDark:    ['#0F1E3C', '#1E3A8A'] as [string, string],
-  amber:       ['#F59E0B', '#FBBF24'] as [string, string],
-  surface:     ['#FFFFFF', '#F8FAFC'] as [string, string],
+  navyPrimary: [palette.navy800, palette.navy700] as [string, string], // brand.primary para brand.primaryDark
+  navyDark:    [palette.navy900, '#26354A'] as [string, string], // brand.ink para um tom um pouco mais claro
+  amber:       [palette.amber500, palette.amber400] as [string, string],
+  surface:     [palette.white, palette.slate50] as [string, string],
 };

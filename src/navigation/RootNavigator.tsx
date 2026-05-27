@@ -26,6 +26,7 @@ const Stack = createNativeStackNavigator();
 
 export default function RootNavigator() {
   const { isAuthenticated, isLoading } = useAuth();
+  console.log('[RootNavigator] Render state:', { isAuthenticated, isLoading });
 
   if (isLoading) {
     return (

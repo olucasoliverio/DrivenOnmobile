@@ -95,6 +95,7 @@ export default function LoginScreen() {
             onChangeText={setSenha}
             mode="outlined"
             secureTextEntry={!senhaVisivel}
+            autoCapitalize="none"
             left={<TextInput.Icon icon="lock-outline" color={palette.navy800} />}
             right={
               <TextInput.Icon

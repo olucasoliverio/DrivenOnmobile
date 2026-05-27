@@ -19,9 +19,7 @@ export type PlateLookupResponse = {
   data?: unknown;
 };
 
-const env = ((globalThis as { process?: { env?: Env } }).process?.env ?? {}) as Env;
-
-const plateLookupPath = env.EXPO_PUBLIC_PLATE_LOOKUP_PATH ?? '/api/placas/consulta';
+const plateLookupPath = process.env.EXPO_PUBLIC_PLATE_LOOKUP_PATH ?? '/api/placas/consulta';
 const normalizedPlateLookupPath = plateLookupPath.replace(/^\/api\//, '/');
 
 export async function lookupPlate(request: PlateLookupRequest): Promise<PlateLookupResponse> {
