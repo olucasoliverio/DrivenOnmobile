@@ -1,4 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
+import { Keyboard } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import {
   View, Text, StyleSheet, TouchableOpacity,
   KeyboardAvoidingView, Platform, StatusBar, Dimensions,
@@ -12,14 +14,18 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { palette, spacing, borderRadius, shadows, gradients } from '../../theme/theme';
 
 const { height } = Dimensions.get('window');
+const GRADIENT_RATIO = 0.42;
+const GRADIENT_HEIGHT = height * GRADIENT_RATIO;
 
 export default function LoginScreen() {
   const insets = useSafeAreaInsets();
   const { signIn, isLoading } = useAuth();
-  const [email, setEmail] = useState('admin@driveon.com');
+  const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
   const [senhaVisivel, setSenhaVisivel] = useState(false);
   const [erro, setErro] = useState('');
+  const [keyboardOpen, setKeyboardOpen] = useState(false);
+  const scrollRef = useRef<any>(null);
 
   const handleLogin = async () => {
     setErro('');
@@ -35,7 +41,11 @@ export default function LoginScreen() {
   };
 
   return (
-    <KeyboardAvoidingView style={styles.root} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <KeyboardAvoidingView
+      style={styles.root}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'position'}
+      keyboardVerticalOffset={keyboardOpen ? Math.round(GRADIENT_HEIGHT / 2) : insets.top + 10}
+    >
       <StatusBar barStyle="light-content" backgroundColor={palette.navy900} />
 
       {/* Fundo gradiente */}
@@ -55,7 +65,15 @@ export default function LoginScreen() {
       </LinearGradient>
 
       {/* Card de login */}
-      <View style={styles.card}>
+      <KeyboardAwareScrollView
+        ref={r => (scrollRef.current = r)}
+        style={[styles.card]}
+        contentContainerStyle={{ flexGrow: 1, paddingHorizontal: spacing.xl, paddingTop: spacing.lg, paddingBottom: insets.bottom }}
+        enableOnAndroid={true}
+        keyboardShouldPersistTaps="handled"
+        extraScrollHeight={20}
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.cardHandle} />
         <Text style={styles.title}>Bem-vindo de volta</Text>
         <Text style={styles.subtitle}>Entre na sua conta para continuar</Text>
@@ -122,13 +140,8 @@ export default function LoginScreen() {
           </LinearGradient>
         </TouchableOpacity>
 
-        <View style={styles.hintBox}>
-          <MaterialIcons name="info-outline" size={14} color={palette.navy700} />
-          <Text style={styles.hintText}>
-            API configurada em <Text style={styles.hintBold}>{API_BASE_URL}</Text>
-          </Text>
-        </View>
-      </View>
+          {/* API base hint removed to avoid showing the configured URL on startup */}
+        </KeyboardAwareScrollView>
     </KeyboardAvoidingView>
   );
 }
@@ -139,7 +152,7 @@ const styles = StyleSheet.create({
     backgroundColor: palette.navy900,
   },
   gradient: {
-    height: height * 0.42,
+    height: GRADIENT_HEIGHT,
     justifyContent: 'flex-end',
     paddingBottom: spacing.xl,
     overflow: 'hidden',
@@ -189,13 +202,15 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   card: {
-    flex: 1,
     backgroundColor: palette.white,
     borderTopLeftRadius: 32,
     borderTopRightRadius: 32,
     padding: spacing.xl,
     paddingTop: spacing.lg,
+    minHeight: height * 0.6,
     ...shadows.lg,
+    zIndex: 20,
+    elevation: 20,
   },
   cardHandle: {
     width: 40,
