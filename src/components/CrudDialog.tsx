@@ -182,8 +182,8 @@ const styles = StyleSheet.create({
   },
   cancelBtn: {
     borderRadius: borderRadius.full,
-    borderColor: palette.navy800,
-    borderWidth: 1.5,
+    borderColor: palette.slate200,
+    borderWidth: 1,
   },
   saveBtn: {
     borderRadius: borderRadius.full,

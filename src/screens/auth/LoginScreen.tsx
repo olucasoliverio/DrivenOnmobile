@@ -69,7 +69,7 @@ export default function LoginScreen() {
           <Text style={styles.tagline}>Gestão de Oficinas Mecânicas</Text>
         </View>
 
-        {/* Card de login */}
+        {/* Card de login glassmórfico */}
         <View style={styles.formCard}>
           <Text style={styles.title}>Bem-vindo de volta</Text>
           <Text style={styles.subtitle}>Entre na sua conta para continuar</Text>
@@ -81,12 +81,18 @@ export default function LoginScreen() {
             mode="outlined"
             keyboardType="email-address"
             autoCapitalize="none"
-            left={<TextInput.Icon icon="email-outline" color={palette.navy800} />}
+            left={<TextInput.Icon icon="email-outline" color="rgba(255, 255, 255, 0.6)" />}
             style={styles.input}
-            outlineColor={palette.slate200}
-            activeOutlineColor={palette.navy800}
+            textColor={palette.white}
+            outlineColor="rgba(255, 255, 255, 0.12)"
+            activeOutlineColor="#60A5FA"
             outlineStyle={{ borderRadius: borderRadius.md }}
-            theme={{ colors: { background: palette.slate50 } }}
+            theme={{
+              colors: {
+                onSurfaceVariant: 'rgba(255, 255, 255, 0.4)',
+                primary: '#60A5FA',
+              }
+            }}
           />
 
           <TextInput
@@ -96,19 +102,25 @@ export default function LoginScreen() {
             mode="outlined"
             secureTextEntry={!senhaVisivel}
             autoCapitalize="none"
-            left={<TextInput.Icon icon="lock-outline" color={palette.navy800} />}
+            left={<TextInput.Icon icon="lock-outline" color="rgba(255, 255, 255, 0.6)" />}
             right={
               <TextInput.Icon
                 icon={senhaVisivel ? 'eye-off' : 'eye'}
                 onPress={() => setSenhaVisivel(!senhaVisivel)}
-                color={palette.slate400}
+                color="rgba(255, 255, 255, 0.6)"
               />
             }
             style={styles.input}
-            outlineColor={palette.slate200}
-            activeOutlineColor={palette.navy800}
+            textColor={palette.white}
+            outlineColor="rgba(255, 255, 255, 0.12)"
+            activeOutlineColor="#60A5FA"
             outlineStyle={{ borderRadius: borderRadius.md }}
-            theme={{ colors: { background: palette.slate50 } }}
+            theme={{
+              colors: {
+                onSurfaceVariant: 'rgba(255, 255, 255, 0.4)',
+                primary: '#60A5FA',
+              }
+            }}
           />
 
           {erro ? <HelperText type="error" visible style={styles.errorText}>{erro}</HelperText> : null}
@@ -121,7 +133,7 @@ export default function LoginScreen() {
             activeOpacity={0.85}
           >
             <LinearGradient
-              colors={gradients.navyPrimary}
+              colors={['#3B82F6', '#1D4ED8']}
               style={styles.loginBtnGradient}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
@@ -153,7 +165,7 @@ const styles = StyleSheet.create({
     width: 260,
     height: 260,
     borderRadius: 130,
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
     top: -80,
     right: -60,
   },
@@ -162,7 +174,7 @@ const styles = StyleSheet.create({
     width: 180,
     height: 180,
     borderRadius: 90,
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
     top: 60,
     left: -40,
   },
@@ -174,9 +186,9 @@ const styles = StyleSheet.create({
     width: 72,
     height: 72,
     borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.15)',
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.25)',
+    borderColor: 'rgba(255, 255, 255, 0.15)',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: spacing.md,
@@ -189,35 +201,38 @@ const styles = StyleSheet.create({
   },
   tagline: {
     fontSize: 13,
-    color: 'rgba(255,255,255,0.65)',
+    color: 'rgba(255, 255, 255, 0.55)',
     marginTop: 4,
     letterSpacing: 0.5,
   },
   formCard: {
-    backgroundColor: palette.white,
-    borderRadius: borderRadius.xl,
+    backgroundColor: 'rgba(24, 32, 47, 0.55)',
+    borderRadius: 24,
     padding: spacing.xl,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
     ...shadows.lg,
-    elevation: 8,
   },
   title: {
-    fontSize: 26,
+    fontSize: 24,
     fontWeight: '800',
-    color: palette.slate900,
-    marginBottom: 4,
+    color: palette.white,
+    marginBottom: 6,
   },
   subtitle: {
     fontSize: 14,
-    color: palette.slate500,
+    color: 'rgba(255, 255, 255, 0.5)',
     marginBottom: spacing.xl,
   },
   input: {
     marginBottom: spacing.md,
-    backgroundColor: palette.slate50,
+    backgroundColor: 'rgba(15, 23, 42, 0.35)',
+    fontSize: 15,
   },
   errorText: {
     marginTop: -8,
     marginBottom: spacing.sm,
+    color: '#EF4444',
   },
   loginBtn: {
     marginTop: spacing.sm,

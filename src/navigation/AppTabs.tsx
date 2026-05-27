@@ -9,6 +9,7 @@ import { palette, shadows } from '../theme/theme';
 import HomeStack from './stacks/HomeStack';
 import AgendaStack from './stacks/AgendaStack';
 import TarefasStack from './stacks/TarefasStack';
+import OrcamentosStack from './stacks/OrcamentosStack';
 import MenuStack from './stacks/MenuStack';
 
 const Tab = createBottomTabNavigator();
@@ -16,10 +17,11 @@ const Tab = createBottomTabNavigator();
 type IconName = keyof typeof MaterialIcons.glyphMap;
 
 const TABS: { name: string; label: string; icon: IconName; component: any }[] = [
-  { name: 'Dashboard', label: 'Início',   icon: 'home',    component: HomeStack },
-  { name: 'Agenda',    label: 'Agenda',   icon: 'event',   component: AgendaStack },
-  { name: 'OS',        label: 'Ordens',   icon: 'build',   component: TarefasStack },
-  { name: 'Mais',      label: 'Mais',     icon: 'grid-view', component: MenuStack },
+  { name: 'Dashboard', label: 'Início',     icon: 'home',          component: HomeStack },
+  { name: 'Agenda',    label: 'Agenda',     icon: 'event',         component: AgendaStack },
+  { name: 'OS',        label: 'Ordens',     icon: 'build',         component: TarefasStack },
+  { name: 'Orcamentos',label: 'Orçamentos', icon: 'request-quote',  component: OrcamentosStack },
+  { name: 'Menu',      label: 'Menu',       icon: 'menu',          component: MenuStack },
 ];
 
 export default function AppTabs() {

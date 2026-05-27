@@ -202,12 +202,12 @@ const styles = StyleSheet.create({
   headerSub: { fontSize: 13, color: 'rgba(255,255,255,0.6)', marginTop: 2 },
 
   searchContainer: { marginHorizontal: spacing.lg, marginTop: -16 },
-  searchBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: palette.white, borderRadius: borderRadius.lg, paddingHorizontal: spacing.md, paddingVertical: 12, gap: spacing.sm, ...shadows.md },
+  searchBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: palette.white, borderRadius: borderRadius.lg, paddingHorizontal: spacing.md, paddingVertical: 12, gap: spacing.sm, borderWidth: 1, borderColor: '#ECEFF2', ...shadows.md },
   searchInput: { flex: 1, fontSize: 14, color: palette.slate900 },
 
   listContent: { paddingHorizontal: spacing.lg, paddingTop: spacing.sm, paddingBottom: 90, gap: spacing.sm, marginTop: spacing.sm },
 
-  card: { backgroundColor: palette.white, borderRadius: borderRadius.lg, padding: spacing.md, flexDirection: 'row', gap: spacing.md, alignItems: 'flex-start', ...shadows.sm },
+  card: { backgroundColor: palette.white, borderRadius: borderRadius.lg, padding: spacing.md, flexDirection: 'row', gap: spacing.md, alignItems: 'flex-start', borderWidth: 1, borderColor: '#ECEFF2', ...shadows.sm },
   avatar: { width: 52, height: 52, borderRadius: 26, justifyContent: 'center', alignItems: 'center' },
   avatarText: { color: palette.white, fontWeight: '800', fontSize: 16 },
   cardBody: { flex: 1 },

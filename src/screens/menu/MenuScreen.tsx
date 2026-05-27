@@ -11,22 +11,22 @@ interface MenuItem {
   icon: keyof typeof MaterialIcons.glyphMap;
   label: string;
   screen: string;
-  color: string;
-  bg: string;
   desc: string;
 }
 
 const menuItems: MenuItem[] = [
-  { icon: 'people',          label: 'Clientes',      screen: 'Clientes',      color: palette.navy800,    bg: palette.navy50,      desc: 'Carteira de clientes' },
-  { icon: 'directions-car',  label: 'Veículos',      screen: 'Veiculos',      color: '#0891B2',          bg: '#ECFEFF',           desc: 'Frota cadastrada' },
-  { icon: 'request-quote',   label: 'Orçamentos',    screen: 'Orcamentos',    color: '#D97706',          bg: palette.amber50,     desc: 'Propostas e aprovações' },
-  { icon: 'payments',        label: 'Pagamentos',    screen: 'Pagamentos',    color: palette.emerald600, bg: palette.emerald100,  desc: 'Contas e extrato' },
-  { icon: 'inventory',       label: 'Estoque',       screen: 'Estoque',       color: palette.violet600,  bg: '#F5F3FF',           desc: 'Peças e produtos' },
-  { icon: 'local-shipping',  label: 'Fornecedores',  screen: 'Fornecedores',  color: '#EA580C',          bg: '#FFF7ED',           desc: 'Parceiros e contatos' },
-  { icon: 'handyman',        label: 'Serviços',      screen: 'Servicos',      color: '#475569',          bg: palette.slate100,    desc: 'Tabela de serviços' },
-  { icon: 'bar-chart',       label: 'Relatórios',    screen: 'Relatorios',    color: '#15803D',          bg: '#F0FDF4',           desc: 'Análises e métricas' },
-  { icon: 'settings',        label: 'Configurações', screen: 'Configuracoes', color: '#374151',          bg: '#F9FAFB',           desc: 'Dados da oficina' },
-  { icon: 'manage-accounts', label: 'Usuários',      screen: 'Usuarios',      color: '#9D174D',          bg: '#FFF1F2',           desc: 'Equipe e permissões' },
+  { 
+    icon: 'people',          
+    label: 'Clientes',      
+    screen: 'Clientes',      
+    desc: 'Visualizar e gerenciar clientes' 
+  },
+  { 
+    icon: 'directions-car',  
+    label: 'Veículos',      
+    screen: 'Veiculos',      
+    desc: 'Visualizar e cadastrar veículos' 
+  },
 ];
 
 export default function MenuScreen() {
@@ -37,9 +37,8 @@ export default function MenuScreen() {
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-
       {/* ── Profile Card com Gradiente ── */}
-      <LinearGradient colors={gradients.navyDark} style={[styles.profileHeader, { paddingTop: insets.top + 16 }]}>
+      <LinearGradient colors={gradients.navyDark} style={[styles.profileHeader, { paddingTop: insets.top + 20 }]}>
         <View style={styles.profileHeaderCircle} />
         <View style={styles.avatarCircle}>
           <Text style={styles.avatarText}>{initials}</Text>
@@ -52,36 +51,46 @@ export default function MenuScreen() {
         </View>
       </LinearGradient>
 
-      {/* ── Grid de Módulos ── */}
-      <View style={styles.gridSection}>
-        <Text style={styles.sectionTitle}>Módulos</Text>
-        <View style={styles.grid}>
-          {menuItems.map((item) => (
-            <TouchableOpacity
-              key={item.screen}
-              style={styles.gridItem}
-              onPress={() => navigation.navigate(item.screen)}
-              activeOpacity={0.7}
-            >
-              <View style={[styles.gridCard, { backgroundColor: item.bg }]}>
-                <View style={[styles.iconBox, { backgroundColor: item.color + '18' }]}>
-                  <MaterialIcons name={item.icon} size={26} color={item.color} />
+      {/* ── Lista de Opções (Menu Redesenhado) ── */}
+      <View style={styles.menuContainer}>
+        <Text style={styles.sectionTitle}>Cadastros e Registros</Text>
+        <View style={styles.listCard}>
+          {menuItems.map((item, index) => {
+            const isLast = index === menuItems.length - 1;
+            return (
+              <TouchableOpacity
+                key={item.screen}
+                style={[
+                  styles.listItem,
+                  !isLast && styles.listItemBorder
+                ]}
+                onPress={() => navigation.navigate(item.screen)}
+                activeOpacity={0.7}
+              >
+                <View style={styles.iconBox}>
+                  <MaterialIcons name={item.icon} size={22} color={palette.slate700} />
                 </View>
-                <Text style={[styles.gridLabel, { color: item.color }]}>{item.label}</Text>
-                <Text style={styles.gridDesc}>{item.desc}</Text>
-              </View>
-            </TouchableOpacity>
-          ))}
+                <View style={styles.itemContent}>
+                  <Text style={styles.itemLabel}>{item.label}</Text>
+                  <Text style={styles.itemDesc}>{item.desc}</Text>
+                </View>
+                <MaterialIcons name="chevron-right" size={20} color={palette.slate400} />
+              </TouchableOpacity>
+            );
+          })}
         </View>
       </View>
 
-      {/* ── Botão Sair ── */}
+      {/* ── Seção de Logout ── */}
       <View style={styles.logoutSection}>
         <TouchableOpacity style={styles.logoutBtn} onPress={signOut} activeOpacity={0.7}>
-          <View style={styles.logoutIcon}>
-            <MaterialIcons name="logout" size={18} color={palette.rose600} />
+          <View style={styles.logoutIconBox}>
+            <MaterialIcons name="logout" size={20} color={palette.rose600} />
           </View>
-          <Text style={styles.logoutText}>Sair da conta</Text>
+          <View style={styles.itemContent}>
+            <Text style={styles.logoutText}>Sair da conta</Text>
+            <Text style={styles.logoutDesc}>Encerrar a sessão ativa</Text>
+          </View>
           <MaterialIcons name="chevron-right" size={20} color={palette.rose600} />
         </TouchableOpacity>
       </View>
@@ -92,31 +101,157 @@ export default function MenuScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: palette.slate100 },
+  container: { 
+    flex: 1, 
+    backgroundColor: palette.slate100 
+  },
 
   // Profile Header
-  profileHeader: { paddingBottom: spacing.xl, alignItems: 'center', overflow: 'hidden' },
-  profileHeaderCircle: { position: 'absolute', width: 200, height: 200, borderRadius: 100, backgroundColor: 'rgba(255,255,255,0.05)', top: -60, right: -60 },
-  avatarCircle: { width: 72, height: 72, borderRadius: 36, backgroundColor: 'rgba(255,255,255,0.2)', borderWidth: 3, borderColor: 'rgba(255,255,255,0.4)', justifyContent: 'center', alignItems: 'center', marginBottom: spacing.sm },
-  avatarText: { color: palette.white, fontWeight: '800', fontSize: 22 },
-  userName: { fontSize: 18, fontWeight: '800', color: palette.white, marginBottom: 4 },
-  userEmail: { fontSize: 13, color: 'rgba(255,255,255,0.6)', marginBottom: spacing.sm },
-  perfilBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(245,158,11,0.2)', borderWidth: 1, borderColor: 'rgba(245,158,11,0.4)', paddingHorizontal: 12, paddingVertical: 5, borderRadius: borderRadius.full },
-  perfilText: { fontSize: 11, fontWeight: '700', color: palette.amber400, letterSpacing: 0.5 },
+  profileHeader: { 
+    paddingBottom: spacing.xl, 
+    alignItems: 'center', 
+    overflow: 'hidden' 
+  },
+  profileHeaderCircle: { 
+    position: 'absolute', 
+    width: 200, 
+    height: 200, 
+    borderRadius: 100, 
+    backgroundColor: 'rgba(255,255,255,0.03)', 
+    top: -60, 
+    right: -60 
+  },
+  avatarCircle: { 
+    width: 76, 
+    height: 76, 
+    borderRadius: 38, 
+    backgroundColor: 'rgba(255,255,255,0.15)', 
+    borderWidth: 2, 
+    borderColor: 'rgba(255,255,255,0.3)', 
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    marginBottom: spacing.sm 
+  },
+  avatarText: { 
+    color: palette.white, 
+    fontWeight: '800', 
+    fontSize: 24 
+  },
+  userName: { 
+    fontSize: 18, 
+    fontWeight: '800', 
+    color: palette.white, 
+    marginBottom: 4 
+  },
+  userEmail: { 
+    fontSize: 13, 
+    color: 'rgba(255,255,255,0.55)', 
+    marginBottom: spacing.sm 
+  },
+  perfilBadge: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    gap: 4, 
+    backgroundColor: 'rgba(245,158,11,0.15)', 
+    borderWidth: 1, 
+    borderColor: 'rgba(245,158,11,0.3)', 
+    paddingHorizontal: 12, 
+    paddingVertical: 4, 
+    borderRadius: borderRadius.full 
+  },
+  perfilText: { 
+    fontSize: 10, 
+    fontWeight: '700', 
+    color: palette.amber400, 
+    letterSpacing: 0.5 
+  },
 
-  // Grid
-  gridSection: { padding: spacing.lg, paddingBottom: 0 },
-  sectionTitle: { fontSize: 13, fontWeight: '700', color: palette.slate500, marginBottom: spacing.md, letterSpacing: 0.5, textTransform: 'uppercase' },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  gridItem: { width: '47%' },
-  gridCard: { borderRadius: borderRadius.lg, padding: spacing.md, borderWidth: 1, borderColor: 'rgba(0,0,0,0.04)', ...shadows.sm },
-  iconBox: { width: 48, height: 48, borderRadius: borderRadius.md, justifyContent: 'center', alignItems: 'center', marginBottom: spacing.sm },
-  gridLabel: { fontSize: 14, fontWeight: '700', marginBottom: 2 },
-  gridDesc: { fontSize: 11, color: palette.slate400, lineHeight: 15 },
+  // Menu List Container
+  menuContainer: { 
+    padding: spacing.md, 
+    paddingTop: spacing.lg 
+  },
+  sectionTitle: { 
+    fontSize: 12, 
+    fontWeight: '700', 
+    color: palette.slate500, 
+    marginBottom: spacing.sm, 
+    letterSpacing: 0.8, 
+    textTransform: 'uppercase' 
+  },
+  listCard: { 
+    backgroundColor: palette.white, 
+    borderRadius: borderRadius.lg, 
+    borderWidth: 1, 
+    borderColor: palette.slate200, 
+    overflow: 'hidden',
+    ...shadows.sm 
+  },
+  listItem: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    padding: spacing.md, 
+    backgroundColor: palette.white 
+  },
+  listItemBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: '#ECEFF2',
+  },
+  iconBox: { 
+    width: 40, 
+    height: 40, 
+    borderRadius: 20, 
+    backgroundColor: '#F1F5F9', 
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    marginRight: spacing.md 
+  },
+  itemContent: { 
+    flex: 1 
+  },
+  itemLabel: { 
+    fontSize: 15, 
+    fontWeight: '600', 
+    color: palette.navy900 
+  },
+  itemDesc: { 
+    fontSize: 12, 
+    color: palette.slate500, 
+    marginTop: 2 
+  },
 
-  // Logout
-  logoutSection: { padding: spacing.lg, paddingTop: spacing.md },
-  logoutBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF1F2', borderRadius: borderRadius.lg, padding: spacing.md, borderWidth: 1, borderColor: '#FECDD3', gap: spacing.sm },
-  logoutIcon: { width: 36, height: 36, borderRadius: 10, backgroundColor: '#FFE4E6', justifyContent: 'center', alignItems: 'center' },
-  logoutText: { flex: 1, color: palette.rose600, fontWeight: '700', fontSize: 15 },
+  // Logout Section
+  logoutSection: { 
+    paddingHorizontal: spacing.md, 
+    paddingTop: spacing.xs 
+  },
+  logoutBtn: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    backgroundColor: palette.white, 
+    borderRadius: borderRadius.lg, 
+    padding: spacing.md, 
+    borderWidth: 1, 
+    borderColor: '#FEE2E2',
+    ...shadows.sm 
+  },
+  logoutIconBox: { 
+    width: 40, 
+    height: 40, 
+    borderRadius: 20, 
+    backgroundColor: '#FEF2F2', 
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    marginRight: spacing.md 
+  },
+  logoutText: { 
+    fontSize: 15, 
+    fontWeight: '600', 
+    color: palette.rose600 
+  },
+  logoutDesc: { 
+    fontSize: 12, 
+    color: '#F87171', 
+    marginTop: 2 
+  },
 });
