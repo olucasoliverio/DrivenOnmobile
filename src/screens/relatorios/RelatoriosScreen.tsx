@@ -4,6 +4,7 @@ import { Surface } from 'react-native-paper';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useDriveOnData } from '../../context/DriveOnDataContext';
 import { colors, spacing, borderRadius } from '../../theme/theme';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const relatorios = [
   { id: 'geral', icon: 'assessment', label: 'Relatório Geral', desc: 'Visão completa da oficina', color: '#1B5E20' },
@@ -13,6 +14,7 @@ const relatorios = [
 ];
 
 export default function RelatoriosScreen() {
+  const insets = useSafeAreaInsets();
   const { dashboard, ordens, pagamentos } = useDriveOnData();
   const receitaTotal = pagamentos.filter(p => p.tipo === 'receber' && p.status === 'pago').reduce((a, p) => a + p.valor, 0);
   const despesaTotal = pagamentos.filter(p => p.tipo === 'pagar' && p.status === 'pago').reduce((a, p) => a + p.valor, 0);
@@ -20,7 +22,7 @@ export default function RelatoriosScreen() {
   const ticketMedio = osConcluidas > 0 ? ordens.filter(o => o.status === 'concluido').reduce((a, o) => a + o.valor, 0) / osConcluidas : 0;
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: insets.bottom + spacing.lg }}>
       {/* KPIs rápidos */}
       <View style={styles.kpiContainer}>
         <Surface style={styles.kpiCard} elevation={1}>
@@ -71,8 +73,6 @@ export default function RelatoriosScreen() {
           </View>
         ))}
       </Surface>
-
-      <View style={{ height: 32 }} />
     </ScrollView>
   );
 }

@@ -2,6 +2,7 @@ import React from 'react';
 import { View, StyleSheet, Platform } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { MaterialIcons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { palette, shadows } from '../theme/theme';
 
 // Stacks
@@ -22,13 +23,20 @@ const TABS: { name: string; label: string; icon: IconName; component: any }[] = 
 ];
 
 export default function AppTabs() {
+  const insets = useSafeAreaInsets();
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
         tabBarActiveTintColor: palette.navy800,
         tabBarInactiveTintColor: palette.slate400,
-        tabBarStyle: styles.tabBar,
+        tabBarStyle: [
+          styles.tabBar,
+          {
+            height: 60 + (insets.bottom || 8),
+            paddingBottom: insets.bottom || 8,
+          }
+        ],
         tabBarItemStyle: styles.tabBarItem,
         tabBarShowLabel: true,
         tabBarLabelStyle: styles.tabBarLabel,

@@ -3,6 +3,7 @@ import { Alert, View, Text, StyleSheet, FlatList, TextInput as RNTextInput, Touc
 import { Surface, FAB, IconButton } from 'react-native-paper';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDriveOnData } from '../../context/DriveOnDataContext';
 import { colors, spacing, borderRadius } from '../../theme/theme';
 import CrudDialog, { type CrudField } from '../../components/CrudDialog';
@@ -17,6 +18,7 @@ const fields: CrudField[] = [
 ];
 
 export default function VeiculosScreen() {
+  const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const { veiculos: veiculosData, clientes, createRecord, updateRecord, deleteRecord } = useDriveOnData();
@@ -89,6 +91,7 @@ export default function VeiculosScreen() {
     ]);
   };
 
+
   return (
     <View style={styles.container}>
       <View style={styles.searchBox}>
@@ -98,7 +101,7 @@ export default function VeiculosScreen() {
       <FlatList
         data={veiculos}
         keyExtractor={item => String(item.id)}
-        contentContainerStyle={{ padding: spacing.lg, gap: spacing.sm, paddingBottom: 80 }}
+        contentContainerStyle={{ padding: spacing.lg, gap: spacing.sm, paddingBottom: insets.bottom + 80 }}
         renderItem={({ item: v }) => {
           const cliente = clientes.find(c => c.id === v.clienteId);
           return (
@@ -128,9 +131,9 @@ export default function VeiculosScreen() {
           );
         }}
       />
-      <FAB icon="camera" style={styles.cameraFab} color="#FFF" onPress={() => navigation.navigate('PlacaScanner')} />
+      <FAB icon="camera" style={[styles.cameraFab, { bottom: insets.bottom + 92 }]} color="#FFF" onPress={() => navigation.navigate('PlacaScanner')} />
       <CrudDialog visible={dialogOpen} title={editingId ? 'Editar veiculo' : 'Novo veiculo'} fields={fields} values={form} isSaving={saving} onChange={(key, value) => setForm((current) => ({ ...current, [key]: value }))} onCancel={() => setDialogOpen(false)} onSave={save} />
-      <FAB icon="plus" style={styles.fab} color="#FFF" onPress={() => openForm()} />
+      <FAB icon="plus" style={[styles.fab, { bottom: insets.bottom + 24 }]} color="#FFF" onPress={() => openForm()} />
     </View>
   );
 }

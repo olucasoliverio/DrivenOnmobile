@@ -5,6 +5,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { useDriveOnData } from '../../context/DriveOnDataContext';
 import { colors, spacing, borderRadius } from '../../theme/theme';
 import CrudDialog, { type CrudField } from '../../components/CrudDialog';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const perfilConfig: Record<string, { label: string; color: string }> = {
   admin: { label: 'Administrador', color: '#1565C0' },
@@ -21,6 +22,7 @@ const fields: CrudField[] = [
 ];
 
 export default function UsuariosScreen() {
+  const insets = useSafeAreaInsets();
   const { usuarios, createRecord, updateRecord, deleteRecord } = useDriveOnData();
   const [dialogOpen, setDialogOpen] = React.useState(false);
   const [editingId, setEditingId] = React.useState<number | null>(null);
@@ -78,7 +80,7 @@ export default function UsuariosScreen() {
       <FlatList
         data={usuarios}
         keyExtractor={item => String(item.id)}
-        contentContainerStyle={{ padding: spacing.lg, gap: spacing.sm, paddingBottom: 80 }}
+        contentContainerStyle={{ padding: spacing.lg, gap: spacing.sm, paddingBottom: insets.bottom + 80 }}
         renderItem={({ item: u }) => {
           const perfil = perfilConfig[u.perfil] ?? { label: u.perfil, color: '#757575' };
           return (
@@ -111,7 +113,7 @@ export default function UsuariosScreen() {
         }}
       />
       <CrudDialog visible={dialogOpen} title={editingId ? 'Editar usuario' : 'Novo usuario'} fields={fields} values={form} isSaving={saving} onChange={(key, value) => setForm((current) => ({ ...current, [key]: value }))} onCancel={() => setDialogOpen(false)} onSave={save} />
-      <FAB icon="plus" style={styles.fab} color="#FFF" onPress={() => openForm()} />
+      <FAB icon="plus" style={[styles.fab, { bottom: insets.bottom + 24 }]} color="#FFF" onPress={() => openForm()} />
     </View>
   );
 }

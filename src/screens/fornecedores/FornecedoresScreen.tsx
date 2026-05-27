@@ -5,6 +5,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { useDriveOnData } from '../../context/DriveOnDataContext';
 import { colors, spacing, borderRadius } from '../../theme/theme';
 import CrudDialog, { type CrudField } from '../../components/CrudDialog';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const fields: CrudField[] = [
   { key: 'nome', label: 'Nome', autoCapitalize: 'words' },
@@ -14,6 +15,7 @@ const fields: CrudField[] = [
 ];
 
 export default function FornecedoresScreen() {
+  const insets = useSafeAreaInsets();
   const { fornecedores: fornecedoresData, createRecord, updateRecord, deleteRecord } = useDriveOnData();
   const [busca, setBusca] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -77,7 +79,7 @@ export default function FornecedoresScreen() {
       <FlatList
         data={fornecedores}
         keyExtractor={item => String(item.id)}
-        contentContainerStyle={{ padding: spacing.lg, gap: spacing.sm, paddingBottom: 80 }}
+        contentContainerStyle={{ padding: spacing.lg, gap: spacing.sm, paddingBottom: insets.bottom + 80 }}
         renderItem={({ item: f }) => (
           <TouchableOpacity onPress={() => openForm(f)} activeOpacity={0.8}>
           <Surface style={styles.card} elevation={1}>
@@ -106,7 +108,7 @@ export default function FornecedoresScreen() {
         onCancel={() => setDialogOpen(false)}
         onSave={save}
       />
-      <FAB icon="plus" style={styles.fab} color="#FFF" onPress={() => openForm()} />
+      <FAB icon="plus" style={[styles.fab, { bottom: insets.bottom + 24 }]} color="#FFF" onPress={() => openForm()} />
     </View>
   );
 }

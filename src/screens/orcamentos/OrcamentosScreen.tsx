@@ -6,6 +6,7 @@ import { useDriveOnData } from '../../context/DriveOnDataContext';
 import { colors, spacing, borderRadius } from '../../theme/theme';
 import dayjs from 'dayjs';
 import CrudDialog, { type CrudField } from '../../components/CrudDialog';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const statusConfig: Record<string, { label: string; color: string; bg: string }> = {
   aprovado: { label: 'Aprovado', color: '#2E7D32', bg: '#E8F5E9' },
@@ -22,6 +23,7 @@ const fields: CrudField[] = [
 ];
 
 export default function OrcamentosScreen() {
+  const insets = useSafeAreaInsets();
   const { orcamentos: orcamentosData, clientes, veiculos, createRecord, updateRecord, deleteRecord } = useDriveOnData();
   const [filtro, setFiltro] = useState<'todos' | 'aprovado' | 'pendente' | 'recusado'>('todos');
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -96,7 +98,7 @@ export default function OrcamentosScreen() {
       <FlatList
         data={orcamentos}
         keyExtractor={item => String(item.id)}
-        contentContainerStyle={{ padding: spacing.lg, gap: spacing.sm, paddingBottom: 80 }}
+        contentContainerStyle={{ padding: spacing.lg, gap: spacing.sm, paddingBottom: insets.bottom + 80 }}
         renderItem={({ item: o }) => {
           const cliente = clientes.find(c => c.id === o.clienteId);
           const veiculo = veiculos.find(v => v.id === o.veiculoId);
@@ -142,7 +144,7 @@ export default function OrcamentosScreen() {
         }}
       />
       <CrudDialog visible={dialogOpen} title={editingId ? 'Editar orcamento' : 'Novo orcamento'} fields={fields} values={form} isSaving={saving} onChange={(key, value) => setForm((current) => ({ ...current, [key]: value }))} onCancel={() => setDialogOpen(false)} onSave={save} />
-      <FAB icon="plus" style={styles.fab} color="#FFF" onPress={() => openForm()} />
+      <FAB icon="plus" style={[styles.fab, { bottom: insets.bottom + 24 }]} color="#FFF" onPress={() => openForm()} />
     </View>
   );
 }

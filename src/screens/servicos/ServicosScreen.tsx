@@ -5,6 +5,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { useDriveOnData } from '../../context/DriveOnDataContext';
 import { colors, spacing, borderRadius } from '../../theme/theme';
 import CrudDialog, { type CrudField } from '../../components/CrudDialog';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const categoriaCores: Record<string, string> = {
   'Revisão': '#1565C0',
@@ -23,6 +24,7 @@ const fields: CrudField[] = [
 ];
 
 export default function ServicosScreen() {
+  const insets = useSafeAreaInsets();
   const { servicos, createRecord, updateRecord, deleteRecord } = useDriveOnData();
   const [dialogOpen, setDialogOpen] = React.useState(false);
   const [editingId, setEditingId] = React.useState<number | null>(null);
@@ -78,7 +80,7 @@ export default function ServicosScreen() {
       <FlatList
         data={servicos}
         keyExtractor={item => String(item.id)}
-        contentContainerStyle={{ padding: spacing.lg, gap: spacing.sm, paddingBottom: 80 }}
+        contentContainerStyle={{ padding: spacing.lg, gap: spacing.sm, paddingBottom: insets.bottom + 80 }}
         renderItem={({ item: s }) => {
           const cor = categoriaCores[s.categoria] ?? colors.primary;
           return (
@@ -110,7 +112,7 @@ export default function ServicosScreen() {
         }}
       />
       <CrudDialog visible={dialogOpen} title={editingId ? 'Editar servico' : 'Novo servico'} fields={fields} values={form} isSaving={saving} onChange={(key, value) => setForm((current) => ({ ...current, [key]: value }))} onCancel={() => setDialogOpen(false)} onSave={save} />
-      <FAB icon="plus" style={styles.fab} color="#FFF" onPress={() => openForm()} />
+      <FAB icon="plus" style={[styles.fab, { bottom: insets.bottom + 24 }]} color="#FFF" onPress={() => openForm()} />
     </View>
   );
 }

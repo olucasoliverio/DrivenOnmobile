@@ -5,8 +5,10 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
 import { useDriveOnData } from '../../context/DriveOnDataContext';
 import { colors, spacing, borderRadius } from '../../theme/theme';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function ConfiguracoesScreen() {
+  const insets = useSafeAreaInsets();
   const { user, signOut } = useAuth();
   const { configuracoes } = useDriveOnData();
   const [config, setConfig] = useState(configuracoes);
@@ -16,7 +18,7 @@ export default function ConfiguracoesScreen() {
   }, [configuracoes]);
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: insets.bottom + spacing.lg }}>
       {/* Dados da Oficina */}
       <Surface style={styles.section} elevation={1}>
         <View style={styles.sectionHeader}>
@@ -67,8 +69,6 @@ export default function ConfiguracoesScreen() {
       <Button mode="outlined" textColor="#D32F2F" style={styles.logoutBtn} onPress={signOut}>
         Sair da Conta
       </Button>
-
-      <View style={{ height: 32 }} />
     </ScrollView>
   );
 }

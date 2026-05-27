@@ -7,6 +7,7 @@ import { useDriveOnData } from '../../context/DriveOnDataContext';
 import { palette, spacing, borderRadius, shadows, gradients } from '../../theme/theme';
 import dayjs from 'dayjs';
 import CrudDialog, { type CrudField } from '../../components/CrudDialog';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const STATUS_MAP: Record<string, { label: string; color: string }> = {
   em_andamento:    { label: 'Em Andamento', color: palette.navy700 },
@@ -29,6 +30,7 @@ const editFields: CrudField[] = [
 ];
 
 export default function ClienteDetalhesScreen() {
+  const insets = useSafeAreaInsets();
   const route = useRoute<any>();
   const navigation = useNavigation<any>();
   const { clienteId } = route.params ?? { clienteId: 1 };
@@ -83,7 +85,7 @@ export default function ClienteDetalhesScreen() {
   };
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: insets.bottom + spacing.lg }} showsVerticalScrollIndicator={false}>
 
       {/* ── Perfil do cliente ── */}
       <View style={styles.profileCard}>
@@ -199,8 +201,6 @@ export default function ClienteDetalhesScreen() {
       </View>
 
       <CrudDialog visible={dialogOpen} title="Editar cliente" fields={editFields} values={form} isSaving={saving} onChange={(key, value) => setForm((current) => ({ ...current, [key]: value }))} onCancel={() => setDialogOpen(false)} onSave={save} />
-
-      <View style={{ height: 32 }} />
     </ScrollView>
   );
 }
