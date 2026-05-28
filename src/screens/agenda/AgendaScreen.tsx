@@ -17,8 +17,8 @@ const { width } = Dimensions.get('window');
 
 const fields: CrudField[] = [
   { key: 'titulo', label: 'Titulo', autoCapitalize: 'sentences' },
-  { key: 'cliente_id', label: 'ID do cliente', keyboardType: 'number-pad' },
-  { key: 'veiculo_id', label: 'ID do veiculo', keyboardType: 'number-pad' },
+  { key: 'cliente_id', label: 'Cliente', keyboardType: 'number-pad' },
+  { key: 'veiculo_id', label: 'Veículo', keyboardType: 'number-pad' },
   { key: 'data_inicio', label: 'Inicio (YYYY-MM-DD HH:mm)' },
   { key: 'data_fim', label: 'Fim (YYYY-MM-DD HH:mm)' },
   { key: 'observacao', label: 'Observacao', multiline: true },

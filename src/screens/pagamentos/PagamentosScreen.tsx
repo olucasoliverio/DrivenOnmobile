@@ -16,8 +16,8 @@ const fields: CrudField[] = [
   { key: 'valor', label: 'Valor', keyboardType: 'decimal-pad' },
   { key: 'data_vencimento', label: 'Vencimento (YYYY-MM-DD)' },
   { key: 'descricao', label: 'Descricao', multiline: true },
-  { key: 'cliente_id', label: 'ID cliente (receber)', keyboardType: 'number-pad' },
-  { key: 'ordem_servico_id', label: 'ID OS (opcional)', keyboardType: 'number-pad' },
+  { key: 'cliente_id', label: 'Cliente', keyboardType: 'number-pad' },
+  { key: 'ordem_servico_id', label: 'Ordem de Serviço (opcional)', keyboardType: 'number-pad' },
   { key: 'metodo', label: 'Metodo (pix, dinheiro, cartao, boleto)' },
   { key: 'status', label: 'Status (pendente, pago)' },
 ];

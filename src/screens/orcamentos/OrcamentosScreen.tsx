@@ -17,8 +17,8 @@ const statusConfig: Record<string, { label: string; color: string; bg: string }>
 };
 
 const fields: CrudField[] = [
-  { key: 'clienteId', label: 'ID do cliente', keyboardType: 'number-pad' },
-  { key: 'veiculoId', label: 'ID do veiculo', keyboardType: 'number-pad' },
+  { key: 'clienteId', label: 'Cliente', keyboardType: 'number-pad' },
+  { key: 'veiculoId', label: 'Veículo', keyboardType: 'number-pad' },
   { key: 'descricao', label: 'Descricao', multiline: true },
   { key: 'valor', label: 'Valor', keyboardType: 'decimal-pad' },
   { key: 'data', label: 'Data (YYYY-MM-DD)' },

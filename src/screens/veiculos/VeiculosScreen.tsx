@@ -11,7 +11,7 @@ import ScreenHeader from '../../components/ScreenHeader';
 import EmptyState from '../../components/EmptyState';
 
 const fields: CrudField[] = [
-  { key: 'cliente_id', label: 'ID do cliente', keyboardType: 'number-pad' },
+  { key: 'cliente_id', label: 'Cliente', keyboardType: 'number-pad' },
   { key: 'marca', label: 'Marca', autoCapitalize: 'words' },
   { key: 'modelo', label: 'Modelo', autoCapitalize: 'words' },
   { key: 'placa', label: 'Placa', autoCapitalize: 'characters' },

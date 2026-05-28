@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { KeyboardTypeOptions, ScrollView, StyleSheet, View, Text, FlatList, TouchableOpacity } from 'react-native';
+import { KeyboardTypeOptions, ScrollView, StyleSheet, View, Text, FlatList, TouchableOpacity, KeyboardAvoidingView, Platform, Keyboard } from 'react-native';
 import { Button, Dialog, Portal, TextInput } from 'react-native-paper';
 import { MaterialIcons } from '@expo/vector-icons';
 import { palette, spacing, borderRadius, shadows } from '../theme/theme';
@@ -40,11 +40,20 @@ type FormInputProps = {
   field: CrudField;
   initialValue: string;
   onChange: (key: string, value: string) => void;
+  visible: boolean;
 };
 
-function FormInput({ field, initialValue, onChange }: FormInputProps) {
+function FormInput({ field, initialValue, onChange, visible }: FormInputProps) {
   const [value, setValue] = useState(initialValue);
   const [isFocused, setIsFocused] = useState(false);
+  const visibleRef = React.useRef(visible);
+
+  React.useEffect(() => {
+    if (visible && !visibleRef.current) {
+      setValue(initialValue);
+    }
+    visibleRef.current = visible;
+  }, [visible, initialValue]);
 
   React.useEffect(() => {
     if (!isFocused) {
@@ -168,6 +177,33 @@ export default function CrudDialog({
   const { clientes, veiculos, usuarios, funcionarios } = useDriveOnData();
   const [activePickerKey, setActivePickerKey] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+  React.useEffect(() => {
+    const showSubscription = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      (e) => {
+        setKeyboardHeight(e.endCoordinates.height);
+      }
+    );
+    const hideSubscription = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => {
+        setKeyboardHeight(0);
+      }
+    );
+
+    return () => {
+      showSubscription.remove();
+      hideSubscription.remove();
+    };
+  }, []);
+
+  React.useEffect(() => {
+    if (!visible) {
+      setKeyboardHeight(0);
+    }
+  }, [visible]);
 
   const getFilteredOptions = () => {
     const q = searchQuery.toLowerCase();
@@ -237,85 +273,108 @@ export default function CrudDialog({
   return (
     <>
       <Portal>
-        <Dialog visible={visible} onDismiss={() => !isSaving && onCancel()} style={styles.dialog}>
-          {/* Custom Header with icon circle */}
-          <View style={styles.header}>
-            <View style={styles.iconCircle}>
-              <MaterialIcons name={getHeaderIcon(title)} size={22} color={palette.navy800} />
+        <Dialog
+          visible={visible}
+          onDismiss={() => !isSaving && onCancel()}
+          dismissable={false}
+          dismissableBackButton={true}
+          style={[
+            styles.dialog,
+            keyboardHeight > 0 && { transform: [{ translateY: -keyboardHeight / 2 }] }
+          ]}
+        >
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
+            style={{ width: '100%' }}
+          >
+            {/* Custom Header with icon circle */}
+            <View style={styles.header}>
+              <View style={styles.iconCircle}>
+                <MaterialIcons name={getHeaderIcon(title)} size={22} color={palette.navy800} />
+              </View>
+              <Text style={styles.headerTitle}>{title}</Text>
             </View>
-            <Text style={styles.headerTitle}>{title}</Text>
-          </View>
 
-          {/* ScrollArea container for scrollable inputs */}
-          <View style={styles.scrollArea}>
-            <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={true} keyboardShouldPersistTaps="handled">
-              {fields.map((field) => {
-                if (isSelectField(field.key)) {
+            {/* ScrollArea container for scrollable inputs */}
+            <View style={styles.scrollArea}>
+              <ScrollView
+                style={[
+                  styles.scrollView,
+                  { maxHeight: keyboardHeight > 0 ? 300 : 520 }
+                ]}
+                showsVerticalScrollIndicator={true}
+                keyboardShouldPersistTaps="handled"
+              >
+                {fields.map((field) => {
+                  if (isSelectField(field.key)) {
+                    return (
+                      <TouchableOpacity
+                        key={field.key}
+                        onPress={() => {
+                          setActivePickerKey(field.key);
+                          setSearchQuery('');
+                        }}
+                        activeOpacity={0.7}
+                        style={styles.selectWrapper}
+                      >
+                        <View pointerEvents="none">
+                          <TextInput
+                            label={field.label}
+                            value={getSelectedLabel(field.key, values[field.key], clientes, veiculos, funcionarios)}
+                            mode="outlined"
+                            style={styles.input}
+                            activeOutlineColor={palette.navy800}
+                            outlineColor={palette.slate200}
+                            outlineStyle={{ borderRadius: borderRadius.md }}
+                            theme={{ colors: { background: palette.slate50 } }}
+                            left={<TextInput.Icon icon={getFieldIcon(field.key)} color={palette.slate400} />}
+                            right={<TextInput.Icon icon="chevron-down" color={palette.slate400} />}
+                          />
+                        </View>
+                      </TouchableOpacity>
+                    );
+                  }
+
                   return (
-                    <TouchableOpacity
+                    <FormInput
                       key={field.key}
-                      onPress={() => {
-                        setActivePickerKey(field.key);
-                        setSearchQuery('');
-                      }}
-                      activeOpacity={0.7}
-                      style={styles.selectWrapper}
-                    >
-                      <View pointerEvents="none">
-                        <TextInput
-                          label={field.label}
-                          value={getSelectedLabel(field.key, values[field.key], clientes, veiculos, funcionarios)}
-                          mode="outlined"
-                          style={styles.input}
-                          activeOutlineColor={palette.navy800}
-                          outlineColor={palette.slate200}
-                          outlineStyle={{ borderRadius: borderRadius.md }}
-                          theme={{ colors: { background: palette.slate50 } }}
-                          left={<TextInput.Icon icon={getFieldIcon(field.key)} color={palette.slate400} />}
-                          right={<TextInput.Icon icon="chevron-down" color={palette.slate400} />}
-                        />
-                      </View>
-                    </TouchableOpacity>
+                      field={field}
+                      initialValue={values[field.key] ?? ''}
+                      onChange={onChange}
+                      visible={visible}
+                    />
                   );
-                }
+                })}
+              </ScrollView>
+            </View>
 
-                return (
-                  <FormInput
-                    key={field.key}
-                    field={field}
-                    initialValue={values[field.key] ?? ''}
-                    onChange={onChange}
-                  />
-                );
-              })}
-            </ScrollView>
-          </View>
-
-          {/* Action buttons */}
-          <View style={styles.actions}>
-            <Button
-              mode="outlined"
-              disabled={isSaving}
-              onPress={onCancel}
-              style={styles.cancelBtn}
-              textColor={palette.navy800}
-              labelStyle={styles.btnLabel}
-            >
-              Cancelar
-            </Button>
-            <Button
-              mode="contained"
-              loading={isSaving}
-              disabled={isSaving}
-              onPress={onSave}
-              style={styles.saveBtn}
-              buttonColor={palette.navy800}
-              textColor={palette.white}
-              labelStyle={styles.btnLabel}
-            >
-              Salvar
-            </Button>
-          </View>
+            {/* Action buttons */}
+            <View style={styles.actions}>
+              <Button
+                mode="outlined"
+                disabled={isSaving}
+                onPress={onCancel}
+                style={styles.cancelBtn}
+                textColor={palette.navy800}
+                labelStyle={styles.btnLabel}
+              >
+                Cancelar
+              </Button>
+              <Button
+                mode="contained"
+                loading={isSaving}
+                disabled={isSaving}
+                onPress={onSave}
+                style={styles.saveBtn}
+                buttonColor={palette.navy800}
+                textColor={palette.white}
+                labelStyle={styles.btnLabel}
+              >
+                Salvar
+              </Button>
+            </View>
+          </KeyboardAvoidingView>
         </Dialog>
       </Portal>
 

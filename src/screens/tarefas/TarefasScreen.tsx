@@ -15,9 +15,9 @@ import EmptyState from '../../components/EmptyState';
 type StatusKey = 'todos' | 'em_andamento' | 'aguardando' | 'aguardando_pecas' | 'concluido';
 
 const osFields: CrudField[] = [
-  { key: 'cliente_id', label: 'ID do cliente', keyboardType: 'number-pad' },
-  { key: 'veiculo_id', label: 'ID do veiculo', keyboardType: 'number-pad' },
-  { key: 'funcionario_id', label: 'ID do mecanico/funcionario', keyboardType: 'number-pad' },
+  { key: 'cliente_id', label: 'Cliente', keyboardType: 'number-pad' },
+  { key: 'veiculo_id', label: 'Veículo', keyboardType: 'number-pad' },
+  { key: 'funcionario_id', label: 'Funcionário', keyboardType: 'number-pad' },
   { key: 'observacoes', label: 'Descricao', multiline: true },
   { key: 'valor_total', label: 'Valor total', keyboardType: 'decimal-pad' },
 ];
