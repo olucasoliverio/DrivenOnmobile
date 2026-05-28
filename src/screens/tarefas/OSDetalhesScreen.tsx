@@ -1,7 +1,7 @@
 import React from 'react';
 import { Alert, Linking, View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { MaterialIcons } from '@expo/vector-icons';
+import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRoute } from '@react-navigation/native';
 import { useDriveOnData } from '../../context/DriveOnDataContext';
 import { palette, spacing, borderRadius, shadows, gradients } from '../../theme/theme';
@@ -9,6 +9,7 @@ import dayjs from 'dayjs';
 import { API_BASE_URL } from '../../api/api';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import ScreenHeader from '../../components/ScreenHeader';
+import { sendWelcomeMessage, sendOSCompletedMessage, sendEstimateMessage } from '../../services/whatsappService';
 
 const STATUS_MAP: Record<string, { label: string; color: string; bg: string; icon: keyof typeof MaterialIcons.glyphMap }> = {
   em_andamento:    { label: 'Em Andamento',  color: palette.navy700,    bg: palette.navy50,     icon: 'autorenew' },
@@ -17,7 +18,7 @@ const STATUS_MAP: Record<string, { label: string; color: string; bg: string; ico
   concluido:       { label: 'Concluído',     color: palette.emerald600, bg: palette.emerald100, icon: 'check-circle' },
 };
 
-function InfoRow({ icon, label, value }: { icon: keyof typeof MaterialIcons.glyphMap; label: string; value: string }) {
+function InfoRow({ icon, label, value, rightElement }: { icon: keyof typeof MaterialIcons.glyphMap; label: string; value: string; rightElement?: React.ReactNode }) {
   return (
     <View style={styles.infoRow}>
       <View style={styles.infoIconBox}>
@@ -27,6 +28,7 @@ function InfoRow({ icon, label, value }: { icon: keyof typeof MaterialIcons.glyp
         <Text style={styles.infoLabel}>{label}</Text>
         <Text style={styles.infoValue}>{value}</Text>
       </View>
+      {rightElement}
     </View>
   );
 }
@@ -78,6 +80,59 @@ export default function OSDetalhesScreen() {
     else Alert.alert('PDF indisponivel', url);
   };
 
+  const handleWhatsAppPress = () => {
+    if (!cliente?.telefone) {
+      Alert.alert('Telefone indisponível', 'Este cliente não possui telefone cadastrado.');
+      return;
+    }
+
+    const options = [
+      {
+        text: 'Enviar Orçamento',
+        onPress: () => {
+          const veiculoNome = veiculo ? `${veiculo.marca} ${veiculo.modelo}` : 'Veículo';
+          sendEstimateMessage(
+            cliente.nome,
+            cliente.telefone,
+            os.id,
+            veiculoNome,
+            os.descricao,
+            os.valor
+          );
+        },
+      },
+      {
+        text: 'Avisar Manutenção Pronta',
+        onPress: () => {
+          const veiculoNome = veiculo ? `${veiculo.marca} ${veiculo.modelo}` : 'Veículo';
+          sendOSCompletedMessage(
+            cliente.nome,
+            cliente.telefone,
+            veiculoNome,
+            veiculo?.placa ?? '—',
+            os.valor
+          );
+        },
+      },
+      {
+        text: 'Enviar Boas-vindas',
+        onPress: () => {
+          sendWelcomeMessage(cliente.nome, cliente.telefone);
+        },
+      },
+      {
+        text: 'Cancelar',
+        style: 'cancel' as const,
+      },
+    ];
+
+    Alert.alert(
+      'Enviar Mensagem no WhatsApp',
+      'Escolha qual mensagem enviar para o cliente:',
+      options
+    );
+  };
+
   return (
     <View style={{ flex: 1, backgroundColor: palette.slate100 }}>
       <ScreenHeader title="Detalhes da OS" showBack={true} />
@@ -108,7 +163,22 @@ export default function OSDetalhesScreen() {
           <Text style={styles.sectionTitle}>Cliente</Text>
         </View>
         <InfoRow icon="person-outline" label="Nome" value={cliente?.nome ?? '—'} />
-        <InfoRow icon="phone" label="Telefone" value={cliente?.telefone ?? '—'} />
+        <InfoRow 
+          icon="phone" 
+          label="Telefone" 
+          value={cliente?.telefone ?? '—'} 
+          rightElement={
+            cliente?.telefone ? (
+              <TouchableOpacity
+                onPress={handleWhatsAppPress}
+                style={styles.whatsAppIconButton}
+                activeOpacity={0.7}
+              >
+                <MaterialCommunityIcons name="whatsapp" size={18} color={palette.white} />
+              </TouchableOpacity>
+            ) : undefined
+          }
+        />
         <InfoRow icon="email" label="E-mail" value={cliente?.email ?? '—'} />
       </View>
 
@@ -170,6 +240,12 @@ export default function OSDetalhesScreen() {
           <MaterialIcons name="picture-as-pdf" size={18} color={palette.navy800} />
           <Text style={styles.btnOutlineText}>Gerar PDF</Text>
         </TouchableOpacity>
+        {cliente?.telefone ? (
+          <TouchableOpacity style={styles.btnWhatsApp} activeOpacity={0.8} onPress={handleWhatsAppPress}>
+            <MaterialCommunityIcons name="whatsapp" size={18} color={palette.white} />
+            <Text style={styles.btnWhatsAppText}>Notificar no WhatsApp</Text>
+          </TouchableOpacity>
+        ) : null}
       </View>
     </ScrollView>
     </View>
@@ -219,4 +295,30 @@ const styles = StyleSheet.create({
   btnPrimaryText: { fontSize: 15, fontWeight: '700', color: palette.white },
   btnOutline: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, paddingVertical: 14, borderRadius: borderRadius.md, borderWidth: 1.5, borderColor: palette.navy800, backgroundColor: palette.white },
   btnOutlineText: { fontSize: 15, fontWeight: '700', color: palette.navy800 },
+  btnWhatsApp: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    paddingVertical: 14,
+    borderRadius: borderRadius.md,
+    backgroundColor: '#25D366',
+    ...shadows.sm,
+    marginTop: spacing.xs,
+  },
+  btnWhatsAppText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: palette.white,
+  },
+  whatsAppIconButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: '#25D366',
+    justifyContent: 'center',
+    alignItems: 'center',
+    alignSelf: 'center',
+    ...shadows.sm,
+  },
 });

@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { Alert, View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { MaterialIcons } from '@expo/vector-icons';
+import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useDriveOnData } from '../../context/DriveOnDataContext';
 import { palette, spacing, borderRadius, shadows, gradients } from '../../theme/theme';
 import dayjs from 'dayjs';
 import CrudDialog, { type CrudField } from '../../components/CrudDialog';
+import { sendWelcomeMessage } from '../../services/whatsappService';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import ScreenHeader from '../../components/ScreenHeader';
 
@@ -137,6 +138,15 @@ export default function ClienteDetalhesScreen() {
               <Text style={styles.infoLabel}>{item.label}</Text>
               <Text style={styles.infoValue}>{item.value}</Text>
             </View>
+            {item.label === 'Telefone' && cliente.telefone && (
+              <TouchableOpacity
+                onPress={() => sendWelcomeMessage(cliente.nome, cliente.telefone)}
+                style={styles.whatsAppIconButton}
+                activeOpacity={0.7}
+              >
+                <MaterialCommunityIcons name="whatsapp" size={18} color={palette.white} />
+              </TouchableOpacity>
+            )}
           </View>
         ))}
       </View>
@@ -275,6 +285,16 @@ const styles = StyleSheet.create({
   infoIconBox: { width: 32, height: 32, borderRadius: 8, backgroundColor: 'rgba(37, 99, 235, 0.05)', justifyContent: 'center', alignItems: 'center' },
   infoLabel: { fontSize: 11, color: palette.slate400, fontWeight: '700', marginBottom: 1 },
   infoValue: { fontSize: 14, color: palette.slate900, fontWeight: '600' },
+  whatsAppIconButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: '#25D366',
+    justifyContent: 'center',
+    alignItems: 'center',
+    alignSelf: 'center',
+    ...shadows.sm,
+  },
 
   // Veículos
   veiculoCard: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.sm, borderBottomWidth: 1, borderBottomColor: 'rgba(15, 23, 42, 0.04)' },

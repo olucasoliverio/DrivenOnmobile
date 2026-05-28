@@ -5,6 +5,7 @@ import {
   emptyDriveOnData,
   type ClientePayload,
   type DriveOnData,
+  type Cliente,
 } from '../services/driveOnData';
 import { useAuth } from './AuthContext';
 
@@ -12,7 +13,7 @@ type DriveOnDataContextData = DriveOnData & {
   isLoading: boolean;
   error: string | null;
   refresh: () => Promise<void>;
-  createCliente: (payload: ClientePayload) => Promise<void>;
+  createCliente: (payload: ClientePayload) => Promise<Cliente>;
   createRecord: (path: string, payload: Record<string, unknown>) => Promise<void>;
   updateRecord: (path: string, id: number, payload: Record<string, unknown>) => Promise<void>;
   deleteRecord: (path: string, id: number) => Promise<void>;
@@ -60,6 +61,7 @@ export function DriveOnDataProvider({ children }: { children: React.ReactNode })
       },
     }));
     void refresh();
+    return cliente;
   }, [refresh]);
 
   const createRecord = useCallback(async (path: string, payload: Record<string, unknown>) => {

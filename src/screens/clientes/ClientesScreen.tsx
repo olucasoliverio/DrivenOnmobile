@@ -8,6 +8,7 @@ import { useDriveOnData } from '../../context/DriveOnDataContext';
 import { palette, spacing, borderRadius, shadows } from '../../theme/theme';
 import ScreenHeader from '../../components/ScreenHeader';
 import EmptyState from '../../components/EmptyState';
+import { sendWelcomeMessage } from '../../services/whatsappService';
 
 
 
@@ -55,7 +56,7 @@ export default function ClientesScreen() {
 
     setIsSaving(true);
     try {
-      await createCliente({
+      const novoCliente = await createCliente({
         nome: form.nome.trim(),
         telefone: form.telefone.trim(),
         email: form.email.trim(),
@@ -64,6 +65,22 @@ export default function ClientesScreen() {
       });
       resetForm();
       setIsFormOpen(false);
+
+      if (novoCliente?.telefone) {
+        Alert.alert(
+          'Cliente Cadastrado!',
+          'Deseja enviar uma mensagem de boas-vindas no WhatsApp do cliente?',
+          [
+            { text: 'Não', style: 'cancel' },
+            {
+              text: 'Sim, enviar',
+              onPress: () => {
+                sendWelcomeMessage(novoCliente.nome, novoCliente.telefone);
+              },
+            },
+          ]
+        );
+      }
     } catch (error: any) {
       Alert.alert(
         'Não foi possível cadastrar',

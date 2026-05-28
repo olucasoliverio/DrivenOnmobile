@@ -9,6 +9,7 @@ import CrudDialog, { type CrudField } from '../../components/CrudDialog';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import ScreenHeader from '../../components/ScreenHeader';
 import EmptyState from '../../components/EmptyState';
+import { sendEstimateMessage } from '../../services/whatsappService';
 
 const statusConfig: Record<string, { label: string; color: string; bg: string }> = {
   aprovado: { label: 'Aprovado', color: '#2E7D32', bg: '#E8F5E9' },
@@ -125,7 +126,28 @@ export default function OrcamentosScreen() {
             <Surface style={styles.card} elevation={1}>
               <View style={styles.cardHeader}>
                 <Text style={styles.orcNum}>ORC #{String(o.id).padStart(3, '0')}</Text>
-                <IconButton icon="delete-outline" size={18} iconColor="#D32F2F" onPress={() => remove(o.id)} />
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  {cliente?.telefone ? (
+                    <IconButton
+                      icon="whatsapp"
+                      size={18}
+                      iconColor="#25D366"
+                      onPress={() => {
+                        const veiculoNome = veiculo ? `${veiculo.marca} ${veiculo.modelo}` : 'Veículo';
+                        const firstItemDesc = o.itens?.[0]?.descricao ?? 'Serviço da oficina';
+                        sendEstimateMessage(
+                          cliente.nome,
+                          cliente.telefone,
+                          o.id,
+                          veiculoNome,
+                          firstItemDesc,
+                          o.total
+                        );
+                      }}
+                    />
+                  ) : null}
+                  <IconButton icon="delete-outline" size={18} iconColor="#D32F2F" onPress={() => remove(o.id)} />
+                </View>
                 <View style={[styles.badge, { backgroundColor: st.bg }]}>
                   <Text style={[styles.badgeText, { color: st.color }]}>{st.label}</Text>
                 </View>
