@@ -4,6 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDriveOnData } from '../../context/DriveOnDataContext';
+import EmptyState from '../../components/EmptyState';
 import { palette, spacing, borderRadius, shadows, gradients } from '../../theme/theme';
 import dayjs from 'dayjs';
 import 'dayjs/locale/pt-br';
@@ -165,7 +166,10 @@ export default function HomeScreen() {
             <Text style={[styles.sectionBadgeText, { color: '#B45309' }]}>{ordensAbertas.length} abertas</Text>
           </View>
         </View>
-        {ordensAbertas.map((os) => {
+        {ordensAbertas.length === 0 ? (
+          <EmptyState icon="build" message="Nenhuma OS em andamento" />
+        ) : (
+          ordensAbertas.map((os) => {
           const cliente = clientes.find(c => c.id === os.clienteId);
           const veiculo = veiculos.find(v => v.id === os.veiculoId);
           return (
@@ -195,7 +199,7 @@ export default function HomeScreen() {
               </View>
             </TouchableOpacity>
           );
-        })}
+        }))}
       </View>
 
       {/* ── Agenda de Hoje (Estilo Timeline Moderno) ── */}
@@ -209,10 +213,7 @@ export default function HomeScreen() {
           </View>
         </View>
         {agendamentosHoje.length === 0 ? (
-          <View style={styles.emptyCard}>
-            <MaterialIcons name="event-available" size={28} color={palette.slate300} />
-            <Text style={styles.emptyText}>Nenhum agendamento para hoje</Text>
-          </View>
+          <EmptyState icon="event-available" message="Nenhum agendamento para hoje" />
         ) : (
           agendamentosHoje.map((ag) => {
             const cliente = clientes.find(c => c.id === ag.clienteId);

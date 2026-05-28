@@ -7,6 +7,7 @@ import { colors, spacing, borderRadius } from '../../theme/theme';
 import dayjs from 'dayjs';
 import CrudDialog, { type CrudField } from '../../components/CrudDialog';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import EmptyState from '../../components/EmptyState';
 
 type Tab = 'extrato' | 'pagar' | 'receber';
 
@@ -130,7 +131,20 @@ export default function PagamentosScreen() {
       <FlatList
         data={dados}
         keyExtractor={item => String(item.id)}
-        contentContainerStyle={{ padding: spacing.lg, gap: spacing.sm, paddingBottom: 160 }}
+        contentContainerStyle={{ padding: spacing.lg, gap: spacing.sm, paddingBottom: 160, flexGrow: 1 }}
+        ListEmptyComponent={() => (
+          <EmptyState
+            icon="payment"
+            message={
+              tab === 'extrato'
+                ? 'Nenhum lançamento no extrato'
+                : tab === 'pagar'
+                ? 'Nenhuma conta a pagar'
+                : 'Nenhuma conta a receber'
+            }
+            isFullPage
+          />
+        )}
         renderItem={({ item: p }) => {
           const isReceber = p.tipo === 'receber';
           const isPago = p.status === 'pago';

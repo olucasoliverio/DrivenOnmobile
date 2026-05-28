@@ -6,6 +6,7 @@ import { useDriveOnData } from '../../context/DriveOnDataContext';
 import { colors, spacing, borderRadius } from '../../theme/theme';
 import CrudDialog, { type CrudField } from '../../components/CrudDialog';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import EmptyState from '../../components/EmptyState';
 
 const perfilConfig: Record<string, { label: string; color: string }> = {
   admin: { label: 'Administrador', color: '#1565C0' },
@@ -80,7 +81,10 @@ export default function UsuariosScreen() {
       <FlatList
         data={usuarios}
         keyExtractor={item => String(item.id)}
-        contentContainerStyle={{ padding: spacing.lg, gap: spacing.sm, paddingBottom: 160 }}
+        contentContainerStyle={{ padding: spacing.lg, gap: spacing.sm, paddingBottom: 160, flexGrow: 1 }}
+        ListEmptyComponent={() => (
+          <EmptyState icon="people" message="Nenhum usuário cadastrado" isFullPage />
+        )}
         renderItem={({ item: u }) => {
           const perfil = perfilConfig[u.perfil] ?? { label: u.perfil, color: '#757575' };
           return (

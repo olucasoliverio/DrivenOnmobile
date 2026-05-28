@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { Alert, View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput as RNTextInput } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient'; // usado nos avatares
 import { MaterialIcons } from '@expo/vector-icons';
 import { FAB } from 'react-native-paper';
 import CrudDialog, { type CrudField } from '../../components/CrudDialog';
@@ -8,15 +7,9 @@ import { useNavigation } from '@react-navigation/native';
 import { useDriveOnData } from '../../context/DriveOnDataContext';
 import { palette, spacing, borderRadius, shadows } from '../../theme/theme';
 import ScreenHeader from '../../components/ScreenHeader';
+import EmptyState from '../../components/EmptyState';
 
-// Cores de avatar por índice (rotação com gradientes premium)
-const AVATAR_COLORS = [
-  [palette.navy800, palette.navy600],
-  ['#8B5CF6', '#A78BFA'],
-  ['#10B981', '#34D399'],
-  ['#EF4444', '#F87171'],
-  ['#F59E0B', '#FBBF24'],
-] as [string, string][];
+
 
 const fields: CrudField[] = [
   { key: 'nome', label: 'Nome', autoCapitalize: 'words' },
@@ -114,57 +107,62 @@ export default function ClientesScreen() {
       <FlatList
         data={clientes}
         keyExtractor={item => String(item.id)}
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={[styles.listContent, { flexGrow: 1 }]}
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={() => (
-          <View style={styles.empty}>
-            <MaterialIcons name="people-outline" size={56} color={palette.slate300} />
-            <Text style={styles.emptyTitle}>Nenhum cliente</Text>
-            <Text style={styles.emptyText}>Tente ajustar os termos da busca</Text>
-          </View>
+          <EmptyState
+            icon="people"
+            message={busca.length > 0 ? 'Nenhum cliente encontrado para esta busca' : 'Nenhum cliente cadastrado'}
+            isFullPage
+          />
         )}
         renderItem={({ item: cliente, index }) => {
           const veiculosCount = veiculos.filter(v => v.clienteId === cliente.id).length;
           const ordensCount = ordens.filter(o => o.clienteId === cliente.id).length;
-          const avatarColors = AVATAR_COLORS[index % AVATAR_COLORS.length];
+          const isFirst = index === 0;
+          const isLast = index === clientes.length - 1;
           return (
             <TouchableOpacity
               onPress={() => navigation.navigate('ClienteDetalhes', { clienteId: cliente.id })}
               activeOpacity={0.8}
             >
-              <View style={styles.card}>
-                {/* Avatar circular com gradiente suave */}
-                <LinearGradient colors={avatarColors} style={styles.avatar}>
+              <View style={[
+                styles.listItem,
+                isFirst && styles.listItemFirst,
+                isLast && styles.listItemLast,
+                !isLast && styles.listItemBorder
+              ]}>
+                {/* Avatar circular neutro e maduro */}
+                <View style={styles.avatar}>
                   <Text style={styles.avatarText}>{cliente.nome.substring(0, 2).toUpperCase()}</Text>
-                </LinearGradient>
+                </View>
 
                 <View style={styles.cardBody}>
                   <View style={styles.cardRow}>
                     <View style={{ flex: 1 }}>
                       <Text style={styles.nome} numberOfLines={1}>{cliente.nome}</Text>
-                      <View style={styles.infoRow}>
-                        <MaterialIcons name="phone" size={12} color={palette.slate400} />
+                      <View style={styles.infoMetaRow}>
+                        <MaterialIcons name="phone" size={13} color={palette.slate400} />
                         <Text style={styles.infoText}>{cliente.telefone}</Text>
-                      </View>
-                    </View>
-                    <MaterialIcons name="chevron-right" size={20} color={palette.slate300} />
-                  </View>
 
-                  <View style={styles.statsRow}>
-                    <View style={styles.statChip}>
-                      <MaterialIcons name="directions-car" size={13} color={palette.navy800} />
-                      <Text style={styles.statText}>{veiculosCount} veículo{veiculosCount !== 1 ? 's' : ''}</Text>
-                    </View>
-                    <View style={[styles.statChip, styles.statChipAlert]}>
-                      <MaterialIcons name="build" size={13} color="#B45309" />
-                      <Text style={[styles.statText, { color: '#B45309' }]}>{ordensCount} OS</Text>
-                    </View>
-                    {cliente.cidade ? (
-                      <View style={[styles.statChip, styles.statChipNeutral]}>
-                        <MaterialIcons name="location-city" size={13} color={palette.slate500} />
-                        <Text style={[styles.statText, { color: palette.slate500 }]}>{cliente.cidade}</Text>
+                        <Text style={styles.metaDivider}>•</Text>
+                        <MaterialIcons name="directions-car" size={13} color={palette.slate400} />
+                        <Text style={styles.metaText}>{veiculosCount} {veiculosCount === 1 ? 'veículo' : 'veículos'}</Text>
+
+                        <Text style={styles.metaDivider}>•</Text>
+                        <MaterialIcons name="build" size={13} color={palette.slate400} />
+                        <Text style={styles.metaText}>{ordensCount} OS</Text>
+
+                        {cliente.cidade ? (
+                          <>
+                            <Text style={styles.metaDivider}>•</Text>
+                            <MaterialIcons name="location-city" size={13} color={palette.slate400} />
+                            <Text style={styles.metaText}>{cliente.cidade}</Text>
+                          </>
+                        ) : null}
                       </View>
-                    ) : null}
+                    </View>
+                    <MaterialIcons name="chevron-right" size={20} color={palette.slate300} style={{ marginLeft: spacing.sm }} />
                   </View>
                 </View>
               </View>
@@ -217,46 +215,60 @@ const styles = StyleSheet.create({
   listContent: { 
     paddingHorizontal: spacing.lg, 
     paddingTop: spacing.md, 
-    paddingBottom: 80, 
-    gap: spacing.sm, 
+    paddingBottom: 110, 
   },
 
-  card: { 
+  listItem: { 
     backgroundColor: palette.white, 
-    borderRadius: borderRadius.lg, 
     padding: spacing.md, 
     flexDirection: 'row', 
     gap: spacing.md, 
     alignItems: 'center', 
-    borderWidth: 1, 
-    borderColor: 'rgba(15, 23, 42, 0.04)', 
-    ...shadows.sm 
+    borderLeftWidth: 1,
+    borderRightWidth: 1,
+    borderColor: palette.slate200,
   },
-  avatar: { width: 50, height: 50, borderRadius: 25, justifyContent: 'center', alignItems: 'center' },
-  avatarText: { color: palette.white, fontWeight: '900', fontSize: 15 },
+  listItemFirst: {
+    borderTopWidth: 1,
+    borderTopLeftRadius: borderRadius.lg,
+    borderTopRightRadius: borderRadius.lg,
+  },
+  listItemLast: {
+    borderBottomWidth: 1,
+    borderBottomLeftRadius: borderRadius.lg,
+    borderBottomRightRadius: borderRadius.lg,
+    ...shadows.sm,
+  },
+  listItemBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: '#ECEFF2',
+  },
+  avatar: { 
+    width: 44, 
+    height: 44, 
+    borderRadius: 22, 
+    backgroundColor: '#F1F5F9', 
+    justifyContent: 'center', 
+    alignItems: 'center' 
+  },
+  avatarText: { 
+    color: palette.slate700, 
+    fontWeight: '700', 
+    fontSize: 14 
+  },
   cardBody: { flex: 1 },
-  cardRow: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.xs },
+  cardRow: { flexDirection: 'row', alignItems: 'center' },
   nome: { fontSize: 16, fontWeight: '800', color: palette.slate900, marginBottom: 2, letterSpacing: -0.2 },
-  infoRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  infoText: { fontSize: 12, color: palette.slate500, fontWeight: '500' },
-
-  statsRow: { flexDirection: 'row', gap: 6, flexWrap: 'wrap', marginTop: spacing.sm },
-  statChip: { 
+  infoMetaRow: { 
     flexDirection: 'row', 
     alignItems: 'center', 
-    gap: 4, 
-    backgroundColor: 'rgba(37, 99, 235, 0.05)', 
-    borderRadius: borderRadius.full, 
-    paddingHorizontal: 8, 
-    paddingVertical: 3 
+    flexWrap: 'wrap', 
+    marginTop: 4,
+    gap: 4
   },
-  statChipAlert: {
-    backgroundColor: 'rgba(245, 158, 11, 0.06)',
-  },
-  statChipNeutral: {
-    backgroundColor: palette.slate100,
-  },
-  statText: { fontSize: 11, fontWeight: '700', color: palette.navy800 },
+  infoText: { fontSize: 12, color: palette.slate500, fontWeight: '500' },
+  metaDivider: { marginHorizontal: 4, color: palette.slate300, fontSize: 12 },
+  metaText: { fontSize: 12, color: palette.slate500, fontWeight: '500' },
 
   empty: { alignItems: 'center', marginTop: 80, gap: spacing.sm },
   emptyTitle: { fontSize: 18, fontWeight: '800', color: palette.slate700, letterSpacing: -0.3 },

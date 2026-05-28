@@ -6,6 +6,7 @@ import { useDriveOnData } from '../../context/DriveOnDataContext';
 import { borderRadius, colors, spacing } from '../../theme/theme';
 import CrudDialog, { type CrudField } from '../../components/CrudDialog';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import EmptyState from '../../components/EmptyState';
 
 const fields: CrudField[] = [
   { key: 'nome', label: 'Nome', autoCapitalize: 'words' },
@@ -89,7 +90,14 @@ export default function EstoqueScreen() {
       <FlatList
         data={itens}
         keyExtractor={item => String(item.id)}
-        contentContainerStyle={{ padding: spacing.lg, gap: spacing.sm, paddingBottom: 160 }}
+        contentContainerStyle={{ padding: spacing.lg, gap: spacing.sm, paddingBottom: 160, flexGrow: 1 }}
+        ListEmptyComponent={() => (
+          <EmptyState
+            icon="inventory"
+            message={busca.length > 0 ? 'Nenhum item encontrado para esta busca' : 'Nenhum item em estoque'}
+            isFullPage
+          />
+        )}
         renderItem={({ item: e }) => {
           const isBaixo = e.quantidade <= e.estoqueMinimo;
           const isSemEstoque = e.quantidade === 0;

@@ -1,6 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import api, { setAuthToken } from '../api/api';
+import api, { setAuthToken, registerOnUnauthorized } from '../api/api';
 
 interface User {
   id: number;
@@ -135,6 +135,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     })();
   }, []);
+
+  useEffect(() => {
+    registerOnUnauthorized(() => {
+      console.log('[AuthContext] Automatic signOut triggered due to 401 Unauthorized.');
+      void signOut();
+    });
+  }, [signOut]);
 
   return (
     <AuthContext.Provider value={{ user, isAuthenticated: !!user, isLoading, signIn, signOut }}>

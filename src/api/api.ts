@@ -20,6 +20,11 @@ const api = axios.create({
 });
 
 let authToken: string | null = null;
+let onUnauthorizedCallback: (() => void) | null = null;
+
+export function registerOnUnauthorized(callback: () => void) {
+  onUnauthorizedCallback = callback;
+}
 
 export function setAuthToken(token: string | null) {
   console.log('[API] Setting token in memory:', token ? `${token.substring(0, 15)}...` : 'null');
@@ -48,5 +53,18 @@ api.interceptors.request.use((config) => {
   console.error('[API] Request interceptor error:', error);
   return Promise.reject(error);
 });
+
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    if (error.response && error.response.status === 401) {
+      console.log('[API] 401 Unauthorized detected. Invoking onUnauthorizedCallback...');
+      if (onUnauthorizedCallback) {
+        onUnauthorizedCallback();
+      }
+    }
+    return Promise.reject(error);
+  }
+);
 
 export default api;

@@ -24,6 +24,70 @@ type CrudDialogProps = {
   onSave: () => void;
 };
 
+function formatTelefone(val: string): string {
+  const clean = val.replace(/\D/g, '');
+  const len = clean.length;
+  if (len === 0) return '';
+  if (len <= 2) return `(${clean}`;
+  if (len <= 3) return `(${clean.substring(0, 2)}) ${clean.substring(2)}`;
+  if (len <= 11) {
+    return `(${clean.substring(0, 2)}) ${clean.substring(2, 3)} ${clean.substring(3)}`;
+  }
+  return `(${clean.substring(0, 2)}) ${clean.substring(2, 3)} ${clean.substring(3, 11)}`;
+}
+
+type FormInputProps = {
+  field: CrudField;
+  initialValue: string;
+  onChange: (key: string, value: string) => void;
+};
+
+function FormInput({ field, initialValue, onChange }: FormInputProps) {
+  const [value, setValue] = useState(initialValue);
+  const [isFocused, setIsFocused] = useState(false);
+
+  React.useEffect(() => {
+    if (!isFocused) {
+      setValue(initialValue);
+    }
+  }, [initialValue, isFocused]);
+
+  const isTelefone = field.key.toLowerCase().includes('telefone') || 
+                     field.key.toLowerCase().includes('phone') || 
+                     field.key.toLowerCase().includes('celular');
+
+  const handleChangeText = (text: string) => {
+    let processed = text;
+    if (isTelefone) {
+      processed = formatTelefone(text);
+    }
+    setValue(processed);
+    onChange(field.key, processed);
+  };
+
+  return (
+    <TextInput
+      label={field.label}
+      value={value}
+      onChangeText={handleChangeText}
+      onFocus={() => setIsFocused(true)}
+      onBlur={() => setIsFocused(false)}
+      mode="outlined"
+      style={styles.input}
+      keyboardType={field.keyboardType}
+      multiline={field.multiline}
+      numberOfLines={field.multiline ? 3 : 1}
+      autoCapitalize={field.autoCapitalize}
+      activeOutlineColor={palette.navy800}
+      outlineColor={palette.slate200}
+      outlineStyle={{ borderRadius: borderRadius.md }}
+      theme={{ colors: { background: palette.slate50 } }}
+      left={<TextInput.Icon icon={getFieldIcon(field.key)} color={palette.slate400} />}
+      maxLength={isTelefone ? 15 : undefined}
+    />
+  );
+}
+
 function getFieldIcon(key: string): string {
   const k = key.toLowerCase();
   if (k.includes('email')) return 'email-outline';
@@ -66,7 +130,7 @@ function getSelectedLabel(
   value: string,
   clientes: any[],
   veiculos: any[],
-  usuarios: any[]
+  funcionarios: any[]
 ): string {
   if (!value) return 'Toque para selecionar...';
   
@@ -84,7 +148,7 @@ function getSelectedLabel(
   }
 
   if (k === 'funcionario_id') {
-    const item = usuarios.find(u => u.id === id);
+    const item = funcionarios.find(f => f.id === id);
     return item ? item.nome : `Funcionário #${id}`;
   }
 
@@ -101,7 +165,7 @@ export default function CrudDialog({
   onCancel,
   onSave,
 }: CrudDialogProps) {
-  const { clientes, veiculos, usuarios } = useDriveOnData();
+  const { clientes, veiculos, usuarios, funcionarios } = useDriveOnData();
   const [activePickerKey, setActivePickerKey] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -147,11 +211,11 @@ export default function CrudDialog({
     }
 
     if (k.includes('funcionario') || k.includes('mecanico')) {
-      return usuarios
-        .map(u => ({
-          id: u.id,
-          title: u.nome,
-          subtitle: u.perfil ? `Perfil: ${u.perfil}` : '',
+      return funcionarios
+        .map(f => ({
+          id: f.id,
+          title: f.nome,
+          subtitle: f.cargo ? `Cargo: ${f.cargo}` : '',
         }))
         .filter(item => 
           item.title.toLowerCase().includes(q) || 
@@ -183,7 +247,7 @@ export default function CrudDialog({
           </View>
 
           {/* ScrollArea container for scrollable inputs */}
-          <Dialog.ScrollArea style={styles.scrollArea}>
+          <View style={styles.scrollArea}>
             <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={true} keyboardShouldPersistTaps="handled">
               {fields.map((field) => {
                 if (isSelectField(field.key)) {
@@ -200,7 +264,7 @@ export default function CrudDialog({
                       <View pointerEvents="none">
                         <TextInput
                           label={field.label}
-                          value={getSelectedLabel(field.key, values[field.key], clientes, veiculos, usuarios)}
+                          value={getSelectedLabel(field.key, values[field.key], clientes, veiculos, funcionarios)}
                           mode="outlined"
                           style={styles.input}
                           activeOutlineColor={palette.navy800}
@@ -216,30 +280,19 @@ export default function CrudDialog({
                 }
 
                 return (
-                  <TextInput
+                  <FormInput
                     key={field.key}
-                    label={field.label}
-                    value={values[field.key] ?? ''}
-                    onChangeText={(value) => onChange(field.key, value)}
-                    mode="outlined"
-                    style={styles.input}
-                    keyboardType={field.keyboardType}
-                    multiline={field.multiline}
-                    numberOfLines={field.multiline ? 3 : 1}
-                    autoCapitalize={field.autoCapitalize}
-                    activeOutlineColor={palette.navy800}
-                    outlineColor={palette.slate200}
-                    outlineStyle={{ borderRadius: borderRadius.md }}
-                    theme={{ colors: { background: palette.slate50 } }}
-                    left={<TextInput.Icon icon={getFieldIcon(field.key)} color={palette.slate400} />}
+                    field={field}
+                    initialValue={values[field.key] ?? ''}
+                    onChange={onChange}
                   />
                 );
               })}
             </ScrollView>
-          </Dialog.ScrollArea>
+          </View>
 
           {/* Action buttons */}
-          <Dialog.Actions style={styles.actions}>
+          <View style={styles.actions}>
             <Button
               mode="outlined"
               disabled={isSaving}
@@ -262,7 +315,7 @@ export default function CrudDialog({
             >
               Salvar
             </Button>
-          </Dialog.Actions>
+          </View>
         </Dialog>
       </Portal>
 
@@ -307,6 +360,11 @@ export default function CrudDialog({
                     <TouchableOpacity
                       onPress={() => {
                         onChange(activePickerKey, String(item.id));
+                        if (activePickerKey === 'cliente_id') {
+                          onChange('veiculo_id', '');
+                        } else if (activePickerKey === 'clienteId') {
+                          onChange('veiculoId', '');
+                        }
                         setActivePickerKey(null);
                       }}
                       style={[
@@ -359,8 +417,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.lg,
-    paddingBottom: spacing.md,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.sm,
     gap: spacing.md,
   },
   iconCircle: {
@@ -384,9 +442,9 @@ const styles = StyleSheet.create({
     borderColor: palette.slate100,
   },
   scrollView: {
-    maxHeight: 340,
+    maxHeight: 520,
     paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
+    paddingVertical: spacing.sm,
   },
   input: {
     marginBottom: spacing.md,
@@ -396,8 +454,10 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   actions: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
+    paddingVertical: spacing.sm,
     justifyContent: 'flex-end',
     gap: spacing.sm,
   },

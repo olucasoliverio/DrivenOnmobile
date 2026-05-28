@@ -1,9 +1,10 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import {
   View, Text, StyleSheet, TouchableOpacity,
   Platform, StatusBar, Dimensions,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { TextInput, HelperText } from 'react-native-paper';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -20,10 +21,25 @@ export default function LoginScreen() {
   const insets = useSafeAreaInsets();
   const { signIn, isLoading } = useAuth();
   const [email, setEmail] = useState('');
+  const [lembrarEmail, setLembrarEmail] = useState(false);
   const [senha, setSenha] = useState('');
   const [senhaVisivel, setSenhaVisivel] = useState(false);
   const [erro, setErro] = useState('');
   const scrollRef = useRef<any>(null);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const saved = await AsyncStorage.getItem('@driveon:lembrar_email');
+        if (saved) {
+          setEmail(saved);
+          setLembrarEmail(true);
+        }
+      } catch (e) {
+        console.error('[LoginScreen] Falha ao ler email salvo:', e);
+      }
+    })();
+  }, []);
 
   const handleLogin = async () => {
     setErro('');
@@ -32,6 +48,11 @@ export default function LoginScreen() {
       return;
     }
     try {
+      if (lembrarEmail) {
+        await AsyncStorage.setItem('@driveon:lembrar_email', email.trim());
+      } else {
+        await AsyncStorage.removeItem('@driveon:lembrar_email');
+      }
       await signIn(email.trim(), senha);
     } catch (error: any) {
       setErro(error?.response?.data?.message ?? error?.message ?? 'E-mail ou senha incorretos.');
@@ -122,6 +143,19 @@ export default function LoginScreen() {
               }
             }}
           />
+
+          <TouchableOpacity
+            style={styles.lembrarContainer}
+            onPress={() => setLembrarEmail(!lembrarEmail)}
+            activeOpacity={0.7}
+          >
+            <MaterialIcons
+              name={lembrarEmail ? 'check-box' : 'check-box-outline-blank'}
+              size={20}
+              color={lembrarEmail ? palette.navy500 : 'rgba(255, 255, 255, 0.4)'}
+            />
+            <Text style={styles.lembrarText}>Lembrar e-mail</Text>
+          </TouchableOpacity>
 
           {erro ? <HelperText type="error" visible style={styles.errorText}>{erro}</HelperText> : null}
 
@@ -253,6 +287,18 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: palette.white,
     letterSpacing: 0.5,
+  },
+  lembrarContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: spacing.md,
+    marginTop: spacing.xs,
+  },
+  lembrarText: {
+    fontSize: 13,
+    color: 'rgba(255, 255, 255, 0.65)',
+    fontWeight: '500',
   },
 });
 

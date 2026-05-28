@@ -13,6 +13,7 @@ import {
   mockServicos,
   mockUsuarios,
   mockVeiculos,
+  mockFuncionarios,
 } from '../data/mockData';
 
 export type Cliente = {
@@ -119,7 +120,26 @@ export type Usuario = {
   telefone: string;
   status: string;
 };
-export type Configuracoes = typeof mockConfiguracoes;
+
+export type Funcionario = {
+  id: number;
+  nome: string;
+  email: string;
+  telefone: string;
+  cargo: string;
+};
+
+export type Configuracoes = {
+  nomeOficina: string;
+  cnpj: string;
+  telefone: string;
+  email: string;
+  endereco: string;
+  cidade: string;
+  estado: string;
+  cep: string;
+  logo: string | null;
+};
 export type Dashboard = typeof mockDashboard;
 
 export type DriveOnData = {
@@ -133,6 +153,7 @@ export type DriveOnData = {
   fornecedores: Fornecedor[];
   servicos: Servico[];
   usuarios: Usuario[];
+  funcionarios: Funcionario[];
   configuracoes: Configuracoes;
   dashboard: Dashboard;
 };
@@ -157,6 +178,13 @@ export const fallbackDriveOnData: DriveOnData = {
   fornecedores: mockFornecedores,
   servicos: mockServicos,
   usuarios: mockUsuarios,
+  funcionarios: mockFuncionarios.map(f => ({
+    id: f.id,
+    nome: f.nome,
+    email: f.email,
+    telefone: f.telefone,
+    cargo: f.cargo,
+  })),
   configuracoes: mockConfiguracoes,
   dashboard: mockDashboard,
 };
@@ -172,6 +200,7 @@ export const emptyDriveOnData: DriveOnData = {
   fornecedores: [],
   servicos: [],
   usuarios: [],
+  funcionarios: [],
   configuracoes: {
     nomeOficina: 'DriveOn',
     cnpj: '',
@@ -333,6 +362,16 @@ export function adaptUsuario(item: any): Usuario {
   };
 }
 
+export function adaptFuncionario(item: any): Funcionario {
+  return {
+    id: numberValue(item.id),
+    nome: textValue(item.nome, ''),
+    email: textValue(item.email, ''),
+    telefone: textValue(item.telefone, ''),
+    cargo: textValue(item.cargo, ''),
+  };
+}
+
 export function adaptOrcamento(item: any): Orcamento {
   return {
     id: numberValue(item.id),
@@ -346,6 +385,20 @@ export function adaptOrcamento(item: any): Orcamento {
   };
 }
 
+export function adaptConfiguracoes(item: any): Configuracoes {
+  return {
+    nomeOficina: textValue(item?.nome, 'DriveOn'),
+    cnpj: textValue(item?.cnpj, ''),
+    telefone: textValue(item?.telefone, ''),
+    email: textValue(item?.email, ''),
+    endereco: textValue(item ? `${item.logradouro ?? ''}, ${item.numero ?? ''}`.trim().replace(/^,\s*|\s*,\s*$/, '') : '', ''),
+    cidade: textValue(item?.cidade?.nome, ''),
+    estado: textValue(item?.cidade?.uf, ''),
+    cep: textValue(item?.cep, ''),
+    logo: item?.logo_url ? textValue(item.logo_url) : null,
+  };
+}
+
 function buildDashboard(data: Omit<DriveOnData, 'dashboard' | 'configuracoes'>): Dashboard {
   const osAbertas = data.ordens.filter((ordem) => ordem.status !== 'concluido').length;
   const osConcluidas = data.ordens.filter((ordem) => ordem.status === 'concluido').length;
@@ -356,8 +409,43 @@ function buildDashboard(data: Omit<DriveOnData, 'dashboard' | 'configuracoes'>):
     .filter((pagamento) => pagamento.tipo === 'receber' && pagamento.status === 'pago' && dayjs(pagamento.data).isSame(dayjs().subtract(1, 'month'), 'month'))
     .reduce((sum, pagamento) => sum + pagamento.valor, 0);
 
+  const statusCounts = {
+    em_andamento: 0,
+    aguardando: 0,
+    aguardando_pecas: 0,
+    concluido: 0,
+  };
+  data.ordens.forEach(os => {
+    const s = os.status as keyof typeof statusCounts;
+    if (statusCounts[s] !== undefined) {
+      statusCounts[s]++;
+    }
+  });
+  const statusOS = [
+    { status: 'Em Andamento', count: statusCounts.em_andamento, color: '#1565C0' },
+    { status: 'Aguardando', count: statusCounts.aguardando, color: '#FF6F00' },
+    { status: 'Aguard. Peças', count: statusCounts.aguardando_pecas, color: '#9C27B0' },
+    { status: 'Concluído', count: statusCounts.concluido, color: '#2E7D32' },
+  ];
+
+  const receitaMensal = [];
+  for (let i = 5; i >= 0; i--) {
+    const targetMonth = dayjs().subtract(i, 'month');
+    const label = targetMonth.format('MMM');
+    const valor = data.pagamentos
+      .filter((pagamento) => 
+        pagamento.tipo === 'receber' && 
+        pagamento.status === 'pago' && 
+        dayjs(pagamento.data).isSame(targetMonth, 'month')
+      )
+      .reduce((sum, pagamento) => sum + pagamento.valor, 0);
+    receitaMensal.push({
+      mes: label.charAt(0).toUpperCase() + label.slice(1).replace('.', ''),
+      valor,
+    });
+  }
+
   return {
-    ...mockDashboard,
     osAbertas,
     osConcluidas,
     agendamentosHoje: data.agendamentos.filter((agendamento) => dayjs(agendamento.data).isSame(dayjs(), 'day')).length,
@@ -365,6 +453,8 @@ function buildDashboard(data: Omit<DriveOnData, 'dashboard' | 'configuracoes'>):
     receitaAnterior: receitaAnterior || receitaMes || 1,
     clientesAtivos: data.clientes.length,
     ticketMedio: osConcluidas ? receitaMes / osConcluidas : 0,
+    receitaMensal,
+    statusOS,
   };
 }
 
@@ -386,6 +476,8 @@ export async function fetchDriveOnData(): Promise<DriveOnData> {
     fornecedoresResult,
     servicosResult,
     usuariosResult,
+    funcionariosResult,
+    oficinaResult,
   ] = await Promise.allSettled([
     getList('/clientes', adaptCliente),
     getList('/veiculos', adaptVeiculo),
@@ -397,6 +489,8 @@ export async function fetchDriveOnData(): Promise<DriveOnData> {
     getList('/fornecedores', adaptFornecedor),
     getList('/servicos', adaptServico),
     getList('/usuario', adaptUsuario),
+    getList('/funcionarios', adaptFuncionario),
+    api.get('/oficinas/minha'),
   ]);
 
   const valueOrFallback = <T,>(result: PromiseSettledResult<T[]>, fallback: T[]) =>
@@ -412,6 +506,11 @@ export async function fetchDriveOnData(): Promise<DriveOnData> {
   const fornecedores = valueOrFallback(fornecedoresResult, []);
   const servicos = valueOrFallback(servicosResult, []);
   const usuarios = valueOrFallback(usuariosResult, []);
+  const funcionarios = valueOrFallback(funcionariosResult, []);
+
+  const configuracoes = oficinaResult.status === 'fulfilled'
+    ? adaptConfiguracoes(oficinaResult.value.data)
+    : mockConfiguracoes;
 
   const baseData = {
     clientes,
@@ -424,11 +523,12 @@ export async function fetchDriveOnData(): Promise<DriveOnData> {
     fornecedores,
     servicos,
     usuarios,
+    funcionarios,
   };
 
   return {
     ...baseData,
-    configuracoes: mockConfiguracoes,
+    configuracoes,
     dashboard: buildDashboard(baseData),
   };
 }

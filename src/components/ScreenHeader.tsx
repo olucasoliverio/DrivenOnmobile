@@ -43,10 +43,10 @@ export default function ScreenHeader({
   const statusBarHeight = Platform.OS === 'android' ? StatusBar.currentHeight ?? 24 : insets.top;
 
   return (
-    <View style={[styles.container, { backgroundColor, paddingTop: statusBarHeight + 12 }]}>
+    <View style={[styles.container, { backgroundColor, paddingTop: insets.top + 8 }]}>
       <View style={styles.row}>
         {/* Botão voltar */}
-        {showBack ? (
+        {showBack && (
           <TouchableOpacity
             style={styles.backBtn}
             onPress={() => navigation.goBack()}
@@ -54,20 +54,20 @@ export default function ScreenHeader({
           >
             <MaterialIcons name="arrow-back" size={24} color={palette.slate700} />
           </TouchableOpacity>
-        ) : (
-          <View style={styles.backPlaceholder} />
         )}
 
         {/* Títulos */}
-        <View style={styles.textBlock}>
+        <View style={[styles.textBlock, !showBack && { paddingLeft: 0 }]}>
           <Text style={styles.title} numberOfLines={1}>{title}</Text>
           {subtitle ? <Text style={styles.subtitle} numberOfLines={1}>{subtitle}</Text> : null}
         </View>
 
         {/* Elemento direito */}
-        <View style={styles.rightBlock}>
-          {rightElement ?? <View style={styles.backPlaceholder} />}
-        </View>
+        {rightElement && (
+          <View style={styles.rightBlock}>
+            {rightElement}
+          </View>
+        )}
       </View>
 
       {/* Linha divisória muito suave */}
@@ -78,7 +78,7 @@ export default function ScreenHeader({
 
 const styles = StyleSheet.create({
   container: {
-    paddingBottom: 12,
+    paddingBottom: 6,
     paddingHorizontal: spacing.lg,
     ...shadows.sm,
     // Sombra discreta para separar do conteúdo
@@ -99,25 +99,24 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  backPlaceholder: {
-    width: 44,
-    height: 44,
-  },
   textBlock: {
     flex: 1,
     gap: 2,
     paddingLeft: spacing.xs,
+    alignItems: 'flex-start',
   },
   title: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: '800',
     color: palette.slate900,
     letterSpacing: -0.8,
+    textAlign: 'left',
   },
   subtitle: {
-    fontSize: 13,
+    fontSize: 12,
     color: palette.slate500,
     fontWeight: '600',
+    textAlign: 'left',
   },
   rightBlock: {
     alignItems: 'flex-end',

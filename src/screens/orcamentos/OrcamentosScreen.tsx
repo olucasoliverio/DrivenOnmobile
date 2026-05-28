@@ -8,6 +8,7 @@ import dayjs from 'dayjs';
 import CrudDialog, { type CrudField } from '../../components/CrudDialog';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import ScreenHeader from '../../components/ScreenHeader';
+import EmptyState from '../../components/EmptyState';
 
 const statusConfig: Record<string, { label: string; color: string; bg: string }> = {
   aprovado: { label: 'Aprovado', color: '#2E7D32', bg: '#E8F5E9' },
@@ -36,17 +37,24 @@ export default function OrcamentosScreen() {
 
   const openForm = (item?: (typeof orcamentosData)[number]) => {
     setEditingId(item?.id ?? null);
-    setForm(item ? {
-      clienteId: String(item.clienteId),
-      veiculoId: String(item.veiculoId),
-      descricao: item.itens?.[0]?.descricao ?? '',
-      valor: String(item.total),
-      data: dayjs(item.dataCriacao).format('YYYY-MM-DD'),
-    } : {
-      clienteId: clientes[0]?.id ? String(clientes[0].id) : '',
-      veiculoId: veiculos[0]?.id ? String(veiculos[0].id) : '',
-      data: dayjs().format('YYYY-MM-DD'),
-    });
+    if (item) {
+      setForm({
+        clienteId: String(item.clienteId),
+        veiculoId: String(item.veiculoId),
+        descricao: item.itens?.[0]?.descricao ?? '',
+        valor: String(item.total),
+        data: dayjs(item.dataCriacao).format('YYYY-MM-DD'),
+      });
+    } else {
+      const defaultClientId = clientes[0]?.id ? String(clientes[0].id) : '';
+      const clientVeiculos = defaultClientId ? veiculos.filter(v => v.clienteId === Number(defaultClientId)) : [];
+      const defaultVeiculoId = clientVeiculos[0]?.id ? String(clientVeiculos[0].id) : '';
+      setForm({
+        clienteId: defaultClientId,
+        veiculoId: defaultVeiculoId,
+        data: dayjs().format('YYYY-MM-DD'),
+      });
+    }
     setDialogOpen(true);
   };
 
@@ -99,7 +107,14 @@ export default function OrcamentosScreen() {
       <FlatList
         data={orcamentos}
         keyExtractor={item => String(item.id)}
-        contentContainerStyle={{ padding: spacing.lg, gap: spacing.sm, paddingBottom: 160 }}
+        contentContainerStyle={{ padding: spacing.lg, gap: spacing.sm, paddingBottom: 160, flexGrow: 1 }}
+        ListEmptyComponent={() => (
+          <EmptyState
+            icon="description"
+            message={filtro !== 'todos' ? `Nenhum orçamento ${filtro} encontrado` : 'Nenhum orçamento cadastrado'}
+            isFullPage
+          />
+        )}
         renderItem={({ item: o }) => {
           const cliente = clientes.find(c => c.id === o.clienteId);
           const veiculo = veiculos.find(v => v.id === o.veiculoId);

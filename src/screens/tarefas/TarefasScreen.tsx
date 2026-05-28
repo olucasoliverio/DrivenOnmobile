@@ -10,6 +10,7 @@ import { palette, spacing, borderRadius, shadows, gradients } from '../../theme/
 import dayjs from 'dayjs';
 import CrudDialog, { type CrudField } from '../../components/CrudDialog';
 import ScreenHeader from '../../components/ScreenHeader';
+import EmptyState from '../../components/EmptyState';
 
 type StatusKey = 'todos' | 'em_andamento' | 'aguardando' | 'aguardando_pecas' | 'concluido';
 
@@ -64,9 +65,12 @@ export default function TarefasScreen() {
   });
 
   const openForm = () => {
+    const defaultClientId = clientes[0]?.id ? String(clientes[0].id) : '';
+    const clientVeiculos = defaultClientId ? veiculos.filter(v => v.clienteId === Number(defaultClientId)) : [];
+    const defaultVeiculoId = clientVeiculos[0]?.id ? String(clientVeiculos[0].id) : '';
     setForm({
-      cliente_id: clientes[0]?.id ? String(clientes[0].id) : '',
-      veiculo_id: veiculos[0]?.id ? String(veiculos[0].id) : '',
+      cliente_id: defaultClientId,
+      veiculo_id: defaultVeiculoId,
     });
     setDialogOpen(true);
   };
@@ -154,14 +158,15 @@ export default function TarefasScreen() {
       <FlatList
         data={ordens}
         keyExtractor={item => String(item.id)}
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={[styles.listContent, { flexGrow: 1 }]}
+        style={styles.mainList}
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={() => (
-          <View style={styles.empty}>
-            <MaterialIcons name="build-circle" size={56} color={palette.slate200} />
-            <Text style={styles.emptyTitle}>Nenhuma OS</Text>
-            <Text style={styles.emptyText}>Tente ajustar os filtros</Text>
-          </View>
+          <EmptyState
+            icon="build"
+            message={busca.length > 0 ? 'Nenhuma OS encontrada para esta busca' : 'Nenhuma ordem de serviço'}
+            isFullPage
+          />
         )}
         renderItem={({ item: os }) => {
           const cliente = clientes.find(c => c.id === os.clienteId);
@@ -235,7 +240,7 @@ const styles = StyleSheet.create({
   searchInput: { flex: 1, fontSize: 14, color: palette.slate900, fontWeight: '500' },
 
   // Chips
-  chipsContainer: { marginTop: spacing.sm },
+  chipsContainer: { marginTop: spacing.sm, flexGrow: 0 },
   chipsRow: { paddingHorizontal: spacing.lg, gap: spacing.sm, paddingVertical: spacing.sm },
   chip: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: borderRadius.full, backgroundColor: palette.white, borderWidth: 1, borderColor: palette.slate200 },
   chipActive: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: borderRadius.full },
@@ -243,7 +248,8 @@ const styles = StyleSheet.create({
   chipTextActive: { fontSize: 12, fontWeight: '700', color: palette.white },
 
   // List
-  listContent: { paddingHorizontal: spacing.lg, paddingBottom: 160, gap: spacing.sm },
+  mainList: { flex: 1 },
+  listContent: { paddingHorizontal: spacing.lg, paddingTop: 12, paddingBottom: 160, gap: spacing.sm },
 
   // Card
   card: { backgroundColor: palette.white, borderRadius: borderRadius.lg, flexDirection: 'row', overflow: 'hidden', ...shadows.sm },

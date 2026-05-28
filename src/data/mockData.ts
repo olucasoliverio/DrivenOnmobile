@@ -134,3 +134,12 @@ export const mockConfiguracoes = {
   cep: '88000-000',
   logo: null,
 };
+
+// ─── Funcionários ────────────────────────────────────────────────────────────
+export const mockFuncionarios = [
+  { id: 1, nome: 'Admin DriveOn', email: 'admin@driveon.com', cargo: 'administrador', telefone: '(48) 99999-0000' },
+  { id: 2, nome: 'Carlos Mecânico', email: 'carlos@driveon.com', cargo: 'mecanico', telefone: '(48) 99988-1111' },
+  { id: 3, nome: 'Roberto Silva', email: 'roberto@driveon.com', cargo: 'mecanico', telefone: '(48) 99977-2222' },
+  { id: 4, nome: 'Fernanda Atendimento', email: 'fernanda@driveon.com', cargo: 'atendente', telefone: '(48) 99966-3333' },
+];
+

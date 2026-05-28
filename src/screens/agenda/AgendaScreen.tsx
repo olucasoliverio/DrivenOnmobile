@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDriveOnData } from '../../context/DriveOnDataContext';
 import { palette, spacing, borderRadius, shadows, gradients } from '../../theme/theme';
 import CrudDialog, { type CrudField } from '../../components/CrudDialog';
+import EmptyState from '../../components/EmptyState';
 import dayjs from 'dayjs';
 import 'dayjs/locale/pt-br';
 import ScreenHeader from '../../components/ScreenHeader';
@@ -47,19 +48,26 @@ export default function AgendaScreen() {
 
   const openForm = (item?: (typeof agendamentos)[number]) => {
     setEditingId(item?.id ?? null);
-    setForm(item ? {
-      titulo: item.servico,
-      cliente_id: String(item.clienteId),
-      veiculo_id: String(item.veiculoId),
-      data_inicio: dayjs(item.data).format('YYYY-MM-DD') + ` ${item.hora || '09:00'}`,
-      data_fim: dayjs(item.data).add(1, 'hour').format('YYYY-MM-DD HH:mm'),
-      observacao: item.observacao,
-    } : {
-      cliente_id: clientes[0]?.id ? String(clientes[0].id) : '',
-      veiculo_id: veiculos[0]?.id ? String(veiculos[0].id) : '',
-      data_inicio: selectedDate.hour(9).minute(0).format('YYYY-MM-DD HH:mm'),
-      data_fim: selectedDate.hour(10).minute(0).format('YYYY-MM-DD HH:mm'),
-    });
+    if (item) {
+      setForm({
+        titulo: item.servico,
+        cliente_id: String(item.clienteId),
+        veiculo_id: String(item.veiculoId),
+        data_inicio: dayjs(item.data).format('YYYY-MM-DD') + ` ${item.hora || '09:00'}`,
+        data_fim: dayjs(item.data).add(1, 'hour').format('YYYY-MM-DD HH:mm'),
+        observacao: item.observacao,
+      });
+    } else {
+      const defaultClientId = clientes[0]?.id ? String(clientes[0].id) : '';
+      const clientVeiculos = defaultClientId ? veiculos.filter(v => v.clienteId === Number(defaultClientId)) : [];
+      const defaultVeiculoId = clientVeiculos[0]?.id ? String(clientVeiculos[0].id) : '';
+      setForm({
+        cliente_id: defaultClientId,
+        veiculo_id: defaultVeiculoId,
+        data_inicio: selectedDate.hour(9).minute(0).format('YYYY-MM-DD HH:mm'),
+        data_fim: selectedDate.hour(10).minute(0).format('YYYY-MM-DD HH:mm'),
+      });
+    }
     setDialogOpen(true);
   };
 
@@ -140,26 +148,22 @@ export default function AgendaScreen() {
       </View>
 
       {/* ── Contador do dia ── */}
-      <View style={styles.dayInfoBar}>
-        <Text style={styles.dayInfoText}>
-          {agendamentosDodia.length === 0
-            ? 'Nenhum agendamento'
-            : `${agendamentosDodia.length} agendamento${agendamentosDodia.length > 1 ? 's' : ''}`}
-        </Text>
-      </View>
+      {agendamentosDodia.length > 0 && (
+        <View style={styles.dayInfoBar}>
+          <Text style={styles.dayInfoText}>
+            {`${agendamentosDodia.length} agendamento${agendamentosDodia.length > 1 ? 's' : ''}`}
+          </Text>
+        </View>
+      )}
 
       {/* ── Lista de agendamentos ── */}
       <FlatList
         data={agendamentosDodia}
         keyExtractor={(item) => String(item.id)}
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={[styles.listContent, { flexGrow: 1 }]}
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={() => (
-          <View style={styles.empty}>
-            <MaterialIcons name="event-available" size={56} color={palette.slate200} />
-            <Text style={styles.emptyTitle}>Dia livre!</Text>
-            <Text style={styles.emptyText}>Nenhum agendamento nesta data</Text>
-          </View>
+          <EmptyState icon="event-available" message="Nenhum agendamento nesta data" isFullPage />
         )}
         renderItem={({ item }) => {
           const cliente = clientes.find(c => c.id === item.clienteId);
