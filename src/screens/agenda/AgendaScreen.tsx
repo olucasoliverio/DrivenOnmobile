@@ -9,6 +9,7 @@ import { palette, spacing, borderRadius, shadows, gradients } from '../../theme/
 import CrudDialog, { type CrudField } from '../../components/CrudDialog';
 import dayjs from 'dayjs';
 import 'dayjs/locale/pt-br';
+import ScreenHeader from '../../components/ScreenHeader';
 dayjs.locale('pt-br');
 
 const { width } = Dimensions.get('window');
@@ -102,8 +103,8 @@ export default function AgendaScreen() {
   return (
     <View style={styles.container}>
 
-      {/* ── Week Header com Gradiente ── */}
-      <LinearGradient colors={gradients.navyDark} style={[styles.weekHeader, { paddingTop: insets.top + 12 }]}>
+      {/* ── Week Header com fundo claro ── */}
+      <View style={styles.weekHeader}>
         <Text style={styles.mesAno}>
           {selectedDate.format('MMMM YYYY').replace(/^\w/, c => c.toUpperCase())}
         </Text>
@@ -136,7 +137,7 @@ export default function AgendaScreen() {
             );
           }}
         />
-      </LinearGradient>
+      </View>
 
       {/* ── Contador do dia ── */}
       <View style={styles.dayInfoBar}>
@@ -231,26 +232,32 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: palette.slate100 },
 
   // Week header
-  weekHeader: { paddingBottom: spacing.md, overflow: 'hidden' },
-  mesAno: { fontSize: 14, fontWeight: '700', color: 'rgba(255,255,255,0.7)', textAlign: 'center', marginBottom: spacing.sm, textTransform: 'capitalize', letterSpacing: 0.5 },
+  weekHeader: { 
+    backgroundColor: palette.white,
+    paddingBottom: spacing.md, 
+    paddingTop: spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(15, 23, 42, 0.05)',
+  },
+  mesAno: { fontSize: 16, fontWeight: '700', color: palette.slate500, textAlign: 'center', marginBottom: spacing.sm, textTransform: 'capitalize', letterSpacing: 0.5 },
   daysRow: { paddingHorizontal: spacing.md, gap: 8, paddingBottom: 4 },
-  dayBtn: { width: 54, height: 72, borderRadius: 16, alignItems: 'center', justifyContent: 'center', gap: 2, backgroundColor: 'rgba(255,255,255,0.1)' },
-  dayBtnSelected: { backgroundColor: palette.white },
-  dayName: { fontSize: 10, fontWeight: '600', color: 'rgba(255,255,255,0.6)' },
-  dayNameToday: { color: palette.amber400 },
-  dayNum: { fontSize: 20, fontWeight: '800', color: 'rgba(255,255,255,0.9)' },
-  dayNumToday: { color: palette.amber400 },
-  dayTextSelected: { color: palette.navy800 },
+  dayBtn: { width: 54, height: 72, borderRadius: 16, alignItems: 'center', justifyContent: 'center', gap: 2, backgroundColor: palette.slate100 },
+  dayBtnSelected: { backgroundColor: palette.navy800 },
+  dayName: { fontSize: 11, fontWeight: '600', color: palette.slate500 },
+  dayNameToday: { color: palette.navy800, fontWeight: '700' },
+  dayNum: { fontSize: 22, fontWeight: '800', color: palette.slate700 },
+  dayNumToday: { color: palette.navy800, fontWeight: '900' },
+  dayTextSelected: { color: palette.white },
   dot: { width: 5, height: 5, borderRadius: 3 },
-  dotDefault: { backgroundColor: palette.amber400 },
-  dotSelected: { backgroundColor: palette.navy800 },
+  dotDefault: { backgroundColor: palette.amber500 },
+  dotSelected: { backgroundColor: palette.white },
 
   // Info bar
   dayInfoBar: { paddingHorizontal: spacing.lg, paddingVertical: spacing.sm },
   dayInfoText: { fontSize: 12, fontWeight: '600', color: palette.slate500 },
 
   // List
-  listContent: { padding: spacing.lg, paddingTop: spacing.sm, gap: spacing.sm, paddingBottom: 90 },
+  listContent: { padding: spacing.lg, paddingTop: spacing.sm, gap: spacing.sm, paddingBottom: 160 },
 
   // Card
   card: { backgroundColor: palette.white, borderRadius: borderRadius.lg, flexDirection: 'row', overflow: 'hidden', ...shadows.sm },
@@ -273,5 +280,12 @@ const styles = StyleSheet.create({
   emptyText: { fontSize: 14, color: palette.slate400 },
 
   // FAB
-  fab: { position: 'absolute', bottom: 24, right: 24, backgroundColor: palette.navy800 },
+  fab: { 
+    position: 'absolute', 
+    bottom: 96, 
+    right: 20, 
+    backgroundColor: palette.navy800,
+    borderRadius: borderRadius.lg,
+    ...shadows.lg
+  },
 });

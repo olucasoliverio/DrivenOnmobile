@@ -1,37 +1,37 @@
 import { MD3LightTheme } from 'react-native-paper';
 
-// ─── Paleta Principal (Alinhada com o DriveOn WEB) ──────────────────────────
+// ─── Paleta Principal (Alinhada com o DriveOn WEB, refinada para mobile) ─────
 export const palette = {
-  navy900: '#18202F', // brand.ink
-  navy800: '#1D4ED8', // brand.primary
-  navy700: '#173EA5', // brand.primaryDark
-  navy600: '#2563EB',
-  navy500: '#3B82F6',
-  navy100: '#DBEAFE',
-  navy5:  '#EFF6FF',
+  navy900: '#0F172A', // Slate 900 (mais profundo e moderno que o anterior #18202F)
+  navy800: '#2563EB', // Blue 600 (azul mais vivo e moderno)
+  navy700: '#1D4ED8', // Blue 700
+  navy600: '#3B82F6', // Blue 500
+  navy500: '#60A5FA', // Blue 400
+  navy100: '#DBEAFE', // Blue 100
+  navy5:  '#F0FDF4',
   navy50:  '#EFF6FF',
 
-  amber500: '#D97706', // brand.amber
+  amber500: '#F59E0B', // Amber 500 (mais quente e moderno)
   amber400: '#FBBF24',
   amber100: '#FEF3C7',
   amber50:  '#FFFBEB',
 
-  emerald600: '#059669',
+  emerald600: '#10B981', // Emerald 500 (verde mais limpo)
   emerald100: '#D1FAE5',
 
-  rose600: '#E11D48',
+  rose600: '#EF4444', // Red 500
   rose100: '#FFE4E6',
 
-  violet600: '#7C3AED',
+  violet600: '#8B5CF6', // Violet 500
   violet100: '#EDE9FE',
 
-  slate900: '#18202F',
-  slate700: '#475569',
-  slate500: '#667085', // brand.muted
+  slate900: '#0F172A',
+  slate700: '#334155',
+  slate500: '#64748B', // brand.muted
   slate400: '#94A3B8',
   slate300: '#CBD5E1',
-  slate200: '#DDE3EA', // brand.line
-  slate100: '#F5F7FA', // brand.page
+  slate200: '#E2E8F0', // brand.line
+  slate100: '#F1F5F9', // brand.page (cinza mais moderno que o antigo #F5F7FA)
   slate50:  '#F8FAFC',
 
   white: '#FFFFFF',
@@ -72,35 +72,35 @@ export const spacing = {
   xxl: 48,
 };
 
-// ─── Border Radius ──────────────────────────────────────────────────────────
+// ─── Border Radius (Arredondamento mais moderno/suave) ──────────────────────────
 export const borderRadius = {
-  sm: 6, // Alinhado com o Web (borderRadius: 6/8)
-  md: 8,
-  lg: 12,
-  xl: 16,
+  sm: 8,   // Cantos ligeiramente mais redondos
+  md: 12,  // Padrão para cards pequenos/inputs
+  lg: 16,  // Padrão para cards grandes
+  xl: 24,  // Padrão para modais e cartões principais
   full: 999,
 };
 
-// ─── Sombras Neutras (Alinhadas com o Web) ──────────────────────────────────
+// ─── Sombras Neutras (Muito mais suaves e difusas, visual premium) ──────────
 export const shadows = {
   sm: {
-    shadowColor: '#101828',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
     elevation: 2,
   },
   md: {
-    shadowColor: '#101828',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
     elevation: 4,
   },
   lg: {
-    shadowColor: '#101828',
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.10,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 16 },
+    shadowOpacity: 0.08,
     shadowRadius: 24,
     elevation: 8,
   },
@@ -108,8 +108,9 @@ export const shadows = {
 
 // ─── Gradientes (Alinhados com o Web) ───────────────────────────────────────
 export const gradients = {
-  navyPrimary: [palette.navy800, palette.navy700] as [string, string], // brand.primary para brand.primaryDark
-  navyDark:    [palette.navy900, '#26354A'] as [string, string], // brand.ink para um tom um pouco mais claro
+  navyPrimary: [palette.navy800, palette.navy700] as [string, string], 
+  navyDark:    [palette.navy900, '#1E293B'] as [string, string], // Slate 900 para Slate 800 (transição muito elegante)
   amber:       [palette.amber500, palette.amber400] as [string, string],
   surface:     [palette.white, palette.slate50] as [string, string],
 };
+

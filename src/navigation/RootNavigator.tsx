@@ -42,10 +42,10 @@ export default function RootNavigator() {
           <>
             <Stack.Screen name="App" component={AppTabs} options={{ headerShown: false }} />
             <Stack.Screen name="Clientes" component={ClientesScreen} options={{ headerShown: false }} />
-            <Stack.Screen name="ClienteDetalhes" component={ClienteDetalhesScreen} options={{ title: 'Detalhes do Cliente' }} />
-            <Stack.Screen name="Veiculos" component={VeiculosScreen} options={{ title: 'Veículos' }} />
-            <Stack.Screen name="PlacaScanner" component={PlacaScannerScreen} options={{ title: 'Leitura de Placa' }} />
-            <Stack.Screen name="OSDetalhes" component={OSDetalhesScreen} options={{ title: 'Detalhes da OS' }} />
+            <Stack.Screen name="ClienteDetalhes" component={ClienteDetalhesScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="Veiculos" component={VeiculosScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="PlacaScanner" component={PlacaScannerScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="OSDetalhes" component={OSDetalhesScreen} options={{ headerShown: false }} />
           </>
         ) : (
           <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />

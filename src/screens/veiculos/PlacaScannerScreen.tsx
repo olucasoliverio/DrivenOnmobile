@@ -13,6 +13,7 @@ import {
   validatePlate,
 } from '../../services/licensePlateRecognition';
 import { recognizePlateTextFromImage } from '../../services/plateOcrAdapter';
+import ScreenHeader from '../../components/ScreenHeader';
 
 export default function PlacaScannerScreen() {
   const navigation = useNavigation<any>();
@@ -100,7 +101,9 @@ export default function PlacaScannerScreen() {
   };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <ScreenHeader title="Scanner de Placa" showBack={true} />
+      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Surface style={styles.cameraPanel} elevation={1}>
         <View style={styles.panelIcon}>
           <MaterialIcons name="photo-camera" size={28} color={colors.primary} />
@@ -248,6 +251,7 @@ export default function PlacaScannerScreen() {
         </Surface>
       ) : null}
     </ScrollView>
+    </View>
   );
 }
 

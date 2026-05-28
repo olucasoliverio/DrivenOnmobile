@@ -7,6 +7,7 @@ import { colors, spacing, borderRadius } from '../../theme/theme';
 import dayjs from 'dayjs';
 import CrudDialog, { type CrudField } from '../../components/CrudDialog';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import ScreenHeader from '../../components/ScreenHeader';
 
 const statusConfig: Record<string, { label: string; color: string; bg: string }> = {
   aprovado: { label: 'Aprovado', color: '#2E7D32', bg: '#E8F5E9' },
@@ -98,7 +99,7 @@ export default function OrcamentosScreen() {
       <FlatList
         data={orcamentos}
         keyExtractor={item => String(item.id)}
-        contentContainerStyle={{ padding: spacing.lg, gap: spacing.sm, paddingBottom: insets.bottom + 80 }}
+        contentContainerStyle={{ padding: spacing.lg, gap: spacing.sm, paddingBottom: 160 }}
         renderItem={({ item: o }) => {
           const cliente = clientes.find(c => c.id === o.clienteId);
           const veiculo = veiculos.find(v => v.id === o.veiculoId);
@@ -144,7 +145,7 @@ export default function OrcamentosScreen() {
         }}
       />
       <CrudDialog visible={dialogOpen} title={editingId ? 'Editar orcamento' : 'Novo orcamento'} fields={fields} values={form} isSaving={saving} onChange={(key, value) => setForm((current) => ({ ...current, [key]: value }))} onCancel={() => setDialogOpen(false)} onSave={save} />
-      <FAB icon="plus" style={[styles.fab, { bottom: insets.bottom + 24 }]} color="#FFF" onPress={() => openForm()} />
+      <FAB icon="plus" style={styles.fab} color="#FFF" onPress={() => openForm()} />
     </View>
   );
 }
@@ -172,5 +173,5 @@ const styles = StyleSheet.create({
   dataLabel: { fontSize: 10, color: '#9E9E9E', fontWeight: '600' },
   dataText: { fontSize: 12, color: colors.onBackground },
   total: { fontSize: 18, fontWeight: '800', color: colors.primary },
-  fab: { position: 'absolute', bottom: 24, right: 24, backgroundColor: colors.primary },
+  fab: { position: 'absolute', bottom: 96, right: 20, backgroundColor: colors.primary, borderRadius: 16, elevation: 8 },
 });

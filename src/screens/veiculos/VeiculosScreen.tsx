@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDriveOnData } from '../../context/DriveOnDataContext';
 import { colors, spacing, borderRadius } from '../../theme/theme';
 import CrudDialog, { type CrudField } from '../../components/CrudDialog';
+import ScreenHeader from '../../components/ScreenHeader';
 
 const fields: CrudField[] = [
   { key: 'cliente_id', label: 'ID do cliente', keyboardType: 'number-pad' },
@@ -94,6 +95,7 @@ export default function VeiculosScreen() {
 
   return (
     <View style={styles.container}>
+      <ScreenHeader title="Veículos" showBack={true} />
       <View style={styles.searchBox}>
         <MaterialIcons name="search" size={20} color="#9E9E9E" style={{ marginRight: spacing.sm }} />
         <RNTextInput placeholder="Buscar por placa, modelo ou cliente..." value={busca} onChangeText={setBusca} style={styles.searchInput} placeholderTextColor="#BDBDBD" />
@@ -101,7 +103,7 @@ export default function VeiculosScreen() {
       <FlatList
         data={veiculos}
         keyExtractor={item => String(item.id)}
-        contentContainerStyle={{ padding: spacing.lg, gap: spacing.sm, paddingBottom: insets.bottom + 80 }}
+        contentContainerStyle={{ padding: spacing.lg, gap: spacing.sm, paddingBottom: 80 }}
         renderItem={({ item: v }) => {
           const cliente = clientes.find(c => c.id === v.clienteId);
           return (
@@ -131,9 +133,9 @@ export default function VeiculosScreen() {
           );
         }}
       />
-      <FAB icon="camera" style={[styles.cameraFab, { bottom: insets.bottom + 92 }]} color="#FFF" onPress={() => navigation.navigate('PlacaScanner')} />
+      <FAB icon="camera" style={styles.cameraFab} color="#FFF" onPress={() => navigation.navigate('PlacaScanner')} />
       <CrudDialog visible={dialogOpen} title={editingId ? 'Editar veiculo' : 'Novo veiculo'} fields={fields} values={form} isSaving={saving} onChange={(key, value) => setForm((current) => ({ ...current, [key]: value }))} onCancel={() => setDialogOpen(false)} onSave={save} />
-      <FAB icon="plus" style={[styles.fab, { bottom: insets.bottom + 24 }]} color="#FFF" onPress={() => openForm()} />
+      <FAB icon="plus" style={styles.fab} color="#FFF" onPress={() => openForm()} />
     </View>
   );
 }
@@ -153,6 +155,6 @@ const styles = StyleSheet.create({
   infoRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
   clienteText: { fontSize: 12, color: '#757575' },
   kmText: { fontSize: 12, color: '#757575' },
-  fab: { position: 'absolute', bottom: 24, right: 24, backgroundColor: colors.primary },
-  cameraFab: { position: 'absolute', bottom: 92, right: 24, backgroundColor: colors.secondary },
+  fab: { position: 'absolute', bottom: 24, right: 20, backgroundColor: colors.primary, borderRadius: 16, elevation: 8 },
+  cameraFab: { position: 'absolute', bottom: 84, right: 20, backgroundColor: colors.secondary, borderRadius: 16, elevation: 8 },
 });

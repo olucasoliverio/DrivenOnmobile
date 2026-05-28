@@ -8,25 +8,26 @@ import { palette, spacing, borderRadius, shadows, gradients } from '../../theme/
 import dayjs from 'dayjs';
 import CrudDialog, { type CrudField } from '../../components/CrudDialog';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import ScreenHeader from '../../components/ScreenHeader';
 
-const STATUS_MAP: Record<string, { label: string; color: string }> = {
-  em_andamento:    { label: 'Em Andamento', color: palette.navy700 },
-  aguardando:      { label: 'Aguardando',   color: '#C2410C' },
-  aguardando_pecas:{ label: 'Aguard. Peças',color: palette.violet600 },
-  concluido:       { label: 'Concluído',    color: palette.emerald600 },
+const STATUS_MAP: Record<string, { label: string; color: string; bg: string }> = {
+  em_andamento:    { label: 'Em Andamento', color: palette.navy800,    bg: 'rgba(37, 99, 235, 0.08)' },
+  aguardando:      { label: 'Aguardando',   color: '#C2410C',          bg: '#FFF7ED' },
+  aguardando_pecas:{ label: 'Aguard. Peças',color: palette.violet600,  bg: '#F5F3FF' },
+  concluido:       { label: 'Concluído',    color: palette.emerald600, bg: '#ECFDF5' },
 };
 
 const AVATAR_COLORS = [
   [palette.navy800, palette.navy600],
-  ['#7C3AED', '#A855F7'],
-  ['#059669', '#10B981'],
+  ['#8B5CF6', '#A78BFA'],
+  ['#10B981', '#34D399'],
 ] as [string, string][];
 
 const editFields: CrudField[] = [
   { key: 'nome', label: 'Nome', autoCapitalize: 'words' },
   { key: 'telefone', label: 'Telefone', keyboardType: 'phone-pad' },
   { key: 'email', label: 'E-mail', keyboardType: 'email-address', autoCapitalize: 'none' },
-  { key: 'observacoes', label: 'Observacoes', multiline: true },
+  { key: 'observacoes', label: 'Observações', multiline: true },
 ];
 
 export default function ClienteDetalhesScreen() {
@@ -48,7 +49,7 @@ export default function ClienteDetalhesScreen() {
   if (!cliente) {
     return (
       <View style={styles.container}>
-        <Text style={styles.emptyText}>Cliente nao encontrado.</Text>
+        <Text style={styles.emptyText}>Cliente não encontrado.</Text>
       </View>
     );
   }
@@ -65,7 +66,7 @@ export default function ClienteDetalhesScreen() {
 
   const save = async () => {
     if (!form.nome?.trim()) {
-      Alert.alert('Nome obrigatorio', 'Informe o nome do cliente.');
+      Alert.alert('Nome obrigatório', 'Informe o nome do cliente.');
       return;
     }
     setSaving(true);
@@ -78,16 +79,21 @@ export default function ClienteDetalhesScreen() {
       });
       setDialogOpen(false);
     } catch (error: any) {
-      Alert.alert('Nao foi possivel salvar', error?.response?.data?.error ?? error?.message ?? 'Tente novamente.');
+      Alert.alert('Não foi possível salvar', error?.response?.data?.error ?? error?.message ?? 'Tente novamente.');
     } finally {
       setSaving(false);
     }
   };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: insets.bottom + spacing.lg }} showsVerticalScrollIndicator={false}>
-
-      {/* ── Perfil do cliente ── */}
+    <View style={{ flex: 1, backgroundColor: palette.slate100 }}>
+      <ScreenHeader title="Detalhes do Cliente" showBack={true} />
+      <ScrollView 
+        style={styles.container} 
+        contentContainerStyle={{ paddingBottom: insets.bottom + spacing.xl }} 
+        showsVerticalScrollIndicator={false}
+      >
+      {/* ── Perfil do cliente Redesenhado ── */}
       <View style={styles.profileCard}>
         <LinearGradient colors={avatarColors} style={styles.avatar}>
           <Text style={styles.avatarText}>{cliente.nome.substring(0, 2).toUpperCase()}</Text>
@@ -95,7 +101,7 @@ export default function ClienteDetalhesScreen() {
         <Text style={styles.nome}>{cliente.nome}</Text>
         <Text style={styles.cpf}>{cliente.cpf}</Text>
 
-        {/* Stats */}
+        {/* Estatísticas resumidas em cápsula elegante */}
         <View style={styles.statsRow}>
           <View style={styles.statBox}>
             <Text style={styles.statNum}>{veiculos.length}</Text>
@@ -103,7 +109,7 @@ export default function ClienteDetalhesScreen() {
           </View>
           <View style={[styles.statBox, styles.statDivider]}>
             <Text style={styles.statNum}>{ordens.length}</Text>
-            <Text style={styles.statLabel}>OS</Text>
+            <Text style={styles.statLabel}>O.S.</Text>
           </View>
           <View style={styles.statBox}>
             <Text style={styles.statNum}>R$ {(totalGasto / 1000).toFixed(1)}k</Text>
@@ -112,16 +118,16 @@ export default function ClienteDetalhesScreen() {
         </View>
       </View>
 
-      {/* ── Contato ── */}
+      {/* ── Contatos com Caixas de Ícone Suaves ── */}
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
-          <MaterialIcons name="contacts" size={16} color={palette.navy800} />
+          <MaterialIcons name="contacts" size={18} color={palette.navy800} />
           <Text style={styles.sectionTitle}>Contato</Text>
         </View>
         {[
-          { icon: 'phone' as const,       label: 'Telefone',  value: cliente.telefone },
-          { icon: 'email' as const,       label: 'E-mail',    value: cliente.email },
-          { icon: 'location-on' as const, label: 'Endereço',  value: `${cliente.endereco}, ${cliente.cidade}` },
+          { icon: 'phone' as const,       label: 'Telefone',  value: cliente.telefone || 'Não informado' },
+          { icon: 'email' as const,       label: 'E-mail',    value: cliente.email || 'Não informado' },
+          { icon: 'location-on' as const, label: 'Endereço',  value: cliente.endereco ? `${cliente.endereco}, ${cliente.cidade}` : 'Não informado' },
         ].map(item => (
           <View key={item.label} style={styles.infoRow}>
             <View style={styles.infoIconBox}>
@@ -135,10 +141,10 @@ export default function ClienteDetalhesScreen() {
         ))}
       </View>
 
-      {/* ── Veículos ── */}
+      {/* ── Veículos Redesenhados ── */}
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
-          <MaterialIcons name="directions-car" size={16} color={palette.navy800} />
+          <MaterialIcons name="directions-car" size={18} color={palette.navy800} />
           <Text style={styles.sectionTitle}>Veículos ({veiculos.length})</Text>
         </View>
         {veiculos.map(v => (
@@ -157,10 +163,10 @@ export default function ClienteDetalhesScreen() {
         )}
       </View>
 
-      {/* ── Histórico OS ── */}
+      {/* ── Histórico de Ordens de Serviço Redesenhado ── */}
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
-          <MaterialIcons name="build" size={16} color={palette.navy800} />
+          <MaterialIcons name="build" size={18} color={palette.navy800} />
           <Text style={styles.sectionTitle}>Histórico de OS ({ordens.length})</Text>
         </View>
         {ordens.map((os, idx) => {
@@ -174,8 +180,10 @@ export default function ClienteDetalhesScreen() {
                 <Text style={styles.osDesc} numberOfLines={1}>{os.descricao}</Text>
                 <Text style={styles.osData}>{dayjs(os.dataEntrada).format('DD/MM/YYYY')}</Text>
               </View>
-              <View style={{ alignItems: 'flex-end' }}>
-                <Text style={[styles.osStatus, { color: st?.color }]}>{st?.label}</Text>
+              <View style={{ alignItems: 'flex-end', gap: 4 }}>
+                <View style={[styles.statusBadge, { backgroundColor: st?.bg ?? palette.slate100 }]}>
+                  <Text style={[styles.statusBadgeText, { color: st?.color ?? palette.slate500 }]}>{st?.label}</Text>
+                </View>
                 <Text style={styles.osValor}>R$ {os.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</Text>
               </View>
             </View>
@@ -186,9 +194,9 @@ export default function ClienteDetalhesScreen() {
         )}
       </View>
 
-      {/* ── Ações ── */}
+      {/* ── Botões de Ações Redesenhados ── */}
       <View style={styles.actions}>
-        <TouchableOpacity style={styles.btnPrimary} activeOpacity={0.8} onPress={() => navigation.navigate('OS')}>
+        <TouchableOpacity style={styles.btnPrimary} activeOpacity={0.85} onPress={() => navigation.navigate('OS')}>
           <LinearGradient colors={gradients.navyPrimary} style={styles.btnGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
             <MaterialIcons name="build" size={18} color={palette.white} />
             <Text style={styles.btnPrimaryText}>Nova OS</Text>
@@ -196,63 +204,110 @@ export default function ClienteDetalhesScreen() {
         </TouchableOpacity>
         <TouchableOpacity style={styles.btnOutline} activeOpacity={0.7} onPress={openEdit}>
           <MaterialIcons name="edit" size={18} color={palette.navy800} />
-          <Text style={styles.btnOutlineText}>Editar</Text>
+          <Text style={styles.btnOutlineText}>Editar Detalhes</Text>
         </TouchableOpacity>
       </View>
 
       <CrudDialog visible={dialogOpen} title="Editar cliente" fields={editFields} values={form} isSaving={saving} onChange={(key, value) => setForm((current) => ({ ...current, [key]: value }))} onCancel={() => setDialogOpen(false)} onSave={save} />
     </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: palette.slate100 },
 
+  emptyText: { fontSize: 14, color: palette.slate400, fontStyle: 'italic', textAlign: 'center', marginTop: 40 },
+
   // Profile card
-  profileCard: { margin: spacing.lg, backgroundColor: palette.white, borderRadius: borderRadius.lg, padding: spacing.lg, alignItems: 'center', ...shadows.md },
-  avatar: { width: 72, height: 72, borderRadius: 36, justifyContent: 'center', alignItems: 'center', marginBottom: spacing.sm },
-  avatarText: { color: palette.white, fontWeight: '800', fontSize: 24 },
-  nome: { fontSize: 20, fontWeight: '800', color: palette.slate900, marginBottom: 4 },
-  cpf: { fontSize: 13, color: palette.slate400, marginBottom: spacing.md },
-  statsRow: { flexDirection: 'row', width: '100%', backgroundColor: palette.slate50, borderRadius: borderRadius.md, padding: spacing.md },
+  profileCard: { 
+    margin: spacing.lg, 
+    backgroundColor: palette.white, 
+    borderRadius: borderRadius.lg, 
+    padding: spacing.lg, 
+    alignItems: 'center', 
+    borderWidth: 1,
+    borderColor: 'rgba(15, 23, 42, 0.04)',
+    ...shadows.md 
+  },
+  avatar: { width: 76, height: 76, borderRadius: 38, justifyContent: 'center', alignItems: 'center', marginBottom: spacing.sm },
+  avatarText: { color: palette.white, fontWeight: '900', fontSize: 24 },
+  nome: { fontSize: 22, fontWeight: '900', color: palette.slate900, marginBottom: 4, letterSpacing: -0.3 },
+  cpf: { fontSize: 13, color: palette.slate400, fontWeight: '600', marginBottom: spacing.md },
+  statsRow: { 
+    flexDirection: 'row', 
+    width: '100%', 
+    backgroundColor: palette.slate50, 
+    borderRadius: borderRadius.md, 
+    paddingVertical: spacing.md,
+    borderWidth: 1,
+    borderColor: 'rgba(15, 23, 42, 0.02)',
+  },
   statBox: { flex: 1, alignItems: 'center' },
   statDivider: { borderLeftWidth: 1, borderRightWidth: 1, borderColor: palette.slate200 },
-  statNum: { fontSize: 18, fontWeight: '800', color: palette.navy800 },
-  statLabel: { fontSize: 11, color: palette.slate400, marginTop: 2 },
+  statNum: { fontSize: 18, fontWeight: '900', color: palette.navy800 },
+  statLabel: { fontSize: 11, color: palette.slate500, fontWeight: '700', marginTop: 2 },
 
   // Sections
-  section: { marginHorizontal: spacing.lg, marginBottom: spacing.sm, backgroundColor: palette.white, borderRadius: borderRadius.lg, padding: spacing.md, ...shadows.sm },
-  sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.md, paddingBottom: spacing.sm, borderBottomWidth: 1, borderBottomColor: palette.slate100 },
-  sectionTitle: { fontSize: 14, fontWeight: '700', color: palette.slate900 },
+  section: { 
+    marginHorizontal: spacing.lg, 
+    marginBottom: spacing.sm, 
+    backgroundColor: palette.white, 
+    borderRadius: borderRadius.lg, 
+    padding: spacing.md, 
+    borderWidth: 1,
+    borderColor: 'rgba(15, 23, 42, 0.04)',
+    ...shadows.sm 
+  },
+  sectionHeader: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    gap: spacing.sm, 
+    marginBottom: spacing.md, 
+    paddingBottom: spacing.sm, 
+    borderBottomWidth: 1, 
+    borderBottomColor: 'rgba(15, 23, 42, 0.04)' 
+  },
+  sectionTitle: { fontSize: 14, fontWeight: '800', color: palette.slate900, letterSpacing: -0.2 },
 
   // Info rows
-  infoRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: spacing.sm, gap: spacing.sm },
-  infoIconBox: { width: 32, height: 32, borderRadius: 8, backgroundColor: palette.navy50, justifyContent: 'center', alignItems: 'center' },
-  infoLabel: { fontSize: 11, color: palette.slate400, fontWeight: '600', marginBottom: 1 },
-  infoValue: { fontSize: 14, color: palette.slate900, fontWeight: '500' },
+  infoRow: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.sm, gap: spacing.sm },
+  infoIconBox: { width: 32, height: 32, borderRadius: 8, backgroundColor: 'rgba(37, 99, 235, 0.05)', justifyContent: 'center', alignItems: 'center' },
+  infoLabel: { fontSize: 11, color: palette.slate400, fontWeight: '700', marginBottom: 1 },
+  infoValue: { fontSize: 14, color: palette.slate900, fontWeight: '600' },
 
   // Veículos
-  veiculoCard: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.sm, borderBottomWidth: 1, borderBottomColor: palette.slate100 },
-  veiculoIconBox: { width: 36, height: 36, borderRadius: 10, backgroundColor: palette.navy50, justifyContent: 'center', alignItems: 'center' },
-  veiculoNome: { fontSize: 14, fontWeight: '600', color: palette.slate900 },
-  veiculoInfo: { fontSize: 12, color: palette.slate400, marginTop: 2 },
+  veiculoCard: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.sm, borderBottomWidth: 1, borderBottomColor: 'rgba(15, 23, 42, 0.04)' },
+  veiculoIconBox: { width: 36, height: 36, borderRadius: 10, backgroundColor: 'rgba(37, 99, 235, 0.05)', justifyContent: 'center', alignItems: 'center' },
+  veiculoNome: { fontSize: 14, fontWeight: '700', color: palette.slate900 },
+  veiculoInfo: { fontSize: 12, color: palette.slate500, fontWeight: '500', marginTop: 2 },
 
   // OS rows
   osRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.sm },
-  osRowBorder: { borderBottomWidth: 1, borderBottomColor: palette.slate100 },
-  osNumBox: { backgroundColor: palette.navy50, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 4 },
-  osNum: { fontSize: 12, fontWeight: '700', color: palette.navy800 },
-  osDesc: { fontSize: 13, fontWeight: '600', color: palette.slate900 },
-  osData: { fontSize: 11, color: palette.slate400, marginTop: 2 },
-  osStatus: { fontSize: 11, fontWeight: '700' },
-  osValor: { fontSize: 13, fontWeight: '700', color: palette.slate700 },
-  emptyText: { fontSize: 13, color: palette.slate400, fontStyle: 'italic' },
+  osRowBorder: { borderBottomWidth: 1, borderBottomColor: 'rgba(15, 23, 42, 0.04)' },
+  osNumBox: { backgroundColor: 'rgba(37, 99, 235, 0.05)', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 4 },
+  osNum: { fontSize: 11, fontWeight: '800', color: palette.navy800 },
+  osDesc: { fontSize: 14, fontWeight: '700', color: palette.slate900 },
+  osData: { fontSize: 11, color: palette.slate400, fontWeight: '500', marginTop: 2 },
+  statusBadge: { borderRadius: borderRadius.full, paddingHorizontal: 8, paddingVertical: 2 },
+  statusBadgeText: { fontSize: 10, fontWeight: '800' },
+  osValor: { fontSize: 13, fontWeight: '800', color: palette.slate700 },
 
   // Actions
-  actions: { marginHorizontal: spacing.lg, gap: spacing.sm },
+  actions: { marginHorizontal: spacing.lg, gap: spacing.sm, marginTop: spacing.md },
   btnPrimary: { borderRadius: borderRadius.md, overflow: 'hidden', ...shadows.sm },
   btnGradient: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, paddingVertical: 14 },
   btnPrimaryText: { fontSize: 15, fontWeight: '700', color: palette.white },
-  btnOutline: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, paddingVertical: 14, borderRadius: borderRadius.md, borderWidth: 1.5, borderColor: palette.navy800, backgroundColor: palette.white },
+  btnOutline: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    gap: spacing.sm, 
+    paddingVertical: 14, 
+    borderRadius: borderRadius.md, 
+    borderWidth: 1.5, 
+    borderColor: palette.navy800, 
+    backgroundColor: palette.white 
+  },
   btnOutlineText: { fontSize: 15, fontWeight: '700', color: palette.navy800 },
 });

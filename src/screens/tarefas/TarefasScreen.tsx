@@ -9,6 +9,7 @@ import { useDriveOnData } from '../../context/DriveOnDataContext';
 import { palette, spacing, borderRadius, shadows, gradients } from '../../theme/theme';
 import dayjs from 'dayjs';
 import CrudDialog, { type CrudField } from '../../components/CrudDialog';
+import ScreenHeader from '../../components/ScreenHeader';
 
 type StatusKey = 'todos' | 'em_andamento' | 'aguardando' | 'aguardando_pecas' | 'concluido';
 
@@ -95,12 +96,11 @@ export default function TarefasScreen() {
 
   return (
     <View style={styles.container}>
-
-      {/* ── Mini Header ── */}
-      <LinearGradient colors={gradients.navyDark} style={[styles.topHeader, { paddingTop: insets.top + 12 }]}>
-        <Text style={styles.headerTitle}>Ordens de Serviço</Text>
-        <Text style={styles.headerSub}>{ordens.length} resultado{ordens.length !== 1 ? 's' : ''}</Text>
-      </LinearGradient>
+      <ScreenHeader 
+        title="Ordens de Serviço" 
+        subtitle={`${ordens.length} resultado${ordens.length !== 1 ? 's' : ''}`}
+        showBack={false} 
+      />
 
       {/* ── Search ── */}
       <View style={styles.searchContainer}>
@@ -215,13 +215,24 @@ const styles = StyleSheet.create({
 
   // Top header
   topHeader: { paddingBottom: 20, paddingHorizontal: spacing.lg },
-  headerTitle: { fontSize: 22, fontWeight: '800', color: palette.white },
-  headerSub: { fontSize: 13, color: 'rgba(255,255,255,0.6)', marginTop: 2 },
+  headerTitle: { fontSize: 24, fontWeight: '800', color: palette.white },
+  headerSub: { fontSize: 14, color: 'rgba(255,255,255,0.6)', marginTop: 2 },
 
   // Search
-  searchContainer: { marginHorizontal: spacing.lg, marginTop: -16 },
-  searchBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: palette.white, borderRadius: borderRadius.lg, paddingHorizontal: spacing.md, paddingVertical: 12, gap: spacing.sm, ...shadows.md },
-  searchInput: { flex: 1, fontSize: 14, color: palette.slate900 },
+  searchContainer: { marginHorizontal: spacing.lg, marginTop: spacing.md },
+  searchBox: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    backgroundColor: palette.white, 
+    borderRadius: borderRadius.lg, 
+    paddingHorizontal: spacing.md, 
+    height: 52, 
+    gap: spacing.sm, 
+    borderWidth: 1, 
+    borderColor: 'rgba(15, 23, 42, 0.05)', 
+    ...shadows.md 
+  },
+  searchInput: { flex: 1, fontSize: 14, color: palette.slate900, fontWeight: '500' },
 
   // Chips
   chipsContainer: { marginTop: spacing.sm },
@@ -232,7 +243,7 @@ const styles = StyleSheet.create({
   chipTextActive: { fontSize: 12, fontWeight: '700', color: palette.white },
 
   // List
-  listContent: { paddingHorizontal: spacing.lg, paddingBottom: 90, gap: spacing.sm },
+  listContent: { paddingHorizontal: spacing.lg, paddingBottom: 160, gap: spacing.sm },
 
   // Card
   card: { backgroundColor: palette.white, borderRadius: borderRadius.lg, flexDirection: 'row', overflow: 'hidden', ...shadows.sm },
@@ -257,5 +268,12 @@ const styles = StyleSheet.create({
   emptyText: { fontSize: 14, color: palette.slate400 },
 
   // FAB
-  fab: { position: 'absolute', bottom: 24, right: 24, backgroundColor: palette.navy800 },
+  fab: { 
+    position: 'absolute', 
+    bottom: 96, 
+    right: 20, 
+    backgroundColor: palette.navy800,
+    borderRadius: borderRadius.lg,
+    ...shadows.lg
+  },
 });

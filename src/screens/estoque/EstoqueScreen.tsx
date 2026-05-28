@@ -89,7 +89,7 @@ export default function EstoqueScreen() {
       <FlatList
         data={itens}
         keyExtractor={item => String(item.id)}
-        contentContainerStyle={{ padding: spacing.lg, gap: spacing.sm, paddingBottom: insets.bottom + 80 }}
+        contentContainerStyle={{ padding: spacing.lg, gap: spacing.sm, paddingBottom: 160 }}
         renderItem={({ item: e }) => {
           const isBaixo = e.quantidade <= e.estoqueMinimo;
           const isSemEstoque = e.quantidade === 0;
@@ -121,7 +121,7 @@ export default function EstoqueScreen() {
         }}
       />
       <CrudDialog visible={dialogOpen} title={editingId ? 'Editar item' : 'Novo item'} fields={fields} values={form} isSaving={saving} onChange={(key, value) => setForm((current) => ({ ...current, [key]: value }))} onCancel={() => setDialogOpen(false)} onSave={save} />
-      <FAB icon="plus" style={[styles.fab, { bottom: insets.bottom + 24 }]} color="#FFF" onPress={() => openForm()} />
+      <FAB icon="plus" style={styles.fab} color="#FFF" onPress={() => openForm()} />
     </View>
   );
 }
@@ -142,5 +142,5 @@ const styles = StyleSheet.create({
   qtd: { fontSize: 18, fontWeight: '800' },
   valorUnit: { fontSize: 12, color: '#757575', marginTop: 2 },
   minimoText: { fontSize: 10, color: '#E65100', marginTop: 2 },
-  fab: { position: 'absolute', bottom: 24, right: 24, backgroundColor: colors.primary },
+  fab: { position: 'absolute', bottom: 96, right: 20, backgroundColor: colors.primary, borderRadius: 16, elevation: 8 },
 });

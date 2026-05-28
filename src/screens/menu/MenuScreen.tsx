@@ -27,6 +27,18 @@ const menuItems: MenuItem[] = [
     screen: 'Veiculos',      
     desc: 'Visualizar e cadastrar veículos' 
   },
+  { 
+    icon: 'event',  
+    label: 'Agenda',      
+    screen: 'Agenda',      
+    desc: 'Visualizar compromissos e agendamentos' 
+  },
+  { 
+    icon: 'request-quote',  
+    label: 'Orçamentos',      
+    screen: 'Orcamentos',      
+    desc: 'Gerenciar orçamentos e propostas' 
+  },
 ];
 
 export default function MenuScreen() {

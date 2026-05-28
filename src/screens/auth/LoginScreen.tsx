@@ -42,7 +42,7 @@ export default function LoginScreen() {
     <LinearGradient colors={gradients.navyDark} style={styles.root}>
       <StatusBar barStyle="light-content" backgroundColor={palette.navy900} />
 
-      {/* Círculos decorativos */}
+      {/* Círculos decorativos em degradê suave */}
       <View style={styles.circle1} />
       <View style={styles.circle2} />
 
@@ -63,13 +63,13 @@ export default function LoginScreen() {
         {/* Logo e marca */}
         <View style={styles.brandArea}>
           <View style={styles.logoBox}>
-            <MaterialIcons name="car-repair" size={36} color={palette.white} />
+            <MaterialIcons name="car-repair" size={40} color={palette.navy500} />
           </View>
           <Text style={styles.brand}>DriveOn</Text>
           <Text style={styles.tagline}>Gestão de Oficinas Mecânicas</Text>
         </View>
 
-        {/* Card de login glassmórfico */}
+        {/* Card de login glassmórfico premium */}
         <View style={styles.formCard}>
           <Text style={styles.title}>Bem-vindo de volta</Text>
           <Text style={styles.subtitle}>Entre na sua conta para continuar</Text>
@@ -81,16 +81,16 @@ export default function LoginScreen() {
             mode="outlined"
             keyboardType="email-address"
             autoCapitalize="none"
-            left={<TextInput.Icon icon="email-outline" color="rgba(255, 255, 255, 0.6)" />}
+            left={<TextInput.Icon icon="email-outline" color="rgba(255, 255, 255, 0.5)" />}
             style={styles.input}
             textColor={palette.white}
-            outlineColor="rgba(255, 255, 255, 0.12)"
-            activeOutlineColor="#60A5FA"
+            outlineColor="rgba(255, 255, 255, 0.08)"
+            activeOutlineColor={palette.navy600}
             outlineStyle={{ borderRadius: borderRadius.md }}
             theme={{
               colors: {
                 onSurfaceVariant: 'rgba(255, 255, 255, 0.4)',
-                primary: '#60A5FA',
+                primary: palette.navy600,
               }
             }}
           />
@@ -102,23 +102,23 @@ export default function LoginScreen() {
             mode="outlined"
             secureTextEntry={!senhaVisivel}
             autoCapitalize="none"
-            left={<TextInput.Icon icon="lock-outline" color="rgba(255, 255, 255, 0.6)" />}
+            left={<TextInput.Icon icon="lock-outline" color="rgba(255, 255, 255, 0.5)" />}
             right={
               <TextInput.Icon
                 icon={senhaVisivel ? 'eye-off' : 'eye'}
                 onPress={() => setSenhaVisivel(!senhaVisivel)}
-                color="rgba(255, 255, 255, 0.6)"
+                color="rgba(255, 255, 255, 0.5)"
               />
             }
             style={styles.input}
             textColor={palette.white}
-            outlineColor="rgba(255, 255, 255, 0.12)"
-            activeOutlineColor="#60A5FA"
+            outlineColor="rgba(255, 255, 255, 0.08)"
+            activeOutlineColor={palette.navy600}
             outlineStyle={{ borderRadius: borderRadius.md }}
             theme={{
               colors: {
                 onSurfaceVariant: 'rgba(255, 255, 255, 0.4)',
-                primary: '#60A5FA',
+                primary: palette.navy600,
               }
             }}
           />
@@ -133,7 +133,7 @@ export default function LoginScreen() {
             activeOpacity={0.85}
           >
             <LinearGradient
-              colors={['#3B82F6', '#1D4ED8']}
+              colors={gradients.navyPrimary}
               style={styles.loginBtnGradient}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
@@ -162,77 +162,77 @@ const styles = StyleSheet.create({
   },
   circle1: {
     position: 'absolute',
-    width: 260,
-    height: 260,
-    borderRadius: 130,
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
-    top: -80,
-    right: -60,
+    width: 320,
+    height: 320,
+    borderRadius: 160,
+    backgroundColor: 'rgba(37, 99, 235, 0.08)', // Azul translúcido
+    top: -100,
+    right: -80,
   },
   circle2: {
     position: 'absolute',
-    width: 180,
-    height: 180,
-    borderRadius: 90,
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
-    top: 60,
-    left: -40,
+    width: 240,
+    height: 240,
+    borderRadius: 120,
+    backgroundColor: 'rgba(139, 92, 246, 0.05)', // Roxo translúcido
+    top: 140,
+    left: -80,
   },
   brandArea: {
     alignItems: 'center',
     marginBottom: spacing.xl,
   },
   logoBox: {
-    width: 72,
-    height: 72,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.15)',
+    width: 80,
+    height: 80,
+    borderRadius: borderRadius.lg,
+    backgroundColor: 'rgba(37, 99, 235, 0.12)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(37, 99, 235, 0.25)',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: spacing.md,
   },
   brand: {
-    fontSize: 36,
-    fontWeight: '800',
+    fontSize: 38,
+    fontWeight: '900',
     color: palette.white,
-    letterSpacing: 1.5,
+    letterSpacing: 1.2,
   },
   tagline: {
     fontSize: 13,
-    color: 'rgba(255, 255, 255, 0.55)',
-    marginTop: 4,
+    color: palette.slate400,
+    marginTop: 6,
     letterSpacing: 0.5,
   },
   formCard: {
-    backgroundColor: 'rgba(24, 32, 47, 0.55)',
-    borderRadius: 24,
+    backgroundColor: 'rgba(15, 23, 42, 0.45)', // Fundo escuro super moderno
+    borderRadius: borderRadius.xl,
     padding: spacing.xl,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderColor: 'rgba(255, 255, 255, 0.06)',
     ...shadows.lg,
   },
   title: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: '800',
     color: palette.white,
     marginBottom: 6,
   },
   subtitle: {
     fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.5)',
+    color: palette.slate400,
     marginBottom: spacing.xl,
   },
   input: {
     marginBottom: spacing.md,
-    backgroundColor: 'rgba(15, 23, 42, 0.35)',
+    backgroundColor: 'rgba(15, 23, 42, 0.3)',
     fontSize: 15,
   },
   errorText: {
     marginTop: -8,
     marginBottom: spacing.sm,
-    color: '#EF4444',
+    color: palette.rose600,
   },
   loginBtn: {
     marginTop: spacing.sm,
@@ -254,21 +254,5 @@ const styles = StyleSheet.create({
     color: palette.white,
     letterSpacing: 0.5,
   },
-  hintBox: {
-    marginTop: spacing.lg,
-    backgroundColor: palette.navy50,
-    borderRadius: borderRadius.md,
-    padding: spacing.md,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    borderWidth: 1,
-    borderColor: palette.navy100,
-  },
-  hintText: {
-    fontSize: 13,
-    color: palette.navy800,
-    flex: 1,
-  },
-  hintBold: { fontWeight: '700' },
 });
+

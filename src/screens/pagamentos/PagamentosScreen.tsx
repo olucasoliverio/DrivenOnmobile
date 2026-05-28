@@ -130,7 +130,7 @@ export default function PagamentosScreen() {
       <FlatList
         data={dados}
         keyExtractor={item => String(item.id)}
-        contentContainerStyle={{ padding: spacing.lg, gap: spacing.sm, paddingBottom: insets.bottom + 32 }}
+        contentContainerStyle={{ padding: spacing.lg, gap: spacing.sm, paddingBottom: 160 }}
         renderItem={({ item: p }) => {
           const isReceber = p.tipo === 'receber';
           const isPago = p.status === 'pago';
@@ -164,7 +164,7 @@ export default function PagamentosScreen() {
         }}
       />
       <CrudDialog visible={dialogOpen} title={editingId ? 'Editar pagamento' : 'Novo pagamento'} fields={fields} values={form} isSaving={saving} onChange={(key, value) => setForm((current) => ({ ...current, [key]: value }))} onCancel={() => setDialogOpen(false)} onSave={save} />
-      <FAB icon="plus" style={[styles.fab, { bottom: insets.bottom + 24 }]} color="#FFF" onPress={() => openForm()} />
+      <FAB icon="plus" style={styles.fab} color="#FFF" onPress={() => openForm()} />
     </View>
   );
 }
@@ -190,5 +190,5 @@ const styles = StyleSheet.create({
   valor: { fontSize: 15, fontWeight: '800' },
   statusBadge: { borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3, marginTop: 4 },
   statusText: { fontSize: 10, fontWeight: '700' },
-  fab: { position: 'absolute', bottom: 24, right: 24, backgroundColor: colors.primary },
+  fab: { position: 'absolute', bottom: 96, right: 20, backgroundColor: colors.primary, borderRadius: 16, elevation: 8 },
 });

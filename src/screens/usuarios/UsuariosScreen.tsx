@@ -80,7 +80,7 @@ export default function UsuariosScreen() {
       <FlatList
         data={usuarios}
         keyExtractor={item => String(item.id)}
-        contentContainerStyle={{ padding: spacing.lg, gap: spacing.sm, paddingBottom: insets.bottom + 80 }}
+        contentContainerStyle={{ padding: spacing.lg, gap: spacing.sm, paddingBottom: 160 }}
         renderItem={({ item: u }) => {
           const perfil = perfilConfig[u.perfil] ?? { label: u.perfil, color: '#757575' };
           return (
@@ -113,7 +113,7 @@ export default function UsuariosScreen() {
         }}
       />
       <CrudDialog visible={dialogOpen} title={editingId ? 'Editar usuario' : 'Novo usuario'} fields={fields} values={form} isSaving={saving} onChange={(key, value) => setForm((current) => ({ ...current, [key]: value }))} onCancel={() => setDialogOpen(false)} onSave={save} />
-      <FAB icon="plus" style={[styles.fab, { bottom: insets.bottom + 24 }]} color="#FFF" onPress={() => openForm()} />
+      <FAB icon="plus" style={styles.fab} color="#FFF" onPress={() => openForm()} />
     </View>
   );
 }
@@ -130,5 +130,5 @@ const styles = StyleSheet.create({
   badges: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.sm },
   badge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
   badgeText: { fontSize: 10, fontWeight: '700' },
-  fab: { position: 'absolute', bottom: 24, right: 24, backgroundColor: colors.primary },
+  fab: { position: 'absolute', bottom: 96, right: 20, backgroundColor: colors.primary, borderRadius: 16, elevation: 8 },
 });

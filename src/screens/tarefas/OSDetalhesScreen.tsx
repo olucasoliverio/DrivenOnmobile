@@ -8,6 +8,7 @@ import { palette, spacing, borderRadius, shadows, gradients } from '../../theme/
 import dayjs from 'dayjs';
 import { API_BASE_URL } from '../../api/api';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import ScreenHeader from '../../components/ScreenHeader';
 
 const STATUS_MAP: Record<string, { label: string; color: string; bg: string; icon: keyof typeof MaterialIcons.glyphMap }> = {
   em_andamento:    { label: 'Em Andamento',  color: palette.navy700,    bg: palette.navy50,     icon: 'autorenew' },
@@ -78,7 +79,9 @@ export default function OSDetalhesScreen() {
   };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: insets.bottom + spacing.lg }} showsVerticalScrollIndicator={false}>
+    <View style={{ flex: 1, backgroundColor: palette.slate100 }}>
+      <ScreenHeader title="Detalhes da OS" showBack={true} />
+      <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: insets.bottom + spacing.lg }} showsVerticalScrollIndicator={false}>
 
       {/* ── Hero Card ── */}
       <View style={styles.heroCard}>
@@ -169,6 +172,7 @@ export default function OSDetalhesScreen() {
         </TouchableOpacity>
       </View>
     </ScrollView>
+    </View>
   );
 }
 
