@@ -3,157 +3,41 @@ import { Alert, View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput as
 import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { FAB } from 'react-native-paper';
 import { LinearGradient } from 'expo-linear-gradient';
-import CrudDialog, { type CrudField } from '../../components/CrudDialog';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useDriveOnData } from '../../context/DriveOnDataContext';
 import { palette, spacing, borderRadius, shadows, gradients } from '../../theme/theme';
 import ScreenHeader from '../../components/ScreenHeader';
 import EmptyState from '../../components/EmptyState';
 import { sendWelcomeMessage } from '../../services/whatsappService';
-import api from '../../api/api';
-
-const fields: CrudField[] = [
-  { key: 'nome', label: 'Nome', autoCapitalize: 'words' },
-  { key: 'telefone', label: 'Telefone', keyboardType: 'phone-pad' },
-  { key: 'email', label: 'E-mail', keyboardType: 'email-address', autoCapitalize: 'none' },
-  { key: 'cpf', label: 'CPF', keyboardType: 'number-pad' },
-  { key: 'cep', label: 'CEP', keyboardType: 'number-pad' },
-  { key: 'logradouro', label: 'Logradouro', autoCapitalize: 'words' },
-  { key: 'numero', label: 'Número', keyboardType: 'number-pad' },
-  { key: 'complemento', label: 'Complemento', autoCapitalize: 'sentences' },
-  { key: 'cidade', label: 'Cidade', autoCapitalize: 'words' },
-  { key: 'uf', label: 'UF (Estado)', autoCapitalize: 'characters' },
-  { key: 'observacoes', label: 'Observações', multiline: true },
-];
 
 export default function ClientesScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
-  const { clientes: clientesData, veiculos, ordens, createCliente } = useDriveOnData();
+  const { clientes: clientesData, veiculos, ordens } = useDriveOnData();
   const [busca, setBusca] = useState('');
-  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isWelcomeModalVisible, setIsWelcomeModalVisible] = useState(false);
+  const [registeredCliente, setRegisteredCliente] = useState<{ nome: string; telefone: string } | null>(null);
 
   useEffect(() => {
     if (route.params?.openForm) {
-      setIsFormOpen(true);
+      navigation.navigate('ClienteForm');
       navigation.setParams({ openForm: undefined });
     }
   }, [route.params?.openForm]);
-  
-  const [isSaving, setIsSaving] = useState(false);
-  const [isWelcomeModalVisible, setIsWelcomeModalVisible] = useState(false);
-  const [registeredCliente, setRegisteredCliente] = useState<{ nome: string; telefone: string } | null>(null);
-  
-  const [form, setForm] = useState({
-    nome: '',
-    telefone: '',
-    email: '',
-    cpf: '',
-    cep: '',
-    logradouro: '',
-    numero: '',
-    complemento: '',
-    cidade: '',
-    uf: '',
-    observacoes: '',
-  });
+
+  useEffect(() => {
+    if (route.params?.registeredCliente) {
+      setRegisteredCliente(route.params.registeredCliente);
+      setIsWelcomeModalVisible(true);
+      navigation.setParams({ registeredCliente: undefined });
+    }
+  }, [route.params?.registeredCliente]);
 
   const clientes = clientesData.filter(c =>
     c.nome.toLowerCase().includes(busca.toLowerCase()) ||
     c.telefone.includes(busca) ||
     c.cpf.includes(busca)
   );
-
-  const updateForm = async (field: keyof typeof form, value: string) => {
-    setForm((current) => ({ ...current, [field]: value }));
-
-    if (field === 'cep') {
-      const cleanCep = value.replace(/\D/g, '');
-      if (cleanCep.length === 8) {
-        try {
-          const res = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`);
-          const data = await res.json();
-          if (!data.erro) {
-            setForm((current) => ({
-              ...current,
-              logradouro: data.logradouro || '',
-              cidade: data.localidade || '',
-              uf: data.uf || '',
-            }));
-          }
-        } catch (err) {
-          console.error('Error fetching CEP:', err);
-        }
-      }
-    }
-  };
-
-  const resetForm = () => {
-    setForm({
-      nome: '',
-      telefone: '',
-      email: '',
-      cpf: '',
-      cep: '',
-      logradouro: '',
-      numero: '',
-      complemento: '',
-      cidade: '',
-      uf: '',
-      observacoes: '',
-    });
-  };
-
-  const handleCreateCliente = async () => {
-    if (!form.nome.trim()) {
-      Alert.alert('Nome obrigatório', 'Informe o nome do cliente para cadastrar.');
-      return;
-    }
-
-    setIsSaving(true);
-    try {
-      let cidadeId: number | undefined = undefined;
-
-      if (form.cidade.trim() && form.uf.trim()) {
-        try {
-          const resCidade = await api.post('/cidade', {
-            nome: form.cidade.trim(),
-            uf: form.uf.trim().toUpperCase(),
-          });
-          cidadeId = resCidade.data?.id;
-        } catch (err) {
-          console.error('Erro ao cadastrar/buscar cidade:', err);
-        }
-      }
-
-      const novoCliente = await createCliente({
-        nome: form.nome.trim(),
-        telefone: form.telefone.trim(),
-        email: form.email.trim(),
-        cpf: form.cpf.trim(),
-        observacoes: form.observacoes.trim(),
-        cep: form.cep.trim(),
-        logradouro: form.logradouro.trim(),
-        numero: form.numero.trim(),
-        complemento: form.complemento.trim(),
-        cidade_id: cidadeId,
-      });
-      resetForm();
-      setIsFormOpen(false);
-
-      if (novoCliente?.telefone) {
-        setRegisteredCliente({ nome: novoCliente.nome, telefone: novoCliente.telefone });
-        setIsWelcomeModalVisible(true);
-      }
-    } catch (error: any) {
-      Alert.alert(
-        'Não foi possível cadastrar',
-        error?.response?.data?.error ?? error?.response?.data?.message ?? error?.message ?? 'Tente novamente.',
-      );
-    } finally {
-      setIsSaving(false);
-    }
-  };
 
   return (
     <View style={styles.container}>
@@ -252,23 +136,12 @@ export default function ClientesScreen() {
         }}
       />
 
-      <CrudDialog
-        visible={isFormOpen}
-        title="Novo cliente"
-        fields={fields}
-        values={form}
-        isSaving={isSaving}
-        onChange={(key, value) => updateForm(key as any, value)}
-        onCancel={() => setIsFormOpen(false)}
-        onSave={handleCreateCliente}
-      />
-
       {/* FAB ajustado para ficar acima do Tab Bar flutuante */}
       <FAB 
         icon="plus" 
         style={styles.fab} 
         color={palette.white} 
-        onPress={() => setIsFormOpen(true)} 
+        onPress={() => navigation.navigate('ClienteForm')} 
       />
 
       {/* ── Welcome Message Confirm Modal ── */}

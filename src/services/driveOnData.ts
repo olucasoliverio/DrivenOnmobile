@@ -31,6 +31,7 @@ export type Cliente = {
   cidadeId?: number;
   cidadeNome?: string;
   uf?: string;
+  observacao?: string;
 };
 
 export type Veiculo = {
@@ -288,6 +289,7 @@ export function adaptCliente(item: any): Cliente {
     cidadeId: item.cidade_id == null ? undefined : numberValue(item.cidade_id),
     cidadeNome: textValue(item.cidade?.nome, ''),
     uf: textValue(item.cidade?.uf, ''),
+    observacao: textValue(item.observacao ?? item.observacoes, ''),
   };
 }
 

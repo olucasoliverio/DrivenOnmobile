@@ -10,6 +10,7 @@ import { colors, palette } from '../theme/theme';
 // Import sub-screens to render in Root Stack (hiding tab bar)
 import ClientesScreen from '../screens/clientes/ClientesScreen';
 import ClienteDetalhesScreen from '../screens/clientes/ClienteDetalhesScreen';
+import ClienteFormScreen from '../screens/clientes/ClienteFormScreen';
 import VeiculosScreen from '../screens/veiculos/VeiculosScreen';
 import VeiculoDetalhesScreen from '../screens/veiculos/VeiculoDetalhesScreen';
 import PlacaScannerScreen from '../screens/veiculos/PlacaScannerScreen';
@@ -50,6 +51,7 @@ export default function RootNavigator() {
             <Stack.Screen name="App" component={AppTabs} options={{ headerShown: false }} />
             <Stack.Screen name="Clientes" component={ClientesScreen} options={{ headerShown: false }} />
             <Stack.Screen name="ClienteDetalhes" component={ClienteDetalhesScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="ClienteForm" component={ClienteFormScreen} options={{ headerShown: false }} />
             <Stack.Screen name="Veiculos" component={VeiculosScreen} options={{ headerShown: false }} />
             <Stack.Screen name="VeiculoDetalhes" component={VeiculoDetalhesScreen} options={{ headerShown: false }} />
             <Stack.Screen name="PlacaScanner" component={PlacaScannerScreen} options={{ headerShown: false }} />
