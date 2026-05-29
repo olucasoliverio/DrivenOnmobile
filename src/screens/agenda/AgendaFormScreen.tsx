@@ -25,9 +25,15 @@ export default function AgendaFormScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const { agendamentoId } = route.params ?? {};
-  const { agendamentos, clientes, veiculos, createRecord, updateRecord } = useDriveOnData();
+  const { agendamentos, clientes, veiculos, createRecord, updateRecord, configuracoes } = useDriveOnData();
 
   const isEditing = agendamentoId != null;
+
+  useEffect(() => {
+    if (configuracoes?.recursosAdicionais?.agenda === false) {
+      navigation.goBack();
+    }
+  }, [configuracoes, navigation]);
 
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({

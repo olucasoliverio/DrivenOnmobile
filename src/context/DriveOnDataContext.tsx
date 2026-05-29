@@ -1,4 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   createCliente as createClienteRequest,
   fetchDriveOnData,
@@ -17,6 +18,9 @@ type DriveOnDataContextData = DriveOnData & {
   createRecord: (path: string, payload: Record<string, unknown>) => Promise<any>;
   updateRecord: (path: string, id: number, payload: Record<string, unknown>) => Promise<void>;
   deleteRecord: (path: string, id: number) => Promise<void>;
+  readNotificationIds: string[];
+  markAsRead: (id: string) => Promise<void>;
+  markAllAsRead: () => Promise<void>;
 };
 
 const DriveOnDataContext = createContext<DriveOnDataContextData | null>(null);
@@ -83,11 +87,45 @@ export function DriveOnDataProvider({ children }: { children: React.ReactNode })
     await refresh();
   }, [refresh]);
 
+  const [readNotificationIds, setReadNotificationIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const stored = await AsyncStorage.getItem('@driveon:read_notifications');
+        if (stored) {
+          setReadNotificationIds(JSON.parse(stored));
+        }
+      } catch (err) {
+        console.error('Error loading read notifications:', err);
+      }
+    })();
+  }, []);
+
+  const markAsRead = useCallback(async (id: string) => {
+    setReadNotificationIds((current) => {
+      if (current.includes(id)) return current;
+      const next = [...current, id];
+      void AsyncStorage.setItem('@driveon:read_notifications', JSON.stringify(next));
+      return next;
+    });
+  }, []);
+
+  const markAllAsRead = useCallback(async () => {
+    const ids = data.notificacoes.map((n) => n.id);
+    setReadNotificationIds((current) => {
+      const next = Array.from(new Set([...current, ...ids]));
+      void AsyncStorage.setItem('@driveon:read_notifications', JSON.stringify(next));
+      return next;
+    });
+  }, [data.notificacoes]);
+
   useEffect(() => {
     if (isAuthenticated) {
       void refresh();
     } else {
       setData(emptyDriveOnData);
+      setReadNotificationIds([]);
       setError(null);
     }
   }, [isAuthenticated, refresh]);
@@ -102,8 +140,11 @@ export function DriveOnDataProvider({ children }: { children: React.ReactNode })
       createRecord,
       updateRecord,
       deleteRecord,
+      readNotificationIds,
+      markAsRead,
+      markAllAsRead,
     }),
-    [createCliente, createRecord, data, deleteRecord, error, isLoading, refresh, updateRecord],
+    [createCliente, createRecord, data, deleteRecord, error, isLoading, refresh, updateRecord, readNotificationIds, markAsRead, markAllAsRead],
   );
 
   return <DriveOnDataContext.Provider value={value}>{children}</DriveOnDataContext.Provider>;

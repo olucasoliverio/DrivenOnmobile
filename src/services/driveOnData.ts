@@ -155,6 +155,11 @@ export type Configuracoes = {
   estado: string;
   cep: string;
   logo: string | null;
+  recursosAdicionais: {
+    agenda: boolean;
+    estoque: boolean;
+    fornecedores: boolean;
+  };
 };
 export type Dashboard = {
   osAbertas: number;
@@ -166,6 +171,16 @@ export type Dashboard = {
   ticketMedio: number;
   receitaMensal: { mes: string; valor: number }[];
   statusOS: { status: string; count: number; color: string }[];
+};
+
+export type AppNotification = {
+  id: string;
+  tipo: 'agenda' | 'financeiro' | 'estoque' | 'ordens' | 'orcamentos';
+  severidade: 'info' | 'success' | 'warning' | 'danger';
+  titulo: string;
+  descricao: string;
+  rota: string;
+  createdAt: string;
 };
 
 export type DriveOnData = {
@@ -183,6 +198,7 @@ export type DriveOnData = {
   funcionarios: Funcionario[];
   configuracoes: Configuracoes;
   dashboard: Dashboard;
+  notificacoes: AppNotification[];
 };
 
 export type ClientePayload = {
@@ -212,6 +228,7 @@ export const emptyDriveOnData: DriveOnData = {
   servicos: [],
   usuarios: [],
   funcionarios: [],
+  notificacoes: [],
   configuracoes: {
     nomeOficina: 'DriveOn',
     cnpj: '',
@@ -222,6 +239,11 @@ export const emptyDriveOnData: DriveOnData = {
     estado: '',
     cep: '',
     logo: null,
+    recursosAdicionais: {
+      agenda: true,
+      estoque: true,
+      fornecedores: true,
+    },
   },
   dashboard: {
     osAbertas: 0,
@@ -463,6 +485,7 @@ export function adaptItemOS(i: any): ItemOS {
 }
 
 export function adaptConfiguracoes(item: any): Configuracoes {
+  const recursos = item?.recursos_adicionais ?? {};
   return {
     nomeOficina: textValue(item?.nome, 'DriveOn'),
     cnpj: textValue(item?.cnpj, ''),
@@ -473,6 +496,11 @@ export function adaptConfiguracoes(item: any): Configuracoes {
     estado: textValue(item?.cidade?.uf, ''),
     cep: textValue(item?.cep, ''),
     logo: item?.logo_url ? textValue(item.logo_url) : null,
+    recursosAdicionais: {
+      agenda: typeof recursos.agenda === 'boolean' ? recursos.agenda : true,
+      estoque: typeof recursos.estoque === 'boolean' ? recursos.estoque : true,
+      fornecedores: typeof recursos.fornecedores === 'boolean' ? recursos.fornecedores : true,
+    },
   };
 }
 
@@ -564,6 +592,7 @@ export async function fetchDriveOnData(): Promise<DriveOnData> {
     usuariosResult,
     funcionariosResult,
     oficinaResult,
+    notificacoesResult,
   ] = await Promise.allSettled([
     getList('/clientes', adaptCliente),
     getList('/veiculos', adaptVeiculo),
@@ -578,6 +607,7 @@ export async function fetchDriveOnData(): Promise<DriveOnData> {
     getList('/usuario', adaptUsuario),
     getList('/funcionarios', adaptFuncionario),
     api.get('/oficinas/minha'),
+    getList('/notificacoes', item => item as AppNotification),
   ]);
 
   const valueOrFallback = <T,>(result: PromiseSettledResult<T[]>, fallback: T[]) =>
@@ -595,6 +625,7 @@ export async function fetchDriveOnData(): Promise<DriveOnData> {
   const servicos = valueOrFallback(servicosResult, []);
   const usuarios = valueOrFallback(usuariosResult, []);
   const funcionarios = valueOrFallback(funcionariosResult, []);
+  const notificacoes = valueOrFallback(notificacoesResult, []);
 
   const configuracoes = oficinaResult.status === 'fulfilled'
     ? adaptConfiguracoes(oficinaResult.value.data)
@@ -613,11 +644,13 @@ export async function fetchDriveOnData(): Promise<DriveOnData> {
     servicos,
     usuarios,
     funcionarios,
+    notificacoes,
   };
 
   return {
     ...baseData,
     configuracoes,
+    notificacoes,
     dashboard: buildDashboard(baseData),
   };
 }

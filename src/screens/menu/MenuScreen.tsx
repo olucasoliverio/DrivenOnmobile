@@ -5,6 +5,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
+import { useDriveOnData } from '../../context/DriveOnDataContext';
 import { palette, spacing, borderRadius, shadows, gradients } from '../../theme/theme';
 
 interface MenuItem {
@@ -51,13 +52,28 @@ export default function MenuScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
   const { user, signOut } = useAuth();
-  const initials = user?.nome?.substring(0, 2).toUpperCase() ?? 'AD';
+  const { configuracoes } = useDriveOnData();
+  const initials = React.useMemo(() => {
+    if (!user?.nome) return 'AD';
+    const parts = user.nome.trim().split(/\s+/);
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    }
+    return user.nome.substring(0, 2).toUpperCase();
+  }, [user?.nome]);
 
   const [isLogoutModalVisible, setIsLogoutModalVisible] = useState(false);
 
   const handleLogout = () => {
     setIsLogoutModalVisible(true);
   };
+
+  const filteredMenuItems = menuItems.filter(item => {
+    if (item.screen === 'Agenda') {
+      return configuracoes?.recursosAdicionais?.agenda !== false;
+    }
+    return true;
+  });
 
   return (
     <ScrollView
@@ -83,8 +99,8 @@ export default function MenuScreen() {
       <View style={styles.menuContainer}>
         <Text style={styles.sectionTitle}>Cadastros e Registros</Text>
         <View style={styles.listCard}>
-          {menuItems.map((item, index) => {
-            const isLast = index === menuItems.length - 1;
+          {filteredMenuItems.map((item, index) => {
+            const isLast = index === filteredMenuItems.length - 1;
             return (
               <TouchableOpacity
                 key={item.screen}

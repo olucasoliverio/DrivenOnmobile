@@ -29,10 +29,17 @@ function getDaysOfWeek(baseDate: dayjs.Dayjs) {
 export default function AgendaScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
-  const { agendamentos, clientes, veiculos, deleteRecord, refresh } = useDriveOnData();
+  const { agendamentos, clientes, veiculos, deleteRecord, refresh, configuracoes } = useDriveOnData();
   const [selectedDate, setSelectedDate] = useState(dayjs());
   const [dateFilter, setDateFilter] = useState<AgendaDateFilter>('hoje');
   const [refreshing, setRefreshing] = useState(false);
+
+  useEffect(() => {
+    if (configuracoes?.recursosAdicionais?.agenda === false) {
+      Alert.alert('Recurso Indisponível', 'O recurso de Agenda foi desativado para esta oficina.');
+      navigation.goBack();
+    }
+  }, [configuracoes, navigation]);
 
   const handleRefresh = React.useCallback(async () => {
     setRefreshing(true);

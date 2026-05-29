@@ -26,6 +26,7 @@ import PagamentoDetalhesScreen from '../screens/pagamentos/PagamentoDetalhesScre
 import VeiculoFormScreen from '../screens/veiculos/VeiculoFormScreen';
 import AgendaFormScreen from '../screens/agenda/AgendaFormScreen';
 import PagamentoFormScreen from '../screens/pagamentos/PagamentoFormScreen';
+import NotificacoesScreen from '../screens/notificacoes/NotificacoesScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -72,6 +73,7 @@ export default function RootNavigator() {
             <Stack.Screen name="VeiculoForm" component={VeiculoFormScreen} options={{ headerShown: false }} />
             <Stack.Screen name="AgendaForm" component={AgendaFormScreen} options={{ headerShown: false }} />
             <Stack.Screen name="PagamentoForm" component={PagamentoFormScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="Notificacoes" component={NotificacoesScreen} options={{ headerShown: false }} />
           </>
         ) : (
           <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />

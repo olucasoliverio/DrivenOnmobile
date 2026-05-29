@@ -5,6 +5,7 @@ import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useDriveOnData } from '../../context/DriveOnDataContext';
+import { useAuth } from '../../context/AuthContext';
 import EmptyState from '../../components/EmptyState';
 import { palette, spacing, borderRadius, shadows, gradients } from '../../theme/theme';
 import dayjs from 'dayjs';
@@ -66,8 +67,24 @@ export default function HomeScreen() {
     pagamentos,
     configuracoes,
     refresh,
+    notificacoes,
+    readNotificationIds,
   } = useDriveOnData();
   const [refreshing, setRefreshing] = React.useState(false);
+
+  const { user } = useAuth();
+  const showAgenda = configuracoes?.recursosAdicionais?.agenda !== false;
+
+  const initials = React.useMemo(() => {
+    if (!user?.nome) return 'AD';
+    const parts = user.nome.trim().split(/\s+/);
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    }
+    return user.nome.substring(0, 2).toUpperCase();
+  }, [user?.nome]);
+
+  const unreadCount = notificacoes.filter(n => !readNotificationIds.includes(n.id)).length;
 
   const handleRefresh = React.useCallback(async () => {
     setRefreshing(true);
@@ -173,10 +190,25 @@ export default function HomeScreen() {
             <Text style={styles.greeting}>{saudacao}!</Text>
             <Text style={styles.dateText}>{nomeOficina} · {dayjs().format('dddd, D [de] MMMM')}</Text>
           </View>
-          <View style={styles.avatarContainer}>
-            <LinearGradient colors={[palette.navy600, palette.navy800]} style={styles.avatarCircle}>
-              <Text style={styles.avatarText}>AD</Text>
-            </LinearGradient>
+          <View style={styles.headerRight}>
+            <TouchableOpacity
+              activeOpacity={0.7}
+              style={styles.bellButton}
+              onPress={() => navigation.navigate('Notificacoes')}
+            >
+              <MaterialIcons name="notifications-none" size={24} color={palette.white} />
+              {unreadCount > 0 && (
+                <View style={styles.bellBadge}>
+                  <Text style={styles.bellBadgeText}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+            
+            <View style={styles.avatarContainer}>
+              <LinearGradient colors={[palette.navy600, palette.navy800]} style={styles.avatarCircle}>
+                <Text style={styles.avatarText}>{initials}</Text>
+              </LinearGradient>
+            </View>
           </View>
         </View>
       </LinearGradient>
@@ -200,12 +232,20 @@ export default function HomeScreen() {
       */}
 
       {/* ── Atalhos Rápidos ── */}
-      <View style={[styles.quickActionsRow, { marginTop: spacing.lg }]}>
-        <QuickAction icon="build" label="Nova OS" color={palette.slate500} onPress={() => navigation.navigate('OS', { screen: 'TarefasList', params: { openForm: true } })} />
-        <QuickAction icon="person-add" label="Novo Cliente" color={palette.slate500} onPress={() => navigation.navigate('Clientes', { openForm: true })} />
-        <QuickAction icon="event" label="Agendar" color={palette.slate500} onPress={() => navigation.navigate('Agenda', { openForm: true })} />
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.quickActionsScroll}
+        style={{ marginTop: spacing.lg, marginBottom: spacing.sm }}
+      >
+        <QuickAction icon="build" label="Nova OS" color={palette.navy800} onPress={() => navigation.navigate('OS', { screen: 'TarefasList', params: { openForm: true } })} />
+        <QuickAction icon="person-add" label="Novo Cliente" color={palette.emerald600} onPress={() => navigation.navigate('Clientes', { openForm: true })} />
+        <QuickAction icon="request-quote" label="Orçamento" color={palette.violet600} onPress={() => navigation.navigate('Orcamentos', { openForm: true })} />
+        {showAgenda && (
+          <QuickAction icon="event" label="Agendar" color={palette.amber500} onPress={() => navigation.navigate('Agenda', { openForm: true })} />
+        )}
         <QuickAction icon="directions-car" label="Veículos" color={palette.slate500} onPress={() => navigation.navigate('Veiculos', { openForm: true })} />
-      </View>
+      </ScrollView>
 
       {/* ── OS em Andamento ── */}
       <View style={styles.section}>
@@ -275,45 +315,47 @@ export default function HomeScreen() {
       </View>
 
       {/* ── Agenda de Hoje ── */}
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Agenda de Hoje</Text>
-          <View style={[styles.sectionBadge, agendamentosHoje.length > 0 && { backgroundColor: 'rgba(16, 185, 129, 0.08)' }]}>
-            <Text style={[styles.sectionBadgeText, agendamentosHoje.length > 0 && { color: palette.emerald600 }]}>
-              {agendamentosHoje.length} {agendamentosHoje.length === 1 ? 'evento' : 'eventos'}
-            </Text>
+      {showAgenda && (
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Agenda de Hoje</Text>
+            <View style={[styles.sectionBadge, agendamentosHoje.length > 0 && { backgroundColor: 'rgba(16, 185, 129, 0.08)' }]}>
+              <Text style={[styles.sectionBadgeText, agendamentosHoje.length > 0 && { color: palette.emerald600 }]}>
+                {agendamentosHoje.length} {agendamentosHoje.length === 1 ? 'evento' : 'eventos'}
+              </Text>
+            </View>
           </View>
+          {agendamentosHoje.length === 0 ? (
+            <EmptyState icon="event-available" message="Nenhum agendamento para hoje" />
+          ) : (
+            agendamentosHoje.map((ag) => {
+              const cliente = clientes.find(c => c.id === ag.clienteId);
+              const veiculo = veiculos.find(v => v.id === ag.veiculoId);
+              const isConfirmado = ag.status === 'confirmado';
+              const accentColor = isConfirmado ? palette.emerald600 : palette.amber500;
+              return (
+                <View key={ag.id} style={styles.agCard}>
+                  <View style={styles.agTimeCol}>
+                    <Text style={styles.agTime}>{ag.hora}</Text>
+                    <View style={[styles.agDot, { backgroundColor: accentColor }]} />
+                  </View>
+                  <View style={styles.agInfo}>
+                    <Text style={styles.agCliente}>{cliente?.nome}</Text>
+                    <Text style={styles.agServico} numberOfLines={1}>
+                      {veiculo ? `${veiculo.marca} ${veiculo.modelo}` : ''} · {ag.servico}
+                    </Text>
+                  </View>
+                  <View style={[styles.agBadge, { backgroundColor: isConfirmado ? 'rgba(16, 185, 129, 0.08)' : 'rgba(245, 158, 11, 0.08)' }]}>
+                    <Text style={[styles.agBadgeText, { color: accentColor }]}>
+                      {isConfirmado ? 'Confirmado' : 'Pendente'}
+                    </Text>
+                  </View>
+                </View>
+              );
+            })
+          )}
         </View>
-        {agendamentosHoje.length === 0 ? (
-          <EmptyState icon="event-available" message="Nenhum agendamento para hoje" />
-        ) : (
-          agendamentosHoje.map((ag) => {
-            const cliente = clientes.find(c => c.id === ag.clienteId);
-            const veiculo = veiculos.find(v => v.id === ag.veiculoId);
-            const isConfirmado = ag.status === 'confirmado';
-            const accentColor = isConfirmado ? palette.emerald600 : palette.amber500;
-            return (
-              <View key={ag.id} style={styles.agCard}>
-                <View style={styles.agTimeCol}>
-                  <Text style={styles.agTime}>{ag.hora}</Text>
-                  <View style={[styles.agDot, { backgroundColor: accentColor }]} />
-                </View>
-                <View style={styles.agInfo}>
-                  <Text style={styles.agCliente}>{cliente?.nome}</Text>
-                  <Text style={styles.agServico} numberOfLines={1}>
-                    {veiculo ? `${veiculo.marca} ${veiculo.modelo}` : ''} · {ag.servico}
-                  </Text>
-                </View>
-                <View style={[styles.agBadge, { backgroundColor: isConfirmado ? 'rgba(16, 185, 129, 0.08)' : 'rgba(245, 158, 11, 0.08)' }]}>
-                  <Text style={[styles.agBadgeText, { color: accentColor }]}>
-                    {isConfirmado ? 'Confirmado' : 'Pendente'}
-                  </Text>
-                </View>
-              </View>
-            );
-          })
-        )}
-      </View>
+      )}
 
       {/* ── Atividade Recente ── */}
       <View style={styles.section}>
@@ -378,6 +420,38 @@ const styles = StyleSheet.create({
   },
   avatarCircle: { width: 42, height: 42, borderRadius: 21, justifyContent: 'center', alignItems: 'center', borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.2)' },
   avatarText: { color: palette.white, fontWeight: '900', fontSize: 14 },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  bellButton: {
+    position: 'relative',
+    padding: 6,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  bellBadge: {
+    position: 'absolute',
+    top: -3,
+    right: -3,
+    backgroundColor: palette.rose600,
+    minWidth: 15,
+    height: 15,
+    borderRadius: 7.5,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 2,
+    borderWidth: 1.5,
+    borderColor: '#0F172A', // Mesma cor do fundo para criar contorno elegante
+  },
+  bellBadgeText: {
+    color: palette.white,
+    fontSize: 8,
+    fontWeight: '900',
+    textAlign: 'center',
+    marginTop: -1.5,
+  },
 
   // KPI horizontal scroll
   kpiContainer: { marginTop: -2 },
@@ -401,13 +475,12 @@ const styles = StyleSheet.create({
   kpiChipLabel: { fontSize: 10, color: palette.slate400, fontWeight: '700', marginTop: 1 },
 
   // Quick Actions
-  quickActionsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-evenly',
+  quickActionsScroll: {
     paddingHorizontal: spacing.md,
-    marginBottom: spacing.sm,
+    gap: 16,
+    paddingBottom: 4,
   },
-  quickAction: { alignItems: 'center', gap: 6 },
+  quickAction: { alignItems: 'center', gap: 6, minWidth: 70 },
   quickActionIcon: {
     width: 48,
     height: 48,

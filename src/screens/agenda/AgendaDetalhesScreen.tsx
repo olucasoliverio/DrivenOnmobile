@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Alert, View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -13,7 +13,13 @@ export default function AgendaDetalhesScreen() {
   const route = useRoute<any>();
   const navigation = useNavigation<any>();
   const { agendamentoId } = route.params ?? { agendamentoId: 1 };
-  const { agendamentos, clientes, veiculos, updateRecord, deleteRecord } = useDriveOnData();
+  const { agendamentos, clientes, veiculos, updateRecord, deleteRecord, configuracoes } = useDriveOnData();
+
+  useEffect(() => {
+    if (configuracoes?.recursosAdicionais?.agenda === false) {
+      navigation.goBack();
+    }
+  }, [configuracoes, navigation]);
 
   const [saving, setSaving] = useState(false);
 
