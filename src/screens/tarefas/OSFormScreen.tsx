@@ -36,11 +36,12 @@ const STATUS_LABELS: Record<string, string> = {
 export default function OSFormScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
-  const { osId } = route.params ?? {};
-  const { ordens, clientes, veiculos, funcionarios, servicos, pecas, createRecord, updateRecord } = useDriveOnData();
+  const { osId, orcamentoId } = route.params ?? {};
+  const { ordens, orcamentos, clientes, veiculos, funcionarios, servicos, pecas, createRecord, updateRecord } = useDriveOnData();
 
   const isEditing = osId != null;
   const os = isEditing ? ordens.find(o => o.id === Number(osId)) : undefined;
+  const orcamentoToConvert = orcamentoId ? orcamentos.find(o => o.id === Number(orcamentoId)) : undefined;
 
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
@@ -72,7 +73,7 @@ export default function OSFormScreen() {
   const [itemQtd, setItemQtd] = useState('1');
   const [itemPrice, setItemPrice] = useState('0');
 
-  // Load OS if editing
+  // Load OS if editing or converting from estimate
   useEffect(() => {
     if (isEditing && os) {
       // Find matching employee by name or ID if possible
@@ -99,8 +100,30 @@ export default function OSFormScreen() {
           }))
         );
       }
+    } else if (orcamentoToConvert) {
+      setForm({
+        clienteId: orcamentoToConvert.clienteId,
+        veiculoId: orcamentoToConvert.veiculoId,
+        funcionarioId: null,
+        observacoes: orcamentoToConvert.descricao || `Conversão do Orçamento #${orcamentoToConvert.id}`,
+        status: 'aberta',
+      });
+
+      if (orcamentoToConvert.itens) {
+        setItens(
+          orcamentoToConvert.itens.map(item => ({
+            tipo: item.tipo,
+            servicoId: item.servicoId,
+            pecaId: item.pecaId,
+            nome: item.nome,
+            quantidade: item.quantidade,
+            precoUnitario: item.precoUnitario,
+            subtotal: item.subtotal,
+          }))
+        );
+      }
     }
-  }, [isEditing, os, funcionarios]);
+  }, [isEditing, os, orcamentoToConvert, funcionarios]);
 
   const selectedCliente = clientes.find(c => c.id === form.clienteId);
   const selectedVeiculo = veiculos.find(v => v.id === form.veiculoId);

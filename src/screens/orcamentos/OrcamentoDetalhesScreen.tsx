@@ -129,6 +129,22 @@ export default function OrcamentoDetalhesScreen() {
     }
   };
 
+  const sugerirConversaoOS = () => {
+    Alert.alert(
+      'Orçamento Aprovado!',
+      'Deseja transformar este orçamento em uma Ordem de Serviço (O.S.) agora?',
+      [
+        { text: 'Não', style: 'cancel' },
+        { 
+          text: 'Sim, Gerar O.S.', 
+          onPress: () => {
+            navigation.navigate('OSForm', { orcamentoId: orcamento.id });
+          } 
+        }
+      ]
+    );
+  };
+
   const handleWhatsAppPress = () => {
     if (!cliente?.telefone) {
       Alert.alert('Telefone indisponível', 'Este cliente não possui telefone cadastrado.');
@@ -373,7 +389,7 @@ export default function OrcamentoDetalhesScreen() {
                 try {
                   await updateRecord('/orcamentos', orcamento.id, { status: 'aprovado' });
                   await refresh();
-                  sugerirNotificacaoWhatsApp();
+                  sugerirConversaoOS();
                 } catch (error: any) {
                   Alert.alert('Erro', error?.response?.data?.error ?? error?.message);
                 }
