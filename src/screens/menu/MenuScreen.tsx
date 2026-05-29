@@ -29,6 +29,12 @@ const menuItems: MenuItem[] = [
     desc: 'Visualizar e cadastrar veículos' 
   },
   { 
+    icon: 'build',          
+    label: 'Ordens de Serviço',      
+    screen: 'OS',      
+    desc: 'Visualizar e gerenciar ordens de serviço (OS)' 
+  },
+  { 
     icon: 'event',  
     label: 'Agenda',      
     screen: 'Agenda',      

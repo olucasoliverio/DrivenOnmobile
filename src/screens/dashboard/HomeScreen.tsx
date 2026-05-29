@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, Dimensions, TouchableOpacity, FlatList, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Dimensions, TouchableOpacity, FlatList, RefreshControl, Animated, Pressable } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -40,19 +40,7 @@ function KpiChip({ icon, label, value }: {
   );
 }
 
-// ─── Quick Action Button ─────────────────────────────────────────────────────
-function QuickAction({ icon, label, color, onPress }: {
-  icon: IconName; label: string; color: string; onPress: () => void;
-}) {
-  return (
-    <TouchableOpacity style={styles.quickAction} activeOpacity={0.7} onPress={onPress}>
-      <View style={[styles.quickActionIcon, { backgroundColor: color }]}>
-        <MaterialIcons name={icon} size={20} color={palette.white} />
-      </View>
-      <Text style={styles.quickActionLabel}>{label}</Text>
-    </TouchableOpacity>
-  );
-}
+
 
 // ─── Screen ──────────────────────────────────────────────────────────────────
 export default function HomeScreen() {
@@ -71,6 +59,87 @@ export default function HomeScreen() {
     readNotificationIds,
   } = useDriveOnData();
   const [refreshing, setRefreshing] = React.useState(false);
+
+  const [menuOpen, setMenuOpen] = React.useState(false);
+  const [shouldRenderOptions, setShouldRenderOptions] = React.useState(false);
+  const animationValue = React.useRef(new Animated.Value(0)).current;
+
+  const toggleMenu = () => {
+    if (!menuOpen) {
+      setShouldRenderOptions(true);
+      setMenuOpen(true);
+      Animated.timing(animationValue, {
+        toValue: 1,
+        duration: 220,
+        useNativeDriver: true,
+      }).start();
+    } else {
+      setMenuOpen(false);
+      Animated.timing(animationValue, {
+        toValue: 0,
+        duration: 180,
+        useNativeDriver: true,
+      }).start(() => {
+        setShouldRenderOptions(false);
+      });
+    }
+  };
+
+  const handleAction = (screenName: string, params?: any) => {
+    // Fecha de forma síncrona/instantânea para evitar que a animação trave quando a tela vai para background
+    setMenuOpen(false);
+    setShouldRenderOptions(false);
+    animationValue.setValue(0);
+    navigation.navigate(screenName, params);
+  };
+
+  const rotation = animationValue.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '135deg'],
+  });
+
+  const menuOpacity = animationValue.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 1],
+  });
+
+  const translateY = animationValue.interpolate({
+    inputRange: [0, 1],
+    outputRange: [30, 0],
+  });
+
+  const options = [
+    {
+      label: 'Scan de Placa',
+      icon: 'camera-alt' as IconName,
+      color: palette.amber500,
+      onPress: () => handleAction('PlacaScanner'),
+    },
+    {
+      label: 'Novo Veículo',
+      icon: 'directions-car' as IconName,
+      color: palette.slate500,
+      onPress: () => handleAction('VeiculoForm'),
+    },
+    {
+      label: 'Novo Orçamento',
+      icon: 'request-quote' as IconName,
+      color: palette.violet600,
+      onPress: () => handleAction('OrcamentoForm'),
+    },
+    {
+      label: 'Novo Cliente',
+      icon: 'person-add' as IconName,
+      color: palette.emerald600,
+      onPress: () => handleAction('ClienteForm'),
+    },
+    {
+      label: 'Nova OS',
+      icon: 'build' as IconName,
+      color: palette.navy800,
+      onPress: () => handleAction('OSForm'),
+    },
+  ];
 
   const { user } = useAuth();
   const showAgenda = configuracoes?.recursosAdicionais?.agenda !== false;
@@ -173,224 +242,255 @@ export default function HomeScreen() {
   ];
 
   return (
-    <ScrollView
-      style={styles.container}
-      showsVerticalScrollIndicator={false}
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[palette.navy800]} />
-      }
-    >
+    <View style={styles.container}>
+      <ScrollView
+        style={{ flex: 1 }}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[palette.navy800]} />
+        }
+      >
 
-      {/* ── Header ── */}
-      <LinearGradient colors={gradients.navyDark} style={[styles.header, { paddingTop: insets.top + spacing.md }]}>
-        <View style={styles.headerCircle1} />
-        <View style={styles.headerCircle2} />
-        <View style={styles.headerContent}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.greeting}>{saudacao}!</Text>
-            <Text style={styles.dateText}>{nomeOficina} · {dayjs().format('dddd, D [de] MMMM')}</Text>
-          </View>
-          <View style={styles.headerRight}>
-            <TouchableOpacity
-              activeOpacity={0.7}
-              style={styles.bellButton}
-              onPress={() => navigation.navigate('Notificacoes')}
-            >
-              <MaterialIcons name="notifications-none" size={24} color={palette.white} />
-              {unreadCount > 0 && (
-                <View style={styles.bellBadge}>
-                  <Text style={styles.bellBadgeText}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
-                </View>
-              )}
-            </TouchableOpacity>
-            
-            <View style={styles.avatarContainer}>
-              <LinearGradient colors={[palette.navy600, palette.navy800]} style={styles.avatarCircle}>
-                <Text style={styles.avatarText}>{initials}</Text>
-              </LinearGradient>
+        {/* ── Header ── */}
+        <LinearGradient colors={gradients.navyDark} style={[styles.header, { paddingTop: insets.top + spacing.md }]}>
+          <View style={styles.headerCircle1} />
+          <View style={styles.headerCircle2} />
+          <View style={styles.headerContent}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.greeting}>{saudacao}!</Text>
+              <Text style={styles.dateText}>{nomeOficina} · {dayjs().format('dddd, D [de] MMMM')}</Text>
+            </View>
+            <View style={styles.headerRight}>
+              <TouchableOpacity
+                activeOpacity={0.7}
+                style={styles.bellButton}
+                onPress={() => navigation.navigate('Notificacoes')}
+              >
+                <MaterialIcons name="notifications-none" size={24} color={palette.white} />
+                {unreadCount > 0 && (
+                  <View style={styles.bellBadge}>
+                    <Text style={styles.bellBadgeText}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+              
+              <View style={styles.avatarContainer}>
+                <LinearGradient colors={[palette.navy600, palette.navy800]} style={styles.avatarCircle}>
+                  <Text style={styles.avatarText}>{initials}</Text>
+                </LinearGradient>
+              </View>
             </View>
           </View>
-        </View>
-      </LinearGradient>
+        </LinearGradient>
 
-      {/* ── KPIs Horizontal Scroll (comentado por ora) ──
-      <FlatList
-        data={kpis}
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        keyExtractor={(_, i) => `kpi-${i}`}
-        contentContainerStyle={styles.kpiList}
-        style={styles.kpiContainer}
-        renderItem={({ item }) => (
-          <KpiChip
-            icon={item.icon}
-            label={item.label}
-            value={item.value}
-          />
-        )}
-      />
-      */}
-
-      {/* ── Atalhos Rápidos ── */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.quickActionsScroll}
-        style={{ marginTop: spacing.lg, marginBottom: spacing.sm }}
-      >
-        <QuickAction icon="build" label="Nova OS" color={palette.navy800} onPress={() => navigation.navigate('OS', { screen: 'TarefasList', params: { openForm: true } })} />
-        <QuickAction icon="person-add" label="Novo Cliente" color={palette.emerald600} onPress={() => navigation.navigate('Clientes', { openForm: true })} />
-        <QuickAction icon="request-quote" label="Orçamento" color={palette.violet600} onPress={() => navigation.navigate('Orcamentos', { openForm: true })} />
-        {showAgenda && (
-          <QuickAction icon="event" label="Agendar" color={palette.amber500} onPress={() => navigation.navigate('Agenda', { openForm: true })} />
-        )}
-        <QuickAction icon="directions-car" label="Veículos" color={palette.slate500} onPress={() => navigation.navigate('Veiculos', { openForm: true })} />
-      </ScrollView>
-
-      {/* ── OS em Andamento ── */}
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <View>
-            <Text style={styles.sectionTitle}>OS em Andamento</Text>
-          </View>
-          <View style={[styles.sectionBadge, { backgroundColor: 'rgba(37, 99, 235, 0.08)' }]}>  
-            <Text style={[styles.sectionBadgeText, { color: palette.navy800 }]}>{ordensAbertas.length} ativas</Text>
-          </View>
-        </View>
-        {ordensAbertas.length === 0 ? (
-          <EmptyState icon="build" message="Nenhuma OS em andamento" />
-        ) : (
-          ordensAbertas.slice(0, 5).map((os) => {
-            const cliente = clientes.find(c => c.id === os.clienteId);
-            const veiculo = veiculos.find(v => v.id === os.veiculoId);
-            const s = STATUS_MAP[os.status] ?? { color: palette.slate400, bg: palette.slate100, progress: 0, label: os.status };
-            return (
-              <TouchableOpacity
-                key={os.id}
-                style={styles.osCard}
-                activeOpacity={0.75}
-                onPress={() => navigation.navigate('OSDetalhes', { osId: os.id })}
-              >
-                <View style={styles.osContent}>
-                  <View style={styles.osHeader}>
-                    <View style={styles.osNumBox}>
-                      <Text style={styles.osNumText}>OS #{String(os.id).padStart(3, '0')}</Text>
-                    </View>
-                    <View style={[styles.statusBadge, { backgroundColor: s.bg }]}>
-                      <View style={[styles.statusDot, { backgroundColor: s.color }]} />
-                      <Text style={[styles.statusBadgeText, { color: s.color }]}>{s.label}</Text>
-                    </View>
-                  </View>
-
-                  <Text style={styles.osCliente}>{cliente?.nome ?? '—'}</Text>
-                  <Text style={styles.osVeiculo}>
-                    {veiculo ? `${veiculo.marca} ${veiculo.modelo} · ${veiculo.placa}` : '—'}
-                  </Text>
-
-                  {/* Progress Bar */}
-                  <View style={styles.progressContainer}>
-                    <View style={styles.progressTrack}>
-                      <View style={[styles.progressFill, { width: `${s.progress * 100}%`, backgroundColor: s.color }]} />
-                    </View>
-                    <Text style={[styles.progressText, { color: s.color }]}>{Math.round(s.progress * 100)}%</Text>
-                  </View>
-
-                  <View style={styles.osFooter}>
-                    <View style={styles.osFooterLeft}>
-                      <MaterialIcons name="event" size={13} color={palette.slate400} />
-                      <Text style={styles.osFooterText}>{dayjs(os.dataPrevista).format('DD/MM/YY')}</Text>
-                    </View>
-                    <Text style={styles.osValor}>
-                      R$ {os.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                    </Text>
-                  </View>
-                </View>
-                <View style={styles.osChevron}>
-                  <MaterialIcons name="chevron-right" size={20} color={palette.slate300} />
-                </View>
-              </TouchableOpacity>
-            );
-          })
-        )}
-      </View>
-
-      {/* ── Agenda de Hoje ── */}
-      {showAgenda && (
+        {/* ── OS em Andamento ── */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Agenda de Hoje</Text>
-            <View style={[styles.sectionBadge, agendamentosHoje.length > 0 && { backgroundColor: 'rgba(16, 185, 129, 0.08)' }]}>
-              <Text style={[styles.sectionBadgeText, agendamentosHoje.length > 0 && { color: palette.emerald600 }]}>
-                {agendamentosHoje.length} {agendamentosHoje.length === 1 ? 'evento' : 'eventos'}
-              </Text>
+            <View>
+              <Text style={styles.sectionTitle}>OS em Andamento</Text>
+            </View>
+            <View style={[styles.sectionBadge, { backgroundColor: 'rgba(37, 99, 235, 0.08)' }]}>  
+              <Text style={[styles.sectionBadgeText, { color: palette.navy800 }]}>{ordensAbertas.length} ativas</Text>
             </View>
           </View>
-          {agendamentosHoje.length === 0 ? (
-            <EmptyState icon="event-available" message="Nenhum agendamento para hoje" />
+          {ordensAbertas.length === 0 ? (
+            <EmptyState icon="build" message="Nenhuma OS em andamento" />
           ) : (
-            agendamentosHoje.map((ag) => {
-              const cliente = clientes.find(c => c.id === ag.clienteId);
-              const veiculo = veiculos.find(v => v.id === ag.veiculoId);
-              const isConfirmado = ag.status === 'confirmado';
-              const accentColor = isConfirmado ? palette.emerald600 : palette.amber500;
+            ordensAbertas.slice(0, 5).map((os) => {
+              const cliente = clientes.find(c => c.id === os.clienteId);
+              const veiculo = veiculos.find(v => v.id === os.veiculoId);
+              const s = STATUS_MAP[os.status] ?? { color: palette.slate400, bg: palette.slate100, progress: 0, label: os.status };
               return (
-                <View key={ag.id} style={styles.agCard}>
-                  <View style={styles.agTimeCol}>
-                    <Text style={styles.agTime}>{ag.hora}</Text>
-                    <View style={[styles.agDot, { backgroundColor: accentColor }]} />
-                  </View>
-                  <View style={styles.agInfo}>
-                    <Text style={styles.agCliente}>{cliente?.nome}</Text>
-                    <Text style={styles.agServico} numberOfLines={1}>
-                      {veiculo ? `${veiculo.marca} ${veiculo.modelo}` : ''} · {ag.servico}
+                <TouchableOpacity
+                  key={os.id}
+                  style={styles.osCard}
+                  activeOpacity={0.75}
+                  onPress={() => navigation.navigate('OSDetalhes', { osId: os.id })}
+                >
+                  <View style={styles.osContent}>
+                    <View style={styles.osHeader}>
+                      <View style={styles.osNumBox}>
+                        <Text style={styles.osNumText}>OS #{String(os.id).padStart(3, '0')}</Text>
+                      </View>
+                      <View style={[styles.statusBadge, { backgroundColor: s.bg }]}>
+                        <View style={[styles.statusDot, { backgroundColor: s.color }]} />
+                        <Text style={[styles.statusBadgeText, { color: s.color }]}>{s.label}</Text>
+                      </View>
+                    </View>
+
+                    <Text style={styles.osCliente}>{cliente?.nome ?? '—'}</Text>
+                    <Text style={styles.osVeiculo}>
+                      {veiculo ? `${veiculo.marca} ${veiculo.modelo} · ${veiculo.placa}` : '—'}
                     </Text>
+
+                    {/* Progress Bar */}
+                    <View style={styles.progressContainer}>
+                      <View style={styles.progressTrack}>
+                        <View style={[styles.progressFill, { width: `${s.progress * 100}%`, backgroundColor: s.color }]} />
+                      </View>
+                      <Text style={[styles.progressText, { color: s.color }]}>{Math.round(s.progress * 100)}%</Text>
+                    </View>
+
+                    <View style={styles.osFooter}>
+                      <View style={styles.osFooterLeft}>
+                        <MaterialIcons name="event" size={13} color={palette.slate400} />
+                        <Text style={styles.osFooterText}>{dayjs(os.dataPrevista).format('DD/MM/YY')}</Text>
+                      </View>
+                      <Text style={styles.osValor}>
+                        R$ {os.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      </Text>
+                    </View>
                   </View>
-                  <View style={[styles.agBadge, { backgroundColor: isConfirmado ? 'rgba(16, 185, 129, 0.08)' : 'rgba(245, 158, 11, 0.08)' }]}>
-                    <Text style={[styles.agBadgeText, { color: accentColor }]}>
-                      {isConfirmado ? 'Confirmado' : 'Pendente'}
-                    </Text>
+                  <View style={styles.osChevron}>
+                    <MaterialIcons name="chevron-right" size={20} color={palette.slate300} />
                   </View>
-                </View>
+                </TouchableOpacity>
               );
             })
           )}
         </View>
-      )}
 
-      {/* ── Atividade Recente ── */}
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Atividade Recente</Text>
-        </View>
-        {atividadeRecente.length === 0 ? (
-          <EmptyState icon="history" message="Nenhuma atividade recente" />
-        ) : (
-          <View style={styles.activityCard}>
-            {atividadeRecente.map((item, idx) => (
-              <TouchableOpacity
-                key={item.id}
-                style={[styles.activityRow, idx < atividadeRecente.length - 1 && styles.activityRowBorder]}
-                activeOpacity={0.7}
-                onPress={() => navigation.navigate(item.screen as any, item.params)}
-              >
-                <View style={[styles.activityIconBox, { backgroundColor: item.iconBg }]}>
-                  <MaterialIcons name={item.icon} size={16} color={item.iconColor} />
-                </View>
-                <View style={styles.activityBody}>
-                  <Text style={styles.activityTitle} numberOfLines={1}>{item.title}</Text>
-                  <Text style={styles.activitySub} numberOfLines={1}>{item.sub}</Text>
-                </View>
-                <MaterialIcons name="chevron-right" size={16} color={palette.slate300} />
-                <Text style={styles.activityDate}>{dayjs(item.date).format('DD/MM')}</Text>
-              </TouchableOpacity>
-            ))}
+        {/* ── Agenda de Hoje ── */}
+        {showAgenda && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Agenda de Hoje</Text>
+              <View style={[styles.sectionBadge, agendamentosHoje.length > 0 && { backgroundColor: 'rgba(16, 185, 129, 0.08)' }]}>
+                <Text style={[styles.sectionBadgeText, agendamentosHoje.length > 0 && { color: palette.emerald600 }]}>
+                  {agendamentosHoje.length} {agendamentosHoje.length === 1 ? 'evento' : 'eventos'}
+                </Text>
+              </View>
+            </View>
+            {agendamentosHoje.length === 0 ? (
+              <EmptyState icon="event-available" message="Nenhum agendamento para hoje" />
+            ) : (
+              agendamentosHoje.map((ag) => {
+                const cliente = clientes.find(c => c.id === ag.clienteId);
+                const veiculo = veiculos.find(v => v.id === ag.veiculoId);
+                const isConfirmado = ag.status === 'confirmado';
+                const accentColor = isConfirmado ? palette.emerald600 : palette.amber500;
+                return (
+                  <View key={ag.id} style={styles.agCard}>
+                    <View style={styles.agTimeCol}>
+                      <Text style={styles.agTime}>{ag.hora}</Text>
+                      <View style={[styles.agDot, { backgroundColor: accentColor }]} />
+                    </View>
+                    <View style={styles.agInfo}>
+                      <Text style={styles.agCliente}>{cliente?.nome}</Text>
+                      <Text style={styles.agServico} numberOfLines={1}>
+                        {veiculo ? `${veiculo.marca} ${veiculo.modelo}` : ''} · {ag.servico}
+                      </Text>
+                    </View>
+                    <View style={[styles.agBadge, { backgroundColor: isConfirmado ? 'rgba(16, 185, 129, 0.08)' : 'rgba(245, 158, 11, 0.08)' }]}>
+                      <Text style={[styles.agBadgeText, { color: accentColor }]}>
+                        {isConfirmado ? 'Confirmado' : 'Pendente'}
+                      </Text>
+                    </View>
+                  </View>
+                );
+              })
+            )}
           </View>
         )}
-      </View>
 
-      {/* Bottom spacing for tab bar */}
-      <View style={{ height: insets.bottom + 90 }} />
-    </ScrollView>
+        {/* ── Atividade Recente ── */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Atividade Recente</Text>
+          </View>
+          {atividadeRecente.length === 0 ? (
+            <EmptyState icon="history" message="Nenhuma atividade recente" />
+          ) : (
+            <View style={styles.activityCard}>
+              {atividadeRecente.map((item, idx) => (
+                <TouchableOpacity
+                  key={item.id}
+                  style={[styles.activityRow, idx < atividadeRecente.length - 1 && styles.activityRowBorder]}
+                  activeOpacity={0.7}
+                  onPress={() => navigation.navigate(item.screen as any, item.params)}
+                >
+                  <View style={[styles.activityIconBox, { backgroundColor: item.iconBg }]}>
+                    <MaterialIcons name={item.icon} size={16} color={item.iconColor} />
+                  </View>
+                  <View style={styles.activityBody}>
+                    <Text style={styles.activityTitle} numberOfLines={1}>{item.title}</Text>
+                    <Text style={styles.activitySub} numberOfLines={1}>{item.sub}</Text>
+                  </View>
+                  <MaterialIcons name="chevron-right" size={16} color={palette.slate300} />
+                  <Text style={styles.activityDate}>{dayjs(item.date).format('DD/MM')}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+        </View>
+
+        {/* Bottom spacing for tab bar and FAB */}
+        <View style={{ height: insets.bottom + 160 }} />
+      </ScrollView>
+
+      {/* Backdrop overlay */}
+      {shouldRenderOptions && (
+        <Pressable
+          style={StyleSheet.absoluteFillObject}
+          onPress={toggleMenu}
+        >
+          <Animated.View
+            style={[
+              StyleSheet.absoluteFillObject,
+              {
+                backgroundColor: 'rgba(15, 23, 42, 0.4)',
+                opacity: menuOpacity,
+              },
+            ]}
+          />
+        </Pressable>
+      )}
+
+      {/* Speed Dial Options Container */}
+      {shouldRenderOptions && (
+        <Animated.View
+          pointerEvents={menuOpen ? 'auto' : 'none'}
+          style={[
+            styles.optionsContainer,
+            {
+              bottom: insets.bottom + 92 + 64,
+              opacity: menuOpacity,
+              transform: [{ translateY }],
+            },
+          ]}
+        >
+          {options.map((opt, idx) => (
+            <View key={idx} style={styles.actionItemRow}>
+              <View style={[styles.actionLabelContainer, !menuOpen && { elevation: 0, shadowOpacity: 0, borderColor: 'transparent' }]}>
+                <Text style={styles.actionLabel}>{opt.label}</Text>
+              </View>
+              <TouchableOpacity
+                style={[
+                  styles.actionIconButton,
+                  { backgroundColor: opt.color },
+                  !menuOpen && { elevation: 0, shadowOpacity: 0 }
+                ]}
+                onPress={opt.onPress}
+                activeOpacity={0.8}
+              >
+                <MaterialIcons name={opt.icon} size={20} color={palette.white} />
+              </TouchableOpacity>
+            </View>
+          ))}
+        </Animated.View>
+      )}
+
+      {/* Main floating action button (FAB) */}
+      <TouchableOpacity
+        style={[styles.fab, { bottom: insets.bottom + 92 }]}
+        onPress={toggleMenu}
+        activeOpacity={0.85}
+      >
+        <Animated.View style={{ transform: [{ rotate: rotation }] }}>
+          <MaterialIcons name="add" size={28} color={palette.white} />
+        </Animated.View>
+      </TouchableOpacity>
+    </View>
   );
 }
 
@@ -474,22 +574,55 @@ const styles = StyleSheet.create({
   kpiChipValue: { fontSize: 18, fontWeight: '900', color: palette.slate900, letterSpacing: -0.3 },
   kpiChipLabel: { fontSize: 10, color: palette.slate400, fontWeight: '700', marginTop: 1 },
 
-  // Quick Actions
-  quickActionsScroll: {
-    paddingHorizontal: spacing.md,
-    gap: 16,
-    paddingBottom: 4,
-  },
-  quickAction: { alignItems: 'center', gap: 6, minWidth: 70 },
-  quickActionIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 14,
+  // FAB Speed Dial Styles
+  fab: {
+    position: 'absolute',
+    right: 20,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: palette.navy800,
     justifyContent: 'center',
     alignItems: 'center',
-    ...shadows.sm,
+    ...shadows.lg,
+    elevation: 8,
+    zIndex: 100,
   },
-  quickActionLabel: { fontSize: 10, fontWeight: '700', color: palette.slate500 },
+  optionsContainer: {
+    position: 'absolute',
+    right: 26,
+    alignItems: 'flex-end',
+    gap: 12,
+    zIndex: 99,
+  },
+  actionItemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  actionLabelContainer: {
+    backgroundColor: palette.white,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: borderRadius.sm,
+    ...shadows.sm,
+    borderWidth: 1,
+    borderColor: 'rgba(15, 23, 42, 0.05)',
+  },
+  actionLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: palette.slate700,
+  },
+  actionIconButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...shadows.md,
+    elevation: 4,
+  },
 
   // Sections
   section: { marginTop: spacing.md },

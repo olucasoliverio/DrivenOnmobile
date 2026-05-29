@@ -7,23 +7,21 @@ import {
   Pressable,
   Animated,
 } from 'react-native';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { palette, shadows, colors } from '../theme/theme';
 
 // Stacks
 import HomeStack from './stacks/HomeStack';
-import TarefasStack from './stacks/TarefasStack';
 import MenuStack from './stacks/MenuStack';
 
-const Tab = createBottomTabNavigator();
+const Tab = createMaterialTopTabNavigator();
 
 type IconName = keyof typeof MaterialIcons.glyphMap;
 
 const TABS: { name: string; label: string; icon: IconName; component: any }[] = [
   { name: 'Dashboard', label: 'Início', icon: 'home',  component: HomeStack },
-  { name: 'OS',        label: 'Ordens', icon: 'build', component: TarefasStack },
   { name: 'Menu',      label: 'Menu',   icon: 'menu',  component: MenuStack },
 ];
 
@@ -79,38 +77,76 @@ function TabButton({
   );
 }
 
-// ── Navigator ─────────────────────────────────────────────────────────────────
-export default function AppTabs() {
+// ── Custom Tab Bar ─────────────────────────────────────────────────────────────
+function CustomTabBar({ state, descriptors, navigation }: any) {
   const insets = useSafeAreaInsets();
   const bottomMargin = Platform.OS === 'ios' ? insets.bottom || 16 : 12;
 
   return (
-    <Tab.Navigator
-      screenOptions={({ route }) => ({
-        headerShown: false,
-        tabBarStyle: [styles.tabBar, { bottom: bottomMargin }],
-        tabBarShowLabel: true,
-        tabBarButton: (props) => <TabButton {...props} />,
-        tabBarLabel: ({ focused, children }) => (
-          <Text style={[styles.label, focused && styles.labelActive]}>
-            {children}
-          </Text>
-        ),
-        tabBarIcon: ({ focused }) => {
-          const tab = TABS.find(t => t.name === route.name);
-          if (!tab) return null;
-          return (
+    <View style={[styles.tabBar, { bottom: bottomMargin, flexDirection: 'row' }]}>
+      {state.routes.map((route: any, index: number) => {
+        const { options } = descriptors[route.key];
+        const isFocused = state.index === index;
+
+        const onPress = () => {
+          const event = navigation.emit({
+            type: 'tabPress',
+            target: route.key,
+            canPreventDefault: true,
+          });
+
+          if (!isFocused && !event.defaultPrevented) {
+            navigation.navigate(route.name);
+          }
+        };
+
+        const onLongPress = () => {
+          navigation.emit({
+            type: 'tabLongPress',
+            target: route.key,
+          });
+        };
+
+        const tab = TABS.find(t => t.name === route.name);
+        if (!tab) return null;
+
+        return (
+          <TabButton
+            key={route.key}
+            onPress={onPress}
+            onLongPress={onLongPress}
+            style={styles.tabBarItem}
+            accessibilityRole="button"
+            accessibilityState={isFocused ? { selected: true } : {}}
+            accessibilityLabel={options.tabBarAccessibilityLabel}
+          >
             <View style={styles.iconWrapper}>
-              <View style={[styles.activeBar, focused && styles.activeBarVisible]} />
+              <View style={[styles.activeBar, isFocused && styles.activeBarVisible]} />
               <MaterialIcons
                 name={tab.icon}
                 size={24}
-                color={focused ? ACTIVE_COLOR : INACTIVE_COLOR}
+                color={isFocused ? ACTIVE_COLOR : INACTIVE_COLOR}
               />
+              <Text style={[styles.label, isFocused && styles.labelActive]}>
+                {tab.label}
+              </Text>
             </View>
-          );
-        },
+          </TabButton>
+        );
       })}
+    </View>
+  );
+}
+
+// ── Navigator ─────────────────────────────────────────────────────────────────
+export default function AppTabs() {
+  return (
+    <Tab.Navigator
+      tabBarPosition="bottom"
+      tabBar={(props) => <CustomTabBar {...props} />}
+      screenOptions={{
+        swipeEnabled: true,
+      }}
     >
       {TABS.map(tab => (
         <Tab.Screen
@@ -174,6 +210,7 @@ const styles = StyleSheet.create({
     color: INACTIVE_COLOR,
     textAlign: 'center',
     letterSpacing: 0.1,
+    marginTop: 2,
   },
   labelActive: {
     color: ACTIVE_COLOR,
