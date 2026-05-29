@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, Dimensions, TouchableOpacity, FlatList } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Dimensions, TouchableOpacity, FlatList, RefreshControl } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -65,7 +65,20 @@ export default function HomeScreen() {
     veiculos,
     pagamentos,
     configuracoes,
+    refresh,
   } = useDriveOnData();
+  const [refreshing, setRefreshing] = React.useState(false);
+
+  const handleRefresh = React.useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await refresh();
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [refresh]);
 
   const ordensAbertas = ordens.filter(o => o.status !== 'concluido' && o.status !== 'cancelada');
   const agendamentosHoje = agendamentos.filter(a => dayjs(a.data).isSame(dayjs(), 'day'));
@@ -143,7 +156,13 @@ export default function HomeScreen() {
   ];
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+    <ScrollView
+      style={styles.container}
+      showsVerticalScrollIndicator={false}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[palette.navy800]} />
+      }
+    >
 
       {/* ── Header ── */}
       <LinearGradient colors={gradients.navyDark} style={[styles.header, { paddingTop: insets.top + spacing.md }]}>

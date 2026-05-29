@@ -120,7 +120,7 @@ const styles = StyleSheet.create({
   optionText: {
     fontSize: 14,
     fontWeight: '600',
-    color: palette.slate600,
+    color: palette.slate500,
   },
   optionTextActive: {
     color: palette.navy800,

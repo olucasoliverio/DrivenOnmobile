@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Alert, View, Text, StyleSheet, FlatList, ScrollView, TouchableOpacity } from 'react-native';
+import { Alert, View, Text, StyleSheet, FlatList, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
 import { FAB } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -10,19 +10,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import EmptyState from '../../components/EmptyState';
 import ScreenHeader from '../../components/ScreenHeader';
 import CalendarDatePicker from '../../components/CalendarDatePicker';
+import AdvancedFilterModal from '../../components/AdvancedFilterModal';
+
 
 type Tab = 'todos' | 'pendente' | 'recebido';
-type DateFilter = 'todos' | 'hoje' | 'semana' | 'mes' | 'vencidas' | 'proximos7' | 'personalizado';
+type DateFilter = 'todos' | 'mes' | 'semana' | 'hoje' | 'vencidas' | 'personalizado';
 
-const dateFilters: { key: DateFilter; label: string }[] = [
-  { key: 'todos', label: 'Todas' },
-  { key: 'hoje', label: 'Hoje' },
-  { key: 'semana', label: 'Esta semana' },
-  { key: 'mes', label: 'Este mês' },
-  { key: 'vencidas', label: 'Vencidas' },
-  { key: 'proximos7', label: 'Próx. 7 dias' },
-  { key: 'personalizado', label: 'Personalizado' },
-];
 
 function isWithinCustomRange(value: string, start: string, end: string) {
   const date = dayjs(value);
@@ -36,12 +29,50 @@ function isWithinCustomRange(value: string, start: string, end: string) {
 export default function PagamentosScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
-  const { pagamentos, deleteRecord } = useDriveOnData();
+  const { pagamentos, deleteRecord, refresh } = useDriveOnData();
   const [tab, setTab] = useState<Tab>('todos');
-  const [dateFilter, setDateFilter] = useState<DateFilter>('todos');
+  const [dateFilter, setDateFilter] = useState<DateFilter>('mes');
   const [customStart, setCustomStart] = useState('');
   const [customEnd, setCustomEnd] = useState('');
-  const [customDatePicker, setCustomDatePicker] = useState<null | 'start' | 'end'>(null);
+  const [filterModalVisible, setFilterModalVisible] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const handleRefresh = React.useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await refresh();
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [refresh]);
+
+  const getActiveFilterLabel = () => {
+    const periodLabels: Record<string, string> = {
+      todos: 'Todos os períodos',
+      mes: 'Este mês',
+      semana: 'Esta semana',
+      hoje: 'Hoje',
+      vencidas: 'Vencidas',
+      personalizado: 'Personalizado',
+    };
+    const statusLabels: Record<string, string> = {
+      todos: 'Todos',
+      pendente: 'Pendentes',
+      recebido: 'Recebidas',
+    };
+
+    let label = `Período: ${periodLabels[dateFilter] ?? dateFilter}`;
+    if (dateFilter === 'personalizado') {
+      if (customStart || customEnd) {
+        const startStr = customStart ? dayjs(customStart).format('DD/MM/YY') : '...';
+        const endStr = customEnd ? dayjs(customEnd).format('DD/MM/YY') : '...';
+        label = `Período: ${startStr} - ${endStr}`;
+      }
+    }
+    return `${label} · Status: ${statusLabels[tab] ?? tab}`;
+  };
 
   const contasReceber = pagamentos.filter(p => p.tipo === 'receber');
   const contasFiltradasPorData = contasReceber.filter(p => {
@@ -50,7 +81,6 @@ export default function PagamentosScreen() {
     if (dateFilter === 'semana') return vencimento.isSame(dayjs(), 'week');
     if (dateFilter === 'mes') return vencimento.isSame(dayjs(), 'month');
     if (dateFilter === 'vencidas') return p.status === 'pendente' && vencimento.isBefore(dayjs(), 'day');
-    if (dateFilter === 'proximos7') return vencimento.isAfter(dayjs().subtract(1, 'day'), 'day') && vencimento.isBefore(dayjs().add(8, 'day'), 'day');
     if (dateFilter === 'personalizado') return isWithinCustomRange(p.data, customStart, customEnd);
     return true;
   });
@@ -108,67 +138,18 @@ export default function PagamentosScreen() {
         </View>
       </View>
 
-      {/* Filter Chips */}
-      <View style={styles.chipsContainer}>
-        <View style={styles.segmentedFilter}>
-          {tabs.map(item => {
-            const isActive = tab === item.key;
-            return (
-              <TouchableOpacity
-                key={item.key}
-                style={[styles.segmentButton, isActive && styles.segmentButtonActive]}
-                onPress={() => setTab(item.key)}
-                activeOpacity={0.75}
-              >
-                <Text style={[styles.segmentText, isActive && styles.segmentTextActive]}>
-                  {item.label}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-      </View>
-
-      <View style={styles.dateFilterContainer}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.dateFilterRow}>
-          {dateFilters.map(item => {
-            const isActive = dateFilter === item.key;
-            return (
-              <TouchableOpacity
-                key={item.key}
-                style={[styles.dateChip, isActive && styles.dateChipActive]}
-                onPress={() => setDateFilter(item.key)}
-                activeOpacity={0.75}
-              >
-                <Text style={[styles.dateChipText, isActive && styles.dateChipTextActive]}>{item.label}</Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
-        {dateFilter === 'personalizado' ? (
-          <View style={styles.customRangeRow}>
-            <TouchableOpacity
-              style={styles.customDateButton}
-              activeOpacity={0.75}
-              onPress={() => setCustomDatePicker('start')}
-            >
-              <MaterialIcons name="calendar-today" size={16} color={palette.slate400} />
-              <Text style={[styles.customDateText, !customStart && styles.customDatePlaceholder]}>
-                {customStart ? dayjs(customStart).format('DD/MM/YYYY') : 'Início'}
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.customDateButton}
-              activeOpacity={0.75}
-              onPress={() => setCustomDatePicker('end')}
-            >
-              <MaterialIcons name="event-available" size={16} color={palette.slate400} />
-              <Text style={[styles.customDateText, !customEnd && styles.customDatePlaceholder]}>
-                {customEnd ? dayjs(customEnd).format('DD/MM/YYYY') : 'Fim'}
-              </Text>
-            </TouchableOpacity>
+      <View style={styles.filterTriggerContainer}>
+        <TouchableOpacity
+          style={styles.filterTriggerBtn}
+          onPress={() => setFilterModalVisible(true)}
+          activeOpacity={0.7}
+        >
+          <View style={styles.filterTriggerLeft}>
+            <MaterialIcons name="filter-list" size={18} color={palette.navy800} />
+            <Text style={styles.filterTriggerValue}>{getActiveFilterLabel()}</Text>
           </View>
-        ) : null}
+          <MaterialIcons name="arrow-drop-down" size={22} color={palette.slate500} />
+        </TouchableOpacity>
       </View>
 
       {/* Lista */}
@@ -178,6 +159,9 @@ export default function PagamentosScreen() {
         contentContainerStyle={styles.listContent}
         style={styles.mainList}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[palette.navy800]} />
+        }
         ListEmptyComponent={() => (
           <EmptyState
             icon="payment"
@@ -268,15 +252,32 @@ export default function PagamentosScreen() {
         }}
       />
       <FAB icon="plus" style={styles.fab} color={palette.white} onPress={() => navigation.navigate('PagamentoForm')} />
-      <CalendarDatePicker
-        visible={customDatePicker != null}
-        value={customDatePicker === 'end' ? customEnd : customStart}
-        title={customDatePicker === 'end' ? 'Fim' : 'Início'}
-        onSelect={date => {
-          if (customDatePicker === 'end') setCustomEnd(date);
-          else setCustomStart(date);
+      <AdvancedFilterModal
+        visible={filterModalVisible}
+        periodValue={dateFilter}
+        periodOptions={[
+          { key: 'mes', label: 'Este mês' },
+          { key: 'semana', label: 'Esta semana' },
+          { key: 'hoje', label: 'Hoje' },
+          { key: 'vencidas', label: 'Vencidas' },
+          { key: 'todos', label: 'Todos os períodos' },
+          { key: 'personalizado', label: 'Personalizado' },
+        ]}
+        statusValue={tab}
+        statusOptions={[
+          { key: 'todos', label: 'Todos' },
+          { key: 'pendente', label: 'Pendentes' },
+          { key: 'recebido', label: 'Recebidas' },
+        ]}
+        customStart={customStart}
+        customEnd={customEnd}
+        onApply={(period, status, start, end) => {
+          setDateFilter(period as DateFilter);
+          setTab(status as Tab);
+          setCustomStart(start);
+          setCustomEnd(end);
         }}
-        onClose={() => setCustomDatePicker(null)}
+        onClose={() => setFilterModalVisible(false)}
       />
     </View>
   );
@@ -305,36 +306,30 @@ const styles = StyleSheet.create({
   resumoLabel: { fontSize: 10, color: palette.slate400, fontWeight: '700' },
   resumoValue: { fontSize: 14, fontWeight: '900', marginTop: 1, letterSpacing: -0.2 },
 
-  // Filters
-  chipsContainer: { paddingHorizontal: spacing.lg, paddingVertical: spacing.sm },
-  segmentedFilter: {
+  filterTriggerContainer: { paddingHorizontal: spacing.lg, marginVertical: spacing.md },
+  filterTriggerBtn: {
     flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     backgroundColor: palette.white,
+    paddingHorizontal: spacing.md,
+    height: 48,
     borderRadius: borderRadius.md,
-    padding: 4,
     borderWidth: 1,
     borderColor: palette.slate200,
     ...shadows.sm,
   },
-  segmentButton: {
-    flex: 1,
-    minHeight: 40,
-    borderRadius: borderRadius.sm,
+  filterTriggerLeft: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: spacing.xs,
+    gap: spacing.xs,
+    flex: 1,
   },
-  segmentButtonActive: {
-    backgroundColor: palette.navy800,
-  },
-  segmentText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: palette.slate500,
-    textAlign: 'center',
-  },
-  segmentTextActive: {
-    color: palette.white,
+  filterTriggerValue: {
+    fontSize: 13,
+    color: palette.navy800,
+    fontWeight: '800',
+    flex: 1,
   },
   dateFilterContainer: { marginBottom: spacing.xs },
   dateFilterRow: { paddingHorizontal: spacing.lg, gap: spacing.sm, paddingBottom: spacing.sm },

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Alert, View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput as RNTextInput, Modal } from 'react-native';
+import { Alert, View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput as RNTextInput, Modal, RefreshControl } from 'react-native';
 import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { FAB } from 'react-native-paper';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -13,10 +13,22 @@ import { sendWelcomeMessage } from '../../services/whatsappService';
 export default function ClientesScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
-  const { clientes: clientesData, veiculos, ordens } = useDriveOnData();
+  const { clientes: clientesData, veiculos, ordens, refresh } = useDriveOnData();
   const [busca, setBusca] = useState('');
   const [isWelcomeModalVisible, setIsWelcomeModalVisible] = useState(false);
   const [registeredCliente, setRegisteredCliente] = useState<{ nome: string; telefone: string } | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const handleRefresh = React.useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await refresh();
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [refresh]);
 
   useEffect(() => {
     if (route.params?.openForm) {
@@ -74,6 +86,9 @@ export default function ClientesScreen() {
         keyExtractor={item => String(item.id)}
         contentContainerStyle={[styles.listContent, { flexGrow: 1 }]}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[palette.navy800]} />
+        }
         ListEmptyComponent={() => (
           <EmptyState
             icon="people"

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Alert, View, Text, StyleSheet, TouchableOpacity, FlatList, Dimensions } from 'react-native';
+import { Alert, View, Text, StyleSheet, TouchableOpacity, FlatList, Dimensions, RefreshControl } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialIcons } from '@expo/vector-icons';
 import { FAB, IconButton } from 'react-native-paper';
@@ -29,9 +29,21 @@ function getDaysOfWeek(baseDate: dayjs.Dayjs) {
 export default function AgendaScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
-  const { agendamentos, clientes, veiculos, deleteRecord } = useDriveOnData();
+  const { agendamentos, clientes, veiculos, deleteRecord, refresh } = useDriveOnData();
   const [selectedDate, setSelectedDate] = useState(dayjs());
   const [dateFilter, setDateFilter] = useState<AgendaDateFilter>('hoje');
+  const [refreshing, setRefreshing] = useState(false);
+
+  const handleRefresh = React.useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await refresh();
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [refresh]);
   const days = getDaysOfWeek(selectedDate);
 
   const agendamentosFiltrados = agendamentos.filter(a => {
@@ -119,6 +131,9 @@ export default function AgendaScreen() {
         keyExtractor={(item) => String(item.id)}
         contentContainerStyle={[styles.listContent, { flexGrow: 1 }]}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[palette.navy800]} />
+        }
         ListEmptyComponent={() => (
           <EmptyState icon="event-available" message="Nenhum agendamento no período" isFullPage />
         )}

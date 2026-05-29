@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Alert, View, Text, StyleSheet, FlatList, ScrollView, TouchableOpacity, TextInput as RNTextInput } from 'react-native';
+import { Alert, View, Text, StyleSheet, FlatList, ScrollView, TouchableOpacity, TextInput as RNTextInput, RefreshControl } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialIcons } from '@expo/vector-icons';
 import { FAB } from 'react-native-paper';
@@ -11,19 +11,11 @@ import dayjs from 'dayjs';
 import CrudDialog, { type CrudField } from '../../components/CrudDialog';
 import ScreenHeader from '../../components/ScreenHeader';
 import EmptyState from '../../components/EmptyState';
-import CalendarDatePicker from '../../components/CalendarDatePicker';
+import AdvancedFilterModal from '../../components/AdvancedFilterModal';
 
 type StatusKey = 'todos' | 'em_andamento' | 'aguardando' | 'aguardando_pecas' | 'concluido';
-type OSDateFilter = 'todos' | 'hoje' | 'semana' | 'mes' | 'atrasadas' | 'personalizado';
+type OSDateFilter = 'todos' | 'mes' | 'semana' | 'hoje' | 'atrasadas' | 'personalizado';
 
-const osDateFilters: { key: OSDateFilter; label: string }[] = [
-  { key: 'todos', label: 'Todas' },
-  { key: 'hoje', label: 'Hoje' },
-  { key: 'semana', label: 'Esta semana' },
-  { key: 'mes', label: 'Este mês' },
-  { key: 'atrasadas', label: 'Atrasadas' },
-  { key: 'personalizado', label: 'Personalizado' },
-];
 
 function isWithinCustomRange(value: string, start: string, end: string) {
   const date = dayjs(value);
@@ -63,13 +55,53 @@ export default function TarefasScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
-  const { ordens: ordensData, clientes, veiculos } = useDriveOnData();
+  const { ordens: ordensData, clientes, veiculos, refresh } = useDriveOnData();
   const [filtroStatus, setFiltroStatus] = useState<StatusKey>('todos');
-  const [filtroData, setFiltroData] = useState<OSDateFilter>('todos');
+  const [filtroData, setFiltroData] = useState<OSDateFilter>('mes');
   const [customStart, setCustomStart] = useState('');
   const [customEnd, setCustomEnd] = useState('');
-  const [customDatePicker, setCustomDatePicker] = useState<null | 'start' | 'end'>(null);
   const [busca, setBusca] = useState('');
+  const [filterModalVisible, setFilterModalVisible] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const handleRefresh = React.useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await refresh();
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [refresh]);
+
+  const getActiveFilterLabel = () => {
+    const periodLabels: Record<string, string> = {
+      todos: 'Todos os períodos',
+      mes: 'Este mês',
+      semana: 'Esta semana',
+      hoje: 'Hoje',
+      atrasadas: 'Atrasadas',
+      personalizado: 'Personalizado',
+    };
+    const statusLabels: Record<string, string> = {
+      todos: 'Todas',
+      em_andamento: 'Andamento',
+      aguardando: 'Aguardando',
+      aguardando_pecas: 'Aguard. Peças',
+      concluido: 'Concluído',
+    };
+
+    let label = `Período: ${periodLabels[filtroData] ?? filtroData}`;
+    if (filtroData === 'personalizado') {
+      if (customStart || customEnd) {
+        const startStr = customStart ? dayjs(customStart).format('DD/MM/YY') : '...';
+        const endStr = customEnd ? dayjs(customEnd).format('DD/MM/YY') : '...';
+        label = `Período: ${startStr} - ${endStr}`;
+      }
+    }
+    return `${label} · Status: ${statusLabels[filtroStatus] ?? filtroStatus}`;
+  };
 
   const filtros: { key: StatusKey; label: string }[] = [
     { key: 'todos', label: 'Todas' },
@@ -129,76 +161,18 @@ export default function TarefasScreen() {
         </View>
       </View>
 
-      {/* ── Filtros ── */}
-      <FlatList
-        horizontal
-        data={filtros}
-        keyExtractor={f => f.key}
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.chipsRow}
-        style={styles.chipsContainer}
-        renderItem={({ item }) => {
-          const isActive = filtroStatus === item.key;
-          return (
-            <TouchableOpacity
-              onPress={() => setFiltroStatus(item.key)}
-              activeOpacity={0.7}
-            >
-              {isActive ? (
-                <LinearGradient colors={gradients.navyPrimary} style={styles.chipActive}>
-                  <Text style={styles.chipTextActive}>{item.label}</Text>
-                </LinearGradient>
-              ) : (
-                <View style={styles.chip}>
-                  <Text style={styles.chipText}>{item.label}</Text>
-                </View>
-              )}
-            </TouchableOpacity>
-          );
-        }}
-      />
-
-      {/* ── Lista de OS ── */}
-      <View style={styles.dateFilterContainer}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.dateFilterRow}>
-          {osDateFilters.map(item => {
-            const isActive = filtroData === item.key;
-            return (
-              <TouchableOpacity
-                key={item.key}
-                style={[styles.dateChip, isActive && styles.dateChipActive]}
-                onPress={() => setFiltroData(item.key)}
-                activeOpacity={0.75}
-              >
-                <Text style={[styles.dateChipText, isActive && styles.dateChipTextActive]}>{item.label}</Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
-        {filtroData === 'personalizado' ? (
-          <View style={styles.customRangeRow}>
-            <TouchableOpacity
-              style={styles.customDateButton}
-              activeOpacity={0.75}
-              onPress={() => setCustomDatePicker('start')}
-            >
-              <MaterialIcons name="calendar-today" size={16} color={palette.slate400} />
-              <Text style={[styles.customDateText, !customStart && styles.customDatePlaceholder]}>
-                {customStart ? dayjs(customStart).format('DD/MM/YYYY') : 'Início'}
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.customDateButton}
-              activeOpacity={0.75}
-              onPress={() => setCustomDatePicker('end')}
-            >
-              <MaterialIcons name="event-available" size={16} color={palette.slate400} />
-              <Text style={[styles.customDateText, !customEnd && styles.customDatePlaceholder]}>
-                {customEnd ? dayjs(customEnd).format('DD/MM/YYYY') : 'Fim'}
-              </Text>
-            </TouchableOpacity>
+      <View style={styles.filterTriggerContainer}>
+        <TouchableOpacity
+          style={styles.filterTriggerBtn}
+          onPress={() => setFilterModalVisible(true)}
+          activeOpacity={0.7}
+        >
+          <View style={styles.filterTriggerLeft}>
+            <MaterialIcons name="filter-list" size={18} color={palette.navy800} />
+            <Text style={styles.filterTriggerValue}>{getActiveFilterLabel()}</Text>
           </View>
-        ) : null}
+          <MaterialIcons name="arrow-drop-down" size={22} color={palette.slate500} />
+        </TouchableOpacity>
       </View>
 
       <FlatList
@@ -207,6 +181,9 @@ export default function TarefasScreen() {
         contentContainerStyle={[styles.listContent, { flexGrow: 1 }]}
         style={styles.mainList}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[palette.navy800]} />
+        }
         ListEmptyComponent={() => (
           <EmptyState
             icon="build"
@@ -256,15 +233,34 @@ export default function TarefasScreen() {
       />
 
       <FAB icon="plus" style={styles.fab} color={palette.white} onPress={() => navigation.navigate('OSForm')} />
-      <CalendarDatePicker
-        visible={customDatePicker != null}
-        value={customDatePicker === 'end' ? customEnd : customStart}
-        title={customDatePicker === 'end' ? 'Fim' : 'Início'}
-        onSelect={date => {
-          if (customDatePicker === 'end') setCustomEnd(date);
-          else setCustomStart(date);
+      <AdvancedFilterModal
+        visible={filterModalVisible}
+        periodValue={filtroData}
+        periodOptions={[
+          { key: 'mes', label: 'Este mês' },
+          { key: 'semana', label: 'Esta semana' },
+          { key: 'hoje', label: 'Hoje' },
+          { key: 'atrasadas', label: 'Atrasadas' },
+          { key: 'todos', label: 'Todos os períodos' },
+          { key: 'personalizado', label: 'Personalizado' },
+        ]}
+        statusValue={filtroStatus}
+        statusOptions={[
+          { key: 'todos', label: 'Todas' },
+          { key: 'em_andamento', label: 'Em Andamento' },
+          { key: 'aguardando', label: 'Aguardando' },
+          { key: 'aguardando_pecas', label: 'Aguard. Peças' },
+          { key: 'concluido', label: 'Concluído' },
+        ]}
+        customStart={customStart}
+        customEnd={customEnd}
+        onApply={(period, status, start, end) => {
+          setFiltroData(period as OSDateFilter);
+          setFiltroStatus(status as StatusKey);
+          setCustomStart(start);
+          setCustomEnd(end);
         }}
-        onClose={() => setCustomDatePicker(null)}
+        onClose={() => setFilterModalVisible(false)}
       />
     </View>
   );
@@ -273,12 +269,10 @@ export default function TarefasScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: palette.slate100 },
 
-  // Top header
   topHeader: { paddingBottom: 20, paddingHorizontal: spacing.lg },
   headerTitle: { fontSize: 24, fontWeight: '800', color: palette.white },
   headerSub: { fontSize: 14, color: 'rgba(255,255,255,0.6)', marginTop: 2 },
 
-  // Search
   searchContainer: { marginHorizontal: spacing.lg, marginTop: spacing.md },
   searchBox: { 
     flexDirection: 'row', 
@@ -294,58 +288,32 @@ const styles = StyleSheet.create({
   },
   searchInput: { flex: 1, fontSize: 14, color: palette.slate900, fontWeight: '500' },
 
-  // Chips
-  chipsContainer: { marginTop: spacing.sm, flexGrow: 0 },
-  chipsRow: { paddingHorizontal: spacing.lg, gap: spacing.sm, paddingVertical: spacing.sm },
-  chip: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: borderRadius.full, backgroundColor: palette.white, borderWidth: 1, borderColor: palette.slate200 },
-  chipActive: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: borderRadius.full },
-  chipText: { fontSize: 12, fontWeight: '600', color: palette.slate500 },
-  chipTextActive: { fontSize: 12, fontWeight: '700', color: palette.white },
-  dateFilterContainer: { marginBottom: spacing.xs },
-  dateFilterRow: { paddingHorizontal: spacing.lg, gap: spacing.sm, paddingBottom: spacing.sm },
-  dateChip: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: borderRadius.full,
-    backgroundColor: palette.white,
-    borderWidth: 1,
-    borderColor: palette.slate200,
-  },
-  dateChipActive: {
-    backgroundColor: palette.navy50,
-    borderColor: palette.navy800,
-  },
-  dateChipText: { fontSize: 12, fontWeight: '700', color: palette.slate500 },
-  dateChipTextActive: { color: palette.navy800 },
-  customRangeRow: {
+  filterTriggerContainer: { paddingHorizontal: spacing.lg, marginVertical: spacing.md },
+  filterTriggerBtn: {
     flexDirection: 'row',
-    gap: spacing.sm,
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.sm,
-  },
-  customDateButton: {
-    flex: 1,
-    minHeight: 42,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: palette.white,
+    paddingHorizontal: spacing.md,
+    height: 48,
     borderRadius: borderRadius.md,
     borderWidth: 1,
     borderColor: palette.slate200,
-    backgroundColor: palette.white,
-    paddingHorizontal: spacing.md,
+    ...shadows.sm,
+  },
+  filterTriggerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xs,
-  },
-  customDateText: {
     flex: 1,
-    color: palette.slate900,
-    fontSize: 12,
-    fontWeight: '600',
   },
-  customDatePlaceholder: {
-    color: palette.slate400,
+  filterTriggerValue: {
+    fontSize: 13,
+    color: palette.navy800,
+    fontWeight: '800',
+    flex: 1,
   },
 
-  // List
   mainList: { flex: 1 },
   listContent: { paddingHorizontal: spacing.lg, paddingTop: 12, paddingBottom: 160, gap: spacing.sm },
 

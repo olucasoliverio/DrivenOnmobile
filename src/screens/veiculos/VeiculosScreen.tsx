@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Alert, View, Text, StyleSheet, FlatList, TextInput as RNTextInput, TouchableOpacity } from 'react-native';
+import { Alert, View, Text, StyleSheet, FlatList, TextInput as RNTextInput, TouchableOpacity, RefreshControl } from 'react-native';
 import { FAB, IconButton } from 'react-native-paper';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -13,8 +13,20 @@ export default function VeiculosScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
-  const { veiculos: veiculosData, clientes, deleteRecord } = useDriveOnData();
+  const { veiculos: veiculosData, clientes, deleteRecord, refresh } = useDriveOnData();
   const [busca, setBusca] = useState('');
+  const [refreshing, setRefreshing] = useState(false);
+
+  const handleRefresh = React.useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await refresh();
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [refresh]);
 
   useEffect(() => {
     const detectedPlate = route.params?.detectedPlate;
@@ -53,6 +65,9 @@ export default function VeiculosScreen() {
         data={veiculos}
         keyExtractor={item => String(item.id)}
         contentContainerStyle={{ padding: spacing.lg, paddingBottom: 110, flexGrow: 1 }}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[palette.navy800]} />
+        }
         ListEmptyComponent={() => (
           <EmptyState
             icon="directions-car"

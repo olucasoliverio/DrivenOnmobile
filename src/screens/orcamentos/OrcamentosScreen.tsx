@@ -1,27 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import { Alert, View, Text, StyleSheet, FlatList, ScrollView, TouchableOpacity } from 'react-native';
+import { Alert, View, Text, StyleSheet, FlatList, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
 import { Surface, FAB, IconButton } from 'react-native-paper';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { useDriveOnData } from '../../context/DriveOnDataContext';
-import { colors, spacing, borderRadius, palette } from '../../theme/theme';
+import { colors, spacing, borderRadius, palette, shadows } from '../../theme/theme';
 import dayjs from 'dayjs';
 import CrudDialog, { type CrudField } from '../../components/CrudDialog';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import ScreenHeader from '../../components/ScreenHeader';
 import EmptyState from '../../components/EmptyState';
 import { sendEstimateMessage } from '../../services/whatsappService';
-import CalendarDatePicker from '../../components/CalendarDatePicker';
+import AdvancedFilterModal from '../../components/AdvancedFilterModal';
 
-type OrcamentoDateFilter = 'todos' | 'criados_mes' | 'vencidos' | 'vencem7' | 'personalizado';
+type OrcamentoDateFilter = 'todos' | 'mes' | 'semana' | 'hoje' | 'vencidos' | 'personalizado';
 
-const orcamentoDateFilters: { key: OrcamentoDateFilter; label: string }[] = [
-  { key: 'todos', label: 'Todos' },
-  { key: 'criados_mes', label: 'Criados este mês' },
-  { key: 'vencidos', label: 'Vencidos' },
-  { key: 'vencem7', label: 'Vencem 7 dias' },
-  { key: 'personalizado', label: 'Personalizado' },
-];
 
 function isWithinCustomRange(value: string, start: string, end: string) {
   const date = dayjs(value);
@@ -50,12 +43,51 @@ export default function OrcamentosScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
-  const { orcamentos: orcamentosData, clientes, veiculos, deleteRecord } = useDriveOnData();
+  const { orcamentos: orcamentosData, clientes, veiculos, deleteRecord, refresh } = useDriveOnData();
   const [filtro, setFiltro] = useState<'todos' | 'aprovado' | 'pendente' | 'recusado'>('todos');
-  const [filtroData, setFiltroData] = useState<OrcamentoDateFilter>('todos');
+  const [filtroData, setFiltroData] = useState<OrcamentoDateFilter>('mes');
   const [customStart, setCustomStart] = useState('');
   const [customEnd, setCustomEnd] = useState('');
-  const [customDatePicker, setCustomDatePicker] = useState<null | 'start' | 'end'>(null);
+  const [filterModalVisible, setFilterModalVisible] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const handleRefresh = React.useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await refresh();
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [refresh]);
+
+  const getActiveFilterLabel = () => {
+    const periodLabels: Record<string, string> = {
+      todos: 'Todos os períodos',
+      mes: 'Este mês',
+      semana: 'Esta semana',
+      hoje: 'Hoje',
+      vencidos: 'Vencidos',
+      personalizado: 'Personalizado',
+    };
+    const statusLabels: Record<string, string> = {
+      todos: 'Todos',
+      aprovado: 'Aprovado',
+      pendente: 'Pendente',
+      recusado: 'Recusado',
+    };
+
+    let label = `Período: ${periodLabels[filtroData] ?? filtroData}`;
+    if (filtroData === 'personalizado') {
+      if (customStart || customEnd) {
+        const startStr = customStart ? dayjs(customStart).format('DD/MM/YY') : '...';
+        const endStr = customEnd ? dayjs(customEnd).format('DD/MM/YY') : '...';
+        label = `Período: ${startStr} - ${endStr}`;
+      }
+    }
+    return `${label} · Status: ${statusLabels[filtro] ?? filtro}`;
+  };
 
   const orcamentos = orcamentosData.filter(o => {
     const matchStatus = filtro === 'todos' || o.status === filtro;
@@ -63,9 +95,10 @@ export default function OrcamentosScreen() {
     const validade = dayjs(o.validade);
     const matchData =
       filtroData === 'todos' ||
-      (filtroData === 'criados_mes' && criacao.isSame(dayjs(), 'month')) ||
+      (filtroData === 'mes' && criacao.isSame(dayjs(), 'month')) ||
+      (filtroData === 'semana' && criacao.isSame(dayjs(), 'week')) ||
+      (filtroData === 'hoje' && criacao.isSame(dayjs(), 'day')) ||
       (filtroData === 'vencidos' && o.status === 'pendente' && validade.isBefore(dayjs(), 'day')) ||
-      (filtroData === 'vencem7' && validade.isAfter(dayjs().subtract(1, 'day'), 'day') && validade.isBefore(dayjs().add(8, 'day'), 'day')) ||
       (filtroData === 'personalizado' && isWithinCustomRange(o.dataCriacao, customStart, customEnd));
     return matchStatus && matchData;
   });
@@ -90,62 +123,27 @@ export default function OrcamentosScreen() {
   return (
     <View style={styles.container}>
       <ScreenHeader title="Orçamentos" showBack={true} />
-      <View style={styles.chips}>
-        {(['todos', 'aprovado', 'pendente', 'recusado'] as const).map(f => (
-          <TouchableOpacity key={f} style={[styles.chip, filtro === f && styles.chipActive]} onPress={() => setFiltro(f)}>
-            <Text style={[styles.chipText, filtro === f && styles.chipTextActive]}>
-              {f.charAt(0).toUpperCase() + f.slice(1)}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      <View style={styles.dateFilterContainer}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.dateFilterRow}>
-          {orcamentoDateFilters.map(item => {
-            const isActive = filtroData === item.key;
-            return (
-              <TouchableOpacity
-                key={item.key}
-                style={[styles.dateChip, isActive && styles.dateChipActive]}
-                onPress={() => setFiltroData(item.key)}
-                activeOpacity={0.75}
-              >
-                <Text style={[styles.dateChipText, isActive && styles.dateChipTextActive]}>{item.label}</Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
-        {filtroData === 'personalizado' ? (
-          <View style={styles.customRangeRow}>
-            <TouchableOpacity
-              style={styles.customDateButton}
-              activeOpacity={0.75}
-              onPress={() => setCustomDatePicker('start')}
-            >
-              <MaterialIcons name="calendar-today" size={16} color={palette.slate400} />
-              <Text style={[styles.customDateText, !customStart && styles.customDatePlaceholder]}>
-                {customStart ? dayjs(customStart).format('DD/MM/YYYY') : 'Início'}
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.customDateButton}
-              activeOpacity={0.75}
-              onPress={() => setCustomDatePicker('end')}
-            >
-              <MaterialIcons name="event-available" size={16} color={palette.slate400} />
-              <Text style={[styles.customDateText, !customEnd && styles.customDatePlaceholder]}>
-                {customEnd ? dayjs(customEnd).format('DD/MM/YYYY') : 'Fim'}
-              </Text>
-            </TouchableOpacity>
+      <View style={styles.filterTriggerContainer}>
+        <TouchableOpacity
+          style={styles.filterTriggerBtn}
+          onPress={() => setFilterModalVisible(true)}
+          activeOpacity={0.7}
+        >
+          <View style={styles.filterTriggerLeft}>
+            <MaterialIcons name="filter-list" size={18} color={palette.navy800} />
+            <Text style={styles.filterTriggerValue}>{getActiveFilterLabel()}</Text>
           </View>
-        ) : null}
+          <MaterialIcons name="arrow-drop-down" size={22} color={palette.slate500} />
+        </TouchableOpacity>
       </View>
 
       <FlatList
         data={orcamentos}
         keyExtractor={item => String(item.id)}
         contentContainerStyle={{ padding: spacing.lg, gap: spacing.sm, paddingBottom: 100, flexGrow: 1 }}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[palette.navy800]} />
+        }
         ListEmptyComponent={() => (
           <EmptyState
             icon="description"
@@ -223,15 +221,33 @@ export default function OrcamentosScreen() {
         }}
       />
       <FAB icon="plus" style={styles.fab} color="#FFF" onPress={() => navigation.navigate('OrcamentoForm')} />
-      <CalendarDatePicker
-        visible={customDatePicker != null}
-        value={customDatePicker === 'end' ? customEnd : customStart}
-        title={customDatePicker === 'end' ? 'Fim' : 'Início'}
-        onSelect={date => {
-          if (customDatePicker === 'end') setCustomEnd(date);
-          else setCustomStart(date);
+      <AdvancedFilterModal
+        visible={filterModalVisible}
+        periodValue={filtroData}
+        periodOptions={[
+          { key: 'mes', label: 'Este mês' },
+          { key: 'semana', label: 'Esta semana' },
+          { key: 'hoje', label: 'Hoje' },
+          { key: 'vencidos', label: 'Vencidos' },
+          { key: 'todos', label: 'Todos os períodos' },
+          { key: 'personalizado', label: 'Personalizado' },
+        ]}
+        statusValue={filtro}
+        statusOptions={[
+          { key: 'todos', label: 'Todos' },
+          { key: 'aprovado', label: 'Aprovado' },
+          { key: 'pendente', label: 'Pendente' },
+          { key: 'recusado', label: 'Recusado' },
+        ]}
+        customStart={customStart}
+        customEnd={customEnd}
+        onApply={(period, status, start, end) => {
+          setFiltroData(period as OrcamentoDateFilter);
+          setFiltro(status as any);
+          setCustomStart(start);
+          setCustomEnd(end);
         }}
-        onClose={() => setCustomDatePicker(null)}
+        onClose={() => setFilterModalVisible(false)}
       />
     </View>
   );
@@ -239,53 +255,30 @@ export default function OrcamentosScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: palette.slate100 },
-  chips: { flexDirection: 'row', padding: spacing.lg, paddingBottom: spacing.sm, gap: spacing.sm },
-  chip: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, backgroundColor: '#F0F0F0', borderWidth: 1, borderColor: '#E0E0E0' },
-  chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  chipText: { fontSize: 12, fontWeight: '600', color: '#757575' },
-  chipTextActive: { color: '#FFF' },
-  dateFilterContainer: { marginBottom: spacing.xs },
-  dateFilterRow: { paddingHorizontal: spacing.lg, gap: spacing.sm, paddingBottom: spacing.sm },
-  dateChip: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: borderRadius.full,
-    backgroundColor: palette.white,
-    borderWidth: 1,
-    borderColor: palette.slate200,
-  },
-  dateChipActive: {
-    backgroundColor: palette.navy50,
-    borderColor: palette.navy800,
-  },
-  dateChipText: { fontSize: 12, fontWeight: '700', color: palette.slate500 },
-  dateChipTextActive: { color: palette.navy800 },
-  customRangeRow: {
+  filterTriggerContainer: { paddingHorizontal: spacing.lg, marginVertical: spacing.md },
+  filterTriggerBtn: {
     flexDirection: 'row',
-    gap: spacing.sm,
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.sm,
-  },
-  customDateButton: {
-    flex: 1,
-    minHeight: 42,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: palette.white,
+    paddingHorizontal: spacing.md,
+    height: 48,
     borderRadius: borderRadius.md,
     borderWidth: 1,
     borderColor: palette.slate200,
-    backgroundColor: palette.white,
-    paddingHorizontal: spacing.md,
+    ...shadows.sm,
+  },
+  filterTriggerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xs,
-  },
-  customDateText: {
     flex: 1,
-    color: palette.slate900,
-    fontSize: 12,
-    fontWeight: '600',
   },
-  customDatePlaceholder: {
-    color: palette.slate400,
+  filterTriggerValue: {
+    fontSize: 13,
+    color: palette.navy800,
+    fontWeight: '800',
+    flex: 1,
   },
   card: { borderRadius: borderRadius.md, padding: spacing.md, backgroundColor: '#FFF' },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm },
