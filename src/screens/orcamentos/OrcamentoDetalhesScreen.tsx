@@ -1,34 +1,40 @@
 import React, { useState } from 'react';
-import { Alert, View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
-import { MaterialIcons } from '@expo/vector-icons';
+import { Alert, View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal } from 'react-native';
+import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useDriveOnData } from '../../context/DriveOnDataContext';
-import { palette, spacing, borderRadius, shadows } from '../../theme/theme';
+import { palette, spacing, borderRadius, shadows, gradients } from '../../theme/theme';
 import ScreenHeader from '../../components/ScreenHeader';
 import CrudDialog, { type CrudField } from '../../components/CrudDialog';
-import { sendEstimateMessage } from '../../services/whatsappService';
+import { sendWhatsAppMessage } from '../../services/whatsappService';
 import dayjs from 'dayjs';
+import { LinearGradient } from 'expo-linear-gradient';
 
 const editFields: CrudField[] = [
   { key: 'cliente_id', label: 'Cliente', keyboardType: 'number-pad' },
   { key: 'veiculo_id', label: 'Veículo', keyboardType: 'number-pad' },
-  { key: 'status', label: 'Status (pendente, aprovado, reprovado)', autoCapitalize: 'none' },
+  { key: 'status', label: 'Status (pendente, aprovado, recusado)', autoCapitalize: 'none' },
   { key: 'total', label: 'Total Geral', keyboardType: 'decimal-pad' },
   { key: 'dataCriacao', label: 'Data de Criação (YYYY-MM-DD)', keyboardType: 'default' },
   { key: 'validade', label: 'Data de Validade (YYYY-MM-DD)', keyboardType: 'default' },
 ];
 
-const STATUS_MAP: Record<string, { label: string; color: string; bg: string }> = {
-  aprovado:  { label: 'Aprovado',  color: palette.emerald600, bg: '#ECFDF5' },
-  reprovado: { label: 'Reprovado', color: palette.rose600,    bg: '#FFE4E6' },
-  pendente:  { label: 'Pendente',  color: palette.amber500,   bg: '#FFFBEB' },
+const STATUS_MAP: Record<string, { label: string; color: string; bg: string; icon: keyof typeof MaterialIcons.glyphMap }> = {
+  aprovado:  { label: 'Aprovado',  color: palette.emerald600, bg: '#ECFDF5', icon: 'check-circle' },
+  recusado:  { label: 'Recusado',  color: palette.rose600,    bg: '#FFE4E6', icon: 'cancel' },
+  pendente:  { label: 'Pendente',  color: palette.amber500,   bg: '#FFFBEB', icon: 'schedule' },
 };
 
 export default function OrcamentoDetalhesScreen() {
   const route = useRoute<any>();
   const navigation = useNavigation<any>();
   const { orcamentoId } = route.params ?? { orcamentoId: 1 };
-  const { orcamentos, clientes, veiculos, deleteRecord } = useDriveOnData();
+  const { orcamentos, clientes, veiculos, deleteRecord, updateRecord, refresh } = useDriveOnData();
+
+  const [isStatusModalVisible, setIsStatusModalVisible] = useState(false);
+  const [isWhatsAppModalVisible, setIsWhatsAppModalVisible] = useState(false);
+  const [isWhatsAppPromptVisible, setIsWhatsAppPromptVisible] = useState(false);
+  const [isSuccessModalVisible, setIsSuccessModalVisible] = useState(false);
 
   const orcamento = orcamentos.find(o => o.id === orcamentoId);
   const cliente = orcamento ? clientes.find(c => c.id === orcamento.clienteId) : undefined;
@@ -46,7 +52,7 @@ export default function OrcamentoDetalhesScreen() {
   }
 
   const isVencido = dayjs(orcamento.validade).isBefore(dayjs()) && orcamento.status === 'pendente';
-  const st = STATUS_MAP[orcamento.status] ?? { label: orcamento.status, color: palette.slate500, bg: palette.slate100 };
+  const st = STATUS_MAP[orcamento.status] ?? { label: orcamento.status, color: palette.slate500, bg: palette.slate100, icon: 'info' as any };
 
   const openEditForm = () => {
     navigation.navigate('OrcamentoForm', { orcamentoId: orcamento.id });
@@ -70,22 +76,43 @@ export default function OrcamentoDetalhesScreen() {
     ]);
   };
 
-  const dispararWhatsApp = () => {
+  const getWhatsAppMessageText = () => {
+    if (!cliente) return '';
+    const veiculoNome = veiculo ? `${veiculo.marca} ${veiculo.modelo}` : 'Veículo';
+    const placa = veiculo?.placa ?? '—';
+    const formattedValor = orcamento.total.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+    const orcNum = String(orcamento.id).padStart(3, '0');
+
+    switch (orcamento.status) {
+      case 'aprovado':
+        return `Olá, *${cliente.nome}*! Confirmamos a aprovação do orçamento *ORC #${orcNum}* para o seu veículo *${veiculoNome}* (placa *${placa}*). 🛠️🚗\n\n*Valor Total:* R$ ${formattedValor}\n\nLogo daremos início aos serviços e te manteremos informado. Obrigado pela preferência!`;
+      case 'recusado':
+        return `Olá, *${cliente.nome}*! Registramos a sua resposta para o orçamento *ORC #${orcNum}* do veículo *${veiculoNome}* (placa *${placa}*) como *Recusado*.\n\nAgradecemos a atenção e nos colocamos à disposição para futuras necessidades!`;
+      case 'pendente':
+      default:
+        const itemsList = orcamento.itens?.map(item => {
+          const qty = item.quantidade;
+          const price = item.precoUnitario;
+          return `- ${item.nome} (Qtd: ${qty} · R$ ${(qty * price).toLocaleString('pt-BR', { minimumFractionDigits: 2 })})`;
+        }).join('\n') || 'Sem itens informados';
+        return `Olá, *${cliente.nome}*! Segue o orçamento *ORC #${orcNum}* para o seu veículo *${veiculoNome}* (placa *${placa}*):\n\n*Itens:*\n${itemsList}\n\n*Total:* R$ ${formattedValor}\n\n📋 Aguardamos a sua aprovação para iniciarmos os serviços!`;
+    }
+  };
+
+  const whatsappPreview = getWhatsAppMessageText();
+
+  const sugerirNotificacaoWhatsApp = () => {
+    if (cliente?.telefone) {
+      setIsWhatsAppPromptVisible(true);
+    }
+  };
+
+  const handleWhatsAppPress = () => {
     if (!cliente?.telefone) {
-      Alert.alert('Telefone indisponível', 'O cliente não possui um número de WhatsApp cadastrado.');
+      Alert.alert('Telefone indisponível', 'Este cliente não possui telefone cadastrado.');
       return;
     }
-    const veiculoNome = veiculo ? `${veiculo.marca} ${veiculo.modelo}` : 'Veículo';
-    const firstItemDesc = orcamento.itens?.[0]?.nome ?? 'Serviço de oficina';
-    
-    sendEstimateMessage(
-      cliente.nome,
-      cliente.telefone,
-      orcamento.id,
-      veiculoNome,
-      firstItemDesc,
-      orcamento.total
-    );
+    setIsWhatsAppModalVisible(true);
   };
 
   return (
@@ -113,9 +140,15 @@ export default function OrcamentoDetalhesScreen() {
               <Text style={styles.orcTitle}>ORC #{String(orcamento.id).padStart(3, '0')}</Text>
               <Text style={styles.orcTotal}>R$ {orcamento.total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</Text>
             </View>
-            <View style={[styles.statusBadge, { backgroundColor: st.bg }]}>
+            <TouchableOpacity 
+              activeOpacity={0.7} 
+              onPress={() => setIsStatusModalVisible(true)}
+              style={[styles.statusBadge, { backgroundColor: st.bg, flexDirection: 'row', alignItems: 'center', gap: 4 }]}
+            >
+              <MaterialIcons name={st.icon} size={12} color={st.color} />
               <Text style={[styles.statusText, { color: st.color }]}>{st.label.toUpperCase()}</Text>
-            </View>
+              <MaterialIcons name="arrow-drop-down" size={16} color={st.color} />
+            </TouchableOpacity>
           </View>
           <View style={styles.cardDivider} />
           <View style={styles.datesRow}>
@@ -201,9 +234,9 @@ export default function OrcamentoDetalhesScreen() {
 
         {/* WhatsApp Compartilhar */}
         {cliente?.telefone && (
-          <TouchableOpacity style={styles.whatsappBtn} activeOpacity={0.7} onPress={dispararWhatsApp}>
-            <MaterialIcons name="share" size={20} color={palette.white} />
-            <Text style={styles.whatsappBtnText}>Enviar por WhatsApp</Text>
+          <TouchableOpacity style={styles.whatsappBtn} activeOpacity={0.7} onPress={handleWhatsAppPress}>
+            <MaterialCommunityIcons name="whatsapp" size={20} color={palette.white} />
+            <Text style={styles.whatsappBtnText}>Notificar no WhatsApp</Text>
           </TouchableOpacity>
         )}
 
@@ -213,6 +246,269 @@ export default function OrcamentoDetalhesScreen() {
           <Text style={styles.deleteBtnText}>Excluir Orçamento</Text>
         </TouchableOpacity>
       </ScrollView>
+
+      {/* ── WhatsApp Bottom Sheet Modal ── */}
+      <Modal
+        visible={isWhatsAppModalVisible}
+        transparent={true}
+        animationType="slide"
+        statusBarTranslucent={true}
+        onRequestClose={() => setIsWhatsAppModalVisible(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <TouchableOpacity
+            style={styles.modalBackdropCloseArea}
+            activeOpacity={1}
+            onPress={() => setIsWhatsAppModalVisible(false)}
+          />
+          <View style={styles.modalContent}>
+            <View style={styles.modalDragIndicator} />
+            <Text style={styles.modalTitle}>Enviar WhatsApp</Text>
+            <Text style={styles.modalSubtitle}>
+              Envio de notificação de orçamento para o cliente {cliente?.nome}
+            </Text>
+
+            {/* Situação do Orçamento */}
+            <View style={styles.statusRowInModal}>
+              <Text style={styles.statusLabelInModal}>Situação do Orçamento:</Text>
+              <View style={[styles.statusBadge, { backgroundColor: st.bg, flexDirection: 'row', alignItems: 'center', gap: 4 }]}>
+                <MaterialIcons name={st.icon} size={12} color={st.color} />
+                <Text style={[styles.statusText, { color: st.color }]}>{st.label.toUpperCase()}</Text>
+              </View>
+            </View>
+
+            {/* Prévia da Mensagem */}
+            <Text style={styles.dialogLabel}>Prévia da Mensagem</Text>
+            <View style={styles.previewBox}>
+              <ScrollView 
+                style={{ flex: 1 }} 
+                nestedScrollEnabled={true}
+                showsVerticalScrollIndicator={true}
+              >
+                <Text style={styles.previewText}>{whatsappPreview}</Text>
+              </ScrollView>
+            </View>
+
+            {/* Botões de Ação */}
+            <View style={styles.dialogActions}>
+              <TouchableOpacity
+                style={styles.dialogCancelBtn}
+                activeOpacity={0.8}
+                onPress={() => setIsWhatsAppModalVisible(false)}
+              >
+                <Text style={styles.dialogCancelBtnText}>Cancelar</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.dialogSendBtn}
+                activeOpacity={0.8}
+                onPress={async () => {
+                  setIsWhatsAppModalVisible(false);
+                  if (cliente?.telefone) {
+                    const success = await sendWhatsAppMessage(cliente.telefone, whatsappPreview);
+                    if (success) {
+                      setIsSuccessModalVisible(true);
+                    }
+                  }
+                }}
+              >
+                <LinearGradient colors={gradients.navyPrimary} style={styles.dialogSendBtnGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
+                  <MaterialCommunityIcons name="whatsapp" size={18} color={palette.white} />
+                  <Text style={styles.dialogSendBtnText}>Confirmar Envio</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── Status Picker Modal (Bottom Sheet) ── */}
+      <Modal
+        visible={isStatusModalVisible}
+        transparent={true}
+        animationType="slide"
+        statusBarTranslucent={true}
+        onRequestClose={() => setIsStatusModalVisible(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <TouchableOpacity
+            style={styles.modalBackdropCloseArea}
+            activeOpacity={1}
+            onPress={() => setIsStatusModalVisible(false)}
+          />
+          <View style={styles.modalContent}>
+            <View style={styles.modalDragIndicator} />
+            <Text style={styles.modalTitle}>Alterar Status do Orçamento</Text>
+            <Text style={styles.modalSubtitle}>
+              Selecione a nova situação para o orçamento #{String(orcamento.id).padStart(3, '0')}:
+            </Text>
+
+            <TouchableOpacity
+              style={styles.modalOption}
+              activeOpacity={0.7}
+              onPress={async () => {
+                setIsStatusModalVisible(false);
+                try {
+                  await updateRecord('/orcamentos', orcamento.id, { status: 'aprovado' });
+                  await refresh();
+                  sugerirNotificacaoWhatsApp();
+                } catch (error: any) {
+                  Alert.alert('Erro', error?.response?.data?.error ?? error?.message);
+                }
+              }}
+            >
+              <View style={[styles.modalOptionIcon, { backgroundColor: 'rgba(16, 185, 129, 0.05)' }]}>
+                <MaterialIcons name="check-circle" size={22} color={palette.emerald600} />
+              </View>
+              <View style={styles.modalOptionTextContainer}>
+                <Text style={styles.modalOptionText}>Aprovar Orçamento</Text>
+                <Text style={styles.modalOptionSubtext}>Altera o status para "Aprovado".</Text>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.modalOption}
+              activeOpacity={0.7}
+              onPress={async () => {
+                setIsStatusModalVisible(false);
+                try {
+                  await updateRecord('/orcamentos', orcamento.id, { status: 'recusado' });
+                  await refresh();
+                  sugerirNotificacaoWhatsApp();
+                } catch (error: any) {
+                  Alert.alert('Erro', error?.response?.data?.error ?? error?.message);
+                }
+              }}
+            >
+              <View style={[styles.modalOptionIcon, { backgroundColor: 'rgba(239, 68, 68, 0.05)' }]}>
+                <MaterialIcons name="cancel" size={22} color={palette.rose600} />
+              </View>
+              <View style={styles.modalOptionTextContainer}>
+                <Text style={styles.modalOptionText}>Recusar Orçamento</Text>
+                <Text style={styles.modalOptionSubtext}>Altera o status para "Recusado".</Text>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.modalOption}
+              activeOpacity={0.7}
+              onPress={async () => {
+                setIsStatusModalVisible(false);
+                try {
+                  await updateRecord('/orcamentos', orcamento.id, { status: 'pendente' });
+                  await refresh();
+                  sugerirNotificacaoWhatsApp();
+                } catch (error: any) {
+                  Alert.alert('Erro', error?.response?.data?.error ?? error?.message);
+                }
+              }}
+            >
+              <View style={[styles.modalOptionIcon, { backgroundColor: 'rgba(245, 158, 11, 0.05)' }]}>
+                <MaterialIcons name="schedule" size={22} color={palette.amber500} />
+              </View>
+              <View style={styles.modalOptionTextContainer}>
+                <Text style={styles.modalOptionText}>Marcar como Pendente</Text>
+                <Text style={styles.modalOptionSubtext}>Altera o status de volta para "Pendente".</Text>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.modalCancelButton}
+              activeOpacity={0.8}
+              onPress={() => setIsStatusModalVisible(false)}
+            >
+              <Text style={styles.modalCancelButtonText}>Voltar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── WhatsApp Prompt Modal ── */}
+      <Modal
+        visible={isWhatsAppPromptVisible}
+        transparent={true}
+        animationType="fade"
+        statusBarTranslucent={true}
+        onRequestClose={() => setIsWhatsAppPromptVisible(false)}
+      >
+        <View style={styles.dialogBackdrop}>
+          <View style={styles.dialogContent}>
+            <View style={[styles.dialogIconBox, { backgroundColor: 'rgba(37, 211, 102, 0.08)' }]}>
+              <MaterialCommunityIcons name="whatsapp" size={32} color="#25D366" />
+            </View>
+            
+            <Text style={styles.dialogTitle}>Enviar Aviso no WhatsApp?</Text>
+            <Text style={styles.dialogDescription}>
+              O status do orçamento foi atualizado. Deseja notificar o cliente {cliente?.nome} sobre essa mudança?
+            </Text>
+
+            <View style={styles.dialogActionRow}>
+              <TouchableOpacity
+                style={styles.dialogCancelButton}
+                activeOpacity={0.7}
+                onPress={() => setIsWhatsAppPromptVisible(false)}
+              >
+                <Text style={styles.dialogCancelButtonText}>Não</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.dialogConfirmButton}
+                activeOpacity={0.8}
+                onPress={() => {
+                  setIsWhatsAppPromptVisible(false);
+                  setIsWhatsAppModalVisible(true);
+                }}
+              >
+                <LinearGradient
+                  colors={['#25D366', '#128C7E']}
+                  style={styles.dialogConfirmButtonGradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                >
+                  <Text style={styles.dialogConfirmButtonText}>Sim, Notificar</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── Success Modal ── */}
+      <Modal
+        visible={isSuccessModalVisible}
+        transparent={true}
+        animationType="fade"
+        statusBarTranslucent={true}
+        onRequestClose={() => setIsSuccessModalVisible(false)}
+      >
+        <View style={styles.dialogBackdrop}>
+          <View style={styles.dialogContent}>
+            <View style={[styles.dialogIconBox, { backgroundColor: '#E8F5E9' }]}>
+              <MaterialIcons name="check" size={32} color={palette.emerald600} />
+            </View>
+            
+            <Text style={styles.dialogTitle}>Mensagem Enviada!</Text>
+            <Text style={styles.dialogDescription}>
+              A notificação do orçamento foi disparada com sucesso para o WhatsApp de {cliente?.nome}.
+            </Text>
+
+            <TouchableOpacity
+              style={[styles.dialogConfirmButton, { width: '100%' }]}
+              activeOpacity={0.8}
+              onPress={() => setIsSuccessModalVisible(false)}
+            >
+              <LinearGradient
+                colors={gradients.navyPrimary}
+                style={styles.dialogConfirmButtonGradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+              >
+                <Text style={styles.dialogConfirmButtonText}>Ok</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -320,4 +616,236 @@ const styles = StyleSheet.create({
     ...shadows.sm,
   },
   deleteBtnText: { fontSize: 14, color: palette.rose600, fontWeight: '700' },
+
+  // Custom Modal (Bottom Sheet style for WhatsApp/Status)
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.6)',
+    justifyContent: 'flex-end',
+  },
+  modalBackdropCloseArea: {
+    flex: 1,
+  },
+  modalContent: {
+    backgroundColor: palette.white,
+    borderTopLeftRadius: borderRadius.xl,
+    borderTopRightRadius: borderRadius.xl,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.xl + 12,
+    ...shadows.lg,
+  },
+  modalDragIndicator: {
+    width: 38,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: palette.slate200,
+    alignSelf: 'center',
+    marginBottom: spacing.md,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: palette.slate900,
+    marginBottom: spacing.xs,
+  },
+  modalSubtitle: {
+    fontSize: 13,
+    color: palette.slate400,
+    fontWeight: '500',
+    marginBottom: spacing.lg,
+    lineHeight: 18,
+  },
+  statusRowInModal: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing.md,
+    gap: spacing.sm,
+  },
+  statusLabelInModal: {
+    fontSize: 14,
+    color: palette.slate500,
+    fontWeight: '600',
+  },
+  dialogLabel: {
+    fontSize: 12,
+    color: palette.slate500,
+    fontWeight: '600',
+    marginBottom: 6,
+    marginLeft: 2,
+  },
+  previewBox: {
+    backgroundColor: palette.slate50,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: palette.slate200,
+    padding: spacing.md,
+    minHeight: 120,
+    maxHeight: 180,
+    marginBottom: spacing.lg,
+  },
+  previewText: {
+    fontSize: 14,
+    color: palette.slate700,
+    lineHeight: 20,
+    fontWeight: '500',
+  },
+  dialogActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    width: '100%',
+  },
+  dialogCancelBtn: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: borderRadius.md,
+    borderWidth: 1.5,
+    borderColor: palette.slate200,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: palette.white,
+  },
+  dialogCancelBtnText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: palette.slate700,
+  },
+  dialogSendBtn: {
+    flex: 1.5,
+    borderRadius: borderRadius.md,
+    overflow: 'hidden',
+    ...shadows.sm,
+  },
+  dialogSendBtnGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    paddingVertical: 14,
+  },
+  dialogSendBtnText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: palette.white,
+  },
+
+  // Centered Confirm Dialog Modal
+  dialogBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: spacing.xl,
+  },
+  dialogContent: {
+    width: '100%',
+    backgroundColor: palette.white,
+    borderRadius: borderRadius.lg,
+    padding: spacing.lg,
+    alignItems: 'center',
+    ...shadows.lg,
+  },
+  dialogIconBox: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: spacing.md,
+  },
+  dialogTitle: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: palette.slate900,
+    marginBottom: spacing.sm,
+    textAlign: 'center',
+  },
+  dialogDescription: {
+    fontSize: 13,
+    color: palette.slate500,
+    textAlign: 'center',
+    lineHeight: 18,
+    marginBottom: spacing.lg,
+    fontWeight: '500',
+  },
+  dialogActionRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    width: '100%',
+  },
+  dialogCancelButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: borderRadius.md,
+    borderWidth: 1.5,
+    borderColor: palette.slate200,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: palette.white,
+  },
+  dialogCancelButtonText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: palette.slate700,
+  },
+  dialogConfirmButton: {
+    flex: 1,
+    borderRadius: borderRadius.md,
+    overflow: 'hidden',
+  },
+  dialogConfirmButtonGradient: {
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dialogConfirmButtonText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: palette.white,
+  },
+
+  // Modal options for Status Picker
+  modalOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: palette.slate100,
+    gap: spacing.md,
+  },
+  modalOptionIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalOptionTextContainer: {
+    flex: 1,
+  },
+  modalOptionText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: palette.slate700,
+  },
+  modalOptionSubtext: {
+    fontSize: 11,
+    color: palette.slate400,
+    marginTop: 2,
+    fontWeight: '500',
+  },
+  modalCancelButton: {
+    marginTop: spacing.lg,
+    paddingVertical: 14,
+    borderRadius: borderRadius.md,
+    backgroundColor: palette.slate100,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalCancelButtonText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: palette.slate700,
+  },
 });

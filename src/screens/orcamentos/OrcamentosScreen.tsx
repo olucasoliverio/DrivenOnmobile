@@ -25,11 +25,21 @@ function isWithinCustomRange(value: string, start: string, end: string) {
   return true;
 }
 
-const statusConfig: Record<string, { label: string; color: string; bg: string }> = {
-  aprovado: { label: 'Aprovado', color: '#2E7D32', bg: '#E8F5E9' },
-  pendente: { label: 'Pendente', color: '#E65100', bg: '#FFF3E0' },
-  recusado: { label: 'Recusado', color: '#D32F2F', bg: '#FFEBEE' },
+const statusConfig: Record<string, { label: string; color: string; bg: string; icon: keyof typeof MaterialIcons.glyphMap; barColor: string }> = {
+  aprovado: { label: 'Aprovado', color: palette.emerald600, bg: '#ECFDF5', icon: 'check-circle', barColor: palette.emerald600 },
+  pendente: { label: 'Pendente', color: palette.amber500, bg: '#FFFBEB', icon: 'schedule', barColor: palette.amber500 },
+  recusado: { label: 'Recusado', color: palette.rose600, bg: '#FFE4E6', icon: 'cancel', barColor: palette.rose600 },
 };
+
+function StatusBadge({ status }: { status: string }) {
+  const s = statusConfig[status] ?? { label: status, color: palette.slate500, bg: palette.slate100, icon: 'info' as any, barColor: palette.slate400 };
+  return (
+    <View style={[styles.badge, { backgroundColor: s.bg }]}>
+      <MaterialIcons name={s.icon} size={11} color={s.color} />
+      <Text style={[styles.badgeText, { color: s.color }]}>{s.label}</Text>
+    </View>
+  );
+}
 
 const fields: CrudField[] = [
   { key: 'clienteId', label: 'Cliente', keyboardType: 'number-pad' },
@@ -154,68 +164,52 @@ export default function OrcamentosScreen() {
         renderItem={({ item: o }) => {
           const cliente = clientes.find(c => c.id === o.clienteId);
           const veiculo = veiculos.find(v => v.id === o.veiculoId);
-          const st = statusConfig[o.status] ?? { label: o.status, color: '#757575', bg: '#F5F5F5' };
           const isVencido = dayjs(o.validade).isBefore(dayjs()) && o.status === 'pendente';
+          const barColor = (statusConfig[o.status] ?? statusConfig.pendente).barColor;
           return (
-            <TouchableOpacity onPress={() => navigation.navigate('OrcamentoDetalhes', { orcamentoId: o.id })} activeOpacity={0.8}>
-            <Surface style={styles.card} elevation={1}>
-              <View style={styles.cardHeader}>
-                <Text style={styles.orcNum}>ORC #{String(o.id).padStart(3, '0')}</Text>
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  {cliente?.telefone ? (
-                    <IconButton
-                      icon="whatsapp"
-                      size={18}
-                      iconColor="#25D366"
-                      onPress={() => {
-                        const veiculoNome = veiculo ? `${veiculo.marca} ${veiculo.modelo}` : 'Veículo';
-                        const firstItemDesc = o.itens?.[0]?.nome ?? 'Serviço da oficina';
-                        sendEstimateMessage(
-                          cliente.nome,
-                          cliente.telefone,
-                          o.id,
-                          veiculoNome,
-                          firstItemDesc,
-                          o.total
-                        );
-                      }}
-                    />
-                  ) : null}
-                  <IconButton icon="delete-outline" size={18} iconColor="#D32F2F" onPress={() => remove(o.id)} />
-                </View>
-                <View style={[styles.badge, { backgroundColor: st.bg }]}>
-                  <Text style={[styles.badgeText, { color: st.color }]}>{st.label}</Text>
-                </View>
-              </View>
-              <Text style={styles.clienteNome}>{cliente?.nome}</Text>
-              <Text style={styles.veiculoText}>{veiculo ? `${veiculo.marca} ${veiculo.modelo} • ${veiculo.placa}` : ''}</Text>
-              <View style={styles.itens}>
-                {o.itens.slice(0, 2).map((item: any, idx: number) => {
-                  const qty = item.quantidade ?? item.qtd ?? 1;
-                  const price = item.precoUnitario ?? item.valor ?? 0;
-                  return (
-                    <View key={idx} style={styles.itemRow}>
-                      <Text style={styles.itemNome} numberOfLines={1}>{item.nome ?? item.descricao}</Text>
-                      <Text style={styles.itemValor}>R$ {(qty * price).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</Text>
+            <TouchableOpacity onPress={() => navigation.navigate('OrcamentoDetalhes', { orcamentoId: o.id })} activeOpacity={0.7}>
+              <View style={styles.card}>
+                {/* Barra lateral por status */}
+                <View style={[styles.cardBar, { backgroundColor: barColor }]} />
+                <View style={styles.cardContent}>
+                  <View style={styles.cardHeader}>
+                    <View style={styles.numBox}>
+                      <Text style={styles.numText}>ORC #{String(o.id).padStart(3, '0')}</Text>
                     </View>
-                  );
-                })}
-                {o.itens.length > 2 && <Text style={styles.maisItens}>+{o.itens.length - 2} item(ns)</Text>}
-              </View>
-              <View style={styles.footer}>
-                <View>
-                  <Text style={styles.dataLabel}>Criado em</Text>
-                  <Text style={styles.dataText}>{dayjs(o.dataCriacao).format('DD/MM/YYYY')}</Text>
-                </View>
-                <View>
-                  <Text style={[styles.dataLabel, isVencido && { color: '#D32F2F' }]}>
-                    {isVencido ? '⚠ Vencido' : 'Validade'}
+                    <StatusBadge status={o.status} />
+                  </View>
+                  <Text style={styles.clienteNome}>{cliente?.nome}</Text>
+                  <Text style={styles.veiculoInfo}>
+                    {veiculo ? `${veiculo.marca} ${veiculo.modelo} · ${veiculo.placa}` : ''}
                   </Text>
-                  <Text style={[styles.dataText, isVencido && { color: '#D32F2F' }]}>{dayjs(o.validade).format('DD/MM/YYYY')}</Text>
+                  <View style={styles.itens}>
+                    {o.itens.slice(0, 2).map((item: any, idx: number) => {
+                      const qty = item.quantidade ?? item.qtd ?? 1;
+                      const price = item.precoUnitario ?? item.valor ?? 0;
+                      return (
+                        <View key={idx} style={styles.itemRow}>
+                          <Text style={styles.itemNome} numberOfLines={1}>{item.nome ?? item.descricao}</Text>
+                          <Text style={styles.itemValor}>R$ {(qty * price).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</Text>
+                        </View>
+                      );
+                    })}
+                    {o.itens.length > 2 && <Text style={styles.maisItens}>+{o.itens.length - 2} item(ns)</Text>}
+                  </View>
+                  <View style={styles.cardFooter}>
+                    <View style={styles.footerItem}>
+                      <MaterialIcons name="event" size={13} color={palette.slate400} />
+                      <Text style={styles.footerText}>{dayjs(o.dataCriacao).format('DD/MM/YY')}</Text>
+                    </View>
+                    <View style={styles.footerItem}>
+                      <MaterialIcons name={isVencido ? 'warning' : 'schedule'} size={13} color={isVencido ? palette.rose600 : palette.slate400} />
+                      <Text style={[styles.footerText, isVencido && { color: palette.rose600, fontWeight: '700' }]}>
+                        {isVencido ? 'Vencido' : dayjs(o.validade).format('DD/MM/YY')}
+                      </Text>
+                    </View>
+                    <Text style={styles.valorText}>R$ {o.total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</Text>
+                  </View>
                 </View>
-                <Text style={styles.total}>R$ {o.total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</Text>
               </View>
-            </Surface>
             </TouchableOpacity>
           );
         }}
@@ -280,21 +274,24 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     flex: 1,
   },
-  card: { borderRadius: borderRadius.md, padding: spacing.md, backgroundColor: '#FFF' },
+  card: { backgroundColor: palette.white, borderRadius: borderRadius.lg, flexDirection: 'row', overflow: 'hidden', ...shadows.sm },
+  cardBar: { width: 5 },
+  cardContent: { flex: 1, padding: spacing.md },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm },
-  orcNum: { fontSize: 14, fontWeight: '700', color: colors.primary },
-  badge: { borderRadius: 12, paddingHorizontal: 10, paddingVertical: 4 },
+  numBox: { backgroundColor: palette.navy50, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 },
+  numText: { fontSize: 12, fontWeight: '700', color: palette.navy800 },
+  badge: { flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: borderRadius.full, paddingHorizontal: 10, paddingVertical: 4 },
   badgeText: { fontSize: 11, fontWeight: '700' },
-  clienteNome: { fontSize: 15, fontWeight: '700', color: colors.onBackground },
-  veiculoText: { fontSize: 12, color: '#757575', marginTop: 2, marginBottom: spacing.sm },
+  clienteNome: { fontSize: 15, fontWeight: '700', color: palette.slate900 },
+  veiculoInfo: { fontSize: 12, color: palette.slate500, marginTop: 2, marginBottom: spacing.sm },
   itens: { backgroundColor: '#F8F9FA', borderRadius: 8, padding: spacing.sm, marginBottom: spacing.sm },
   itemRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 3 },
   itemNome: { fontSize: 12, color: '#757575', flex: 1 },
-  itemValor: { fontSize: 12, color: colors.onBackground, fontWeight: '600' },
+  itemValor: { fontSize: 12, color: palette.slate900, fontWeight: '600' },
   maisItens: { fontSize: 11, color: '#9E9E9E', fontStyle: 'italic' },
-  footer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', borderTopWidth: 1, borderTopColor: '#F5F5F5', paddingTop: spacing.sm },
-  dataLabel: { fontSize: 10, color: '#9E9E9E', fontWeight: '600' },
-  dataText: { fontSize: 12, color: colors.onBackground },
-  total: { fontSize: 18, fontWeight: '800', color: colors.primary },
+  cardFooter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: spacing.sm, borderTopWidth: 1, borderTopColor: palette.slate100, gap: 4 },
+  footerItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  footerText: { fontSize: 11, color: palette.slate400 },
+  valorText: { fontSize: 15, fontWeight: '800', color: palette.navy800 },
   fab: { position: 'absolute', bottom: 24, right: 20, backgroundColor: colors.primary, borderRadius: 16, elevation: 8 },
 });
