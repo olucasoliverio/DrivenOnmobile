@@ -36,7 +36,7 @@ export default function OrcamentoFormScreen() {
     descricao: '',
     dataCriacao: dayjs().format('YYYY-MM-DD'),
     validade: dayjs().add(7, 'day').format('YYYY-MM-DD'),
-    status: 'pendente' as 'pendente' | 'aprovado' | 'recusado',
+    status: 'analise' as 'analise' | 'aprovado' | 'recusado',
   });
 
   const [itens, setItens] = useState<FormItem[]>([]);
@@ -306,7 +306,7 @@ export default function OrcamentoFormScreen() {
               value={form.status}
               onValueChange={val => setForm(curr => ({ ...curr, status: val as any }))}
               buttons={[
-                { value: 'pendente', label: 'Pendente' },
+                { value: 'analise', label: 'Em análise' },
                 { value: 'aprovado', label: 'Aprovado' },
                 { value: 'recusado', label: 'Recusado' },
               ]}

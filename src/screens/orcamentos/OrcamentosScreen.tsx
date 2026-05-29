@@ -27,7 +27,7 @@ function isWithinCustomRange(value: string, start: string, end: string) {
 
 const statusConfig: Record<string, { label: string; color: string; bg: string; icon: keyof typeof MaterialIcons.glyphMap; barColor: string }> = {
   aprovado: { label: 'Aprovado', color: palette.emerald600, bg: '#ECFDF5', icon: 'check-circle', barColor: palette.emerald600 },
-  pendente: { label: 'Pendente', color: palette.amber500, bg: '#FFFBEB', icon: 'schedule', barColor: palette.amber500 },
+  analise:  { label: 'Em análise', color: palette.amber500, bg: '#FFFBEB', icon: 'schedule', barColor: palette.amber500 },
   recusado: { label: 'Recusado', color: palette.rose600, bg: '#FFE4E6', icon: 'cancel', barColor: palette.rose600 },
 };
 
@@ -54,7 +54,7 @@ export default function OrcamentosScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const { orcamentos: orcamentosData, clientes, veiculos, deleteRecord, refresh } = useDriveOnData();
-  const [filtro, setFiltro] = useState<'todos' | 'aprovado' | 'pendente' | 'recusado'>('todos');
+  const [filtro, setFiltro] = useState<'todos' | 'aprovado' | 'analise' | 'recusado'>('todos');
   const [filtroData, setFiltroData] = useState<OrcamentoDateFilter>('mes');
   const [customStart, setCustomStart] = useState('');
   const [customEnd, setCustomEnd] = useState('');
@@ -84,7 +84,7 @@ export default function OrcamentosScreen() {
     const statusLabels: Record<string, string> = {
       todos: 'Todos',
       aprovado: 'Aprovado',
-      pendente: 'Pendente',
+      analise: 'Em análise',
       recusado: 'Recusado',
     };
 
@@ -108,7 +108,7 @@ export default function OrcamentosScreen() {
       (filtroData === 'mes' && criacao.isSame(dayjs(), 'month')) ||
       (filtroData === 'semana' && criacao.isSame(dayjs(), 'week')) ||
       (filtroData === 'hoje' && criacao.isSame(dayjs(), 'day')) ||
-      (filtroData === 'vencidos' && o.status === 'pendente' && validade.isBefore(dayjs(), 'day')) ||
+      (filtroData === 'vencidos' && o.status === 'analise' && validade.isBefore(dayjs(), 'day')) ||
       (filtroData === 'personalizado' && isWithinCustomRange(o.dataCriacao, customStart, customEnd));
     return matchStatus && matchData;
   });
@@ -164,8 +164,8 @@ export default function OrcamentosScreen() {
         renderItem={({ item: o }) => {
           const cliente = clientes.find(c => c.id === o.clienteId);
           const veiculo = veiculos.find(v => v.id === o.veiculoId);
-          const isVencido = dayjs(o.validade).isBefore(dayjs()) && o.status === 'pendente';
-          const barColor = (statusConfig[o.status] ?? statusConfig.pendente).barColor;
+          const isVencido = dayjs(o.validade).isBefore(dayjs()) && o.status === 'analise';
+          const barColor = (statusConfig[o.status] ?? statusConfig.analise).barColor;
           return (
             <TouchableOpacity onPress={() => navigation.navigate('OrcamentoDetalhes', { orcamentoId: o.id })} activeOpacity={0.7}>
               <View style={styles.card}>
@@ -230,7 +230,7 @@ export default function OrcamentosScreen() {
         statusOptions={[
           { key: 'todos', label: 'Todos' },
           { key: 'aprovado', label: 'Aprovado' },
-          { key: 'pendente', label: 'Pendente' },
+          { key: 'analise', label: 'Em análise' },
           { key: 'recusado', label: 'Recusado' },
         ]}
         customStart={customStart}

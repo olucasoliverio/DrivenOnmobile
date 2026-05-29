@@ -14,7 +14,7 @@ import { API_BASE_URL, getAuthToken } from '../../api/api';
 const editFields: CrudField[] = [
   { key: 'cliente_id', label: 'Cliente', keyboardType: 'number-pad' },
   { key: 'veiculo_id', label: 'Veículo', keyboardType: 'number-pad' },
-  { key: 'status', label: 'Status (pendente, aprovado, recusado)', autoCapitalize: 'none' },
+  { key: 'status', label: 'Status (analise, aprovado, recusado)', autoCapitalize: 'none' },
   { key: 'total', label: 'Total Geral', keyboardType: 'decimal-pad' },
   { key: 'dataCriacao', label: 'Data de Criação (YYYY-MM-DD)', keyboardType: 'default' },
   { key: 'validade', label: 'Data de Validade (YYYY-MM-DD)', keyboardType: 'default' },
@@ -23,7 +23,7 @@ const editFields: CrudField[] = [
 const STATUS_MAP: Record<string, { label: string; color: string; bg: string; icon: keyof typeof MaterialIcons.glyphMap }> = {
   aprovado:  { label: 'Aprovado',  color: palette.emerald600, bg: '#ECFDF5', icon: 'check-circle' },
   recusado:  { label: 'Recusado',  color: palette.rose600,    bg: '#FFE4E6', icon: 'cancel' },
-  pendente:  { label: 'Pendente',  color: palette.amber500,   bg: '#FFFBEB', icon: 'schedule' },
+  analise:   { label: 'Em análise', color: palette.amber500,   bg: '#FFFBEB', icon: 'schedule' },
 };
 
 export default function OrcamentoDetalhesScreen() {
@@ -53,8 +53,8 @@ export default function OrcamentoDetalhesScreen() {
         if (code) {
           setShortUrl(`${API_BASE_URL}/s/${code}`);
         }
-      } catch (error) {
-        console.error('Erro ao gerar link curto:', error);
+      } catch (error: any) {
+        console.log('Erro ao gerar link curto (esperado se backend ainda nao atualizou no cloud):', error?.message ?? error);
       }
     }
     loadShortUrl();
@@ -71,7 +71,7 @@ export default function OrcamentoDetalhesScreen() {
     );
   }
 
-  const isVencido = dayjs(orcamento.validade).isBefore(dayjs()) && orcamento.status === 'pendente';
+  const isVencido = dayjs(orcamento.validade).isBefore(dayjs()) && orcamento.status === 'analise';
   const st = STATUS_MAP[orcamento.status] ?? { label: orcamento.status, color: palette.slate500, bg: palette.slate100, icon: 'info' as any };
 
   const openEditForm = () => {
@@ -110,7 +110,7 @@ export default function OrcamentoDetalhesScreen() {
         return `Olá, *${cliente.nome}*! Confirmamos a aprovação do orçamento *ORC #${orcNum}* para o seu veículo *${veiculoNome}* (placa *${placa}*). 🛠️🚗\n\n*Valor Total:* R$ ${formattedValor}\n\nPara ver o detalhamento, acesse:\n🔗 ${pdfUrl}\n\nLogo daremos início aos serviços e te manteremos informado. Obrigado pela preferência!`;
       case 'recusado':
         return `Olá, *${cliente.nome}*! Registramos a sua resposta para o orçamento *ORC #${orcNum}* do veículo *${veiculoNome}* (placa *${placa}*) como *Recusado*.\n\nVisualizar orçamento:\n🔗 ${pdfUrl}\n\nAgradecemos a atenção e nos colocamos à disposição para futuras necessidades!`;
-      case 'pendente':
+      case 'analise':
       default:
         const itemsList = orcamento.itens?.map(item => {
           const qty = item.quantidade;
@@ -417,7 +417,7 @@ export default function OrcamentoDetalhesScreen() {
               onPress={async () => {
                 setIsStatusModalVisible(false);
                 try {
-                  await updateRecord('/orcamentos', orcamento.id, { status: 'pendente' });
+                  await updateRecord('/orcamentos', orcamento.id, { status: 'analise' });
                   await refresh();
                   sugerirNotificacaoWhatsApp();
                 } catch (error: any) {
@@ -429,8 +429,8 @@ export default function OrcamentoDetalhesScreen() {
                 <MaterialIcons name="schedule" size={22} color={palette.amber500} />
               </View>
               <View style={styles.modalOptionTextContainer}>
-                <Text style={styles.modalOptionText}>Marcar como Pendente</Text>
-                <Text style={styles.modalOptionSubtext}>Altera o status de volta para "Pendente".</Text>
+                <Text style={styles.modalOptionText}>Marcar como Em análise</Text>
+                <Text style={styles.modalOptionSubtext}>Altera o status de volta para "Em análise".</Text>
               </View>
             </TouchableOpacity>
 

@@ -410,7 +410,7 @@ export function adaptOrcamento(item: any): Orcamento {
     id: numberValue(item.id),
     clienteId: numberValue(item.cliente_id ?? item.clienteId),
     veiculoId: numberValue(item.veiculo_id ?? item.veiculoId),
-    status: textValue(item.status, 'pendente') as Orcamento['status'],
+    status: textValue(item.status, 'analise') as Orcamento['status'],
     total: numberValue(item.valor ?? item.total),
     dataCriacao: textValue(item.data ?? item.created_at, dayjs().toISOString()),
     validade: textValue(item.validade ?? item.data ?? item.created_at, dayjs().add(7, 'day').toISOString()),
