@@ -4,10 +4,9 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialIcons } from '@expo/vector-icons';
 import { FAB, IconButton } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import { useDriveOnData } from '../../context/DriveOnDataContext';
 import { palette, spacing, borderRadius, shadows, gradients } from '../../theme/theme';
-import CrudDialog, { type CrudField } from '../../components/CrudDialog';
 import EmptyState from '../../components/EmptyState';
 import dayjs from 'dayjs';
 import 'dayjs/locale/pt-br';
@@ -16,19 +15,13 @@ dayjs.locale('pt-br');
 
 const { width } = Dimensions.get('window');
 
-const fields: CrudField[] = [
-  { key: 'titulo', label: 'Titulo', autoCapitalize: 'sentences' },
-  { key: 'cliente_id', label: 'Cliente', keyboardType: 'number-pad' },
-  { key: 'veiculo_id', label: 'Veículo', keyboardType: 'number-pad' },
-  { key: 'data_inicio', label: 'Inicio (YYYY-MM-DD HH:mm)' },
-  { key: 'data_fim', label: 'Fim (YYYY-MM-DD HH:mm)' },
-  { key: 'observacao', label: 'Observacao', multiline: true },
-];
+type AgendaDateFilter = 'dia' | 'hoje' | 'amanha' | 'semana' | 'mes';
 
-function getDaysOfWeek() {
+
+function getDaysOfWeek(baseDate: dayjs.Dayjs) {
   const days = [];
   for (let i = -1; i <= 5; i++) {
-    days.push(dayjs().add(i, 'day'));
+    days.push(baseDate.add(i, 'day'));
   }
   return days;
 }
@@ -36,74 +29,18 @@ function getDaysOfWeek() {
 export default function AgendaScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
-  const route = useRoute<any>();
-  const { agendamentos, clientes, veiculos, createRecord, updateRecord, deleteRecord } = useDriveOnData();
+  const { agendamentos, clientes, veiculos, deleteRecord } = useDriveOnData();
   const [selectedDate, setSelectedDate] = useState(dayjs());
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingId, setEditingId] = useState<number | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState<Record<string, string>>({});
-  const days = getDaysOfWeek();
+  const [dateFilter, setDateFilter] = useState<AgendaDateFilter>('hoje');
+  const days = getDaysOfWeek(selectedDate);
 
-  const agendamentosDodia = agendamentos.filter(a =>
-    dayjs(a.data).isSame(selectedDate, 'day')
-  );
+  const agendamentosFiltrados = agendamentos.filter(a => {
+    const date = dayjs(a.data);
+    if (dateFilter === 'semana') return date.isSame(selectedDate, 'week');
+    if (dateFilter === 'mes') return date.isSame(selectedDate, 'month');
+    return date.isSame(selectedDate, 'day');
+  }).sort((a, b) => dayjs(a.data).valueOf() - dayjs(b.data).valueOf());
 
-  const openForm = (item?: (typeof agendamentos)[number]) => {
-    setEditingId(item?.id ?? null);
-    if (item) {
-      setForm({
-        titulo: item.servico,
-        cliente_id: String(item.clienteId),
-        veiculo_id: String(item.veiculoId),
-        data_inicio: dayjs(item.data).format('YYYY-MM-DD') + ` ${item.hora || '09:00'}`,
-        data_fim: dayjs(item.data).add(1, 'hour').format('YYYY-MM-DD HH:mm'),
-        observacao: item.observacao,
-      });
-    } else {
-      setForm({
-        cliente_id: '',
-        veiculo_id: '',
-        data_inicio: selectedDate.hour(9).minute(0).format('YYYY-MM-DD HH:mm'),
-        data_fim: selectedDate.hour(10).minute(0).format('YYYY-MM-DD HH:mm'),
-      });
-    }
-    setDialogOpen(true);
-  };
-
-  useEffect(() => {
-    if (route.params?.openForm) {
-      openForm();
-      navigation.setParams({ openForm: undefined });
-    }
-  }, [route.params?.openForm]);
-
-  const parseDate = (value: string) => dayjs(value.trim().replace(' ', 'T')).toISOString();
-
-  const save = async () => {
-    if (!form.titulo?.trim() || !form.cliente_id || !form.veiculo_id || !form.data_inicio || !form.data_fim) {
-      Alert.alert('Campos obrigatorios', 'Informe titulo, cliente, veiculo, inicio e fim.');
-      return;
-    }
-    setSaving(true);
-    try {
-      const payload = {
-        titulo: form.titulo.trim(),
-        cliente_id: Number(form.cliente_id),
-        veiculo_id: Number(form.veiculo_id),
-        data_inicio: parseDate(form.data_inicio),
-        data_fim: parseDate(form.data_fim),
-        observacao: form.observacao?.trim() || null,
-      };
-      if (editingId) await updateRecord('/agendamentos', editingId, payload);
-      else await createRecord('/agendamentos', payload);
-      setDialogOpen(false);
-    } catch (error: any) {
-      Alert.alert('Nao foi possivel salvar', error?.response?.data?.error ?? error?.message ?? 'Tente novamente.');
-    } finally {
-      setSaving(false);
-    }
-  };
 
   const remove = (id: number) => {
     Alert.alert('Remover agendamento?', 'Essa acao cancela o registro.', [
@@ -119,10 +56,13 @@ export default function AgendaScreen() {
     <View style={styles.container}>
       <ScreenHeader title="Agenda" showBack={true} />
 
+
       {/* ── Week Header com fundo claro ── */}
       <View style={styles.weekHeader}>
         <Text style={styles.mesAno}>
-          {selectedDate.format('MMMM YYYY').replace(/^\w/, c => c.toUpperCase())}
+          {dateFilter === 'semana'
+            ? `${selectedDate.startOf('week').format('DD/MM')} - ${selectedDate.endOf('week').format('DD/MM')}`
+            : selectedDate.format('MMMM YYYY').replace(/^\w/, c => c.toUpperCase())}
         </Text>
         <FlatList
           horizontal
@@ -137,7 +77,16 @@ export default function AgendaScreen() {
             return (
               <TouchableOpacity
                 style={[styles.dayBtn, isSelected && styles.dayBtnSelected]}
-                onPress={() => setSelectedDate(day)}
+                onPress={() => {
+                  setSelectedDate(day);
+                  setDateFilter(
+                    day.isSame(dayjs(), 'day')
+                      ? 'hoje'
+                      : day.isSame(dayjs().add(1, 'day'), 'day')
+                      ? 'amanha'
+                      : 'dia'
+                  );
+                }}
                 activeOpacity={0.7}
               >
                 <Text style={[styles.dayName, isSelected && styles.dayTextSelected, !isSelected && isToday && styles.dayNameToday]}>
@@ -156,22 +105,22 @@ export default function AgendaScreen() {
       </View>
 
       {/* ── Contador do dia ── */}
-      {agendamentosDodia.length > 0 && (
+      {agendamentosFiltrados.length > 0 && (
         <View style={styles.dayInfoBar}>
           <Text style={styles.dayInfoText}>
-            {`${agendamentosDodia.length} agendamento${agendamentosDodia.length > 1 ? 's' : ''}`}
+            {`${agendamentosFiltrados.length} agendamento${agendamentosFiltrados.length > 1 ? 's' : ''}`}
           </Text>
         </View>
       )}
 
       {/* ── Lista de agendamentos ── */}
       <FlatList
-        data={agendamentosDodia}
+        data={agendamentosFiltrados}
         keyExtractor={(item) => String(item.id)}
         contentContainerStyle={[styles.listContent, { flexGrow: 1 }]}
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={() => (
-          <EmptyState icon="event-available" message="Nenhum agendamento nesta data" isFullPage />
+          <EmptyState icon="event-available" message="Nenhum agendamento no período" isFullPage />
         )}
         renderItem={({ item }) => {
           const cliente = clientes.find(c => c.id === item.clienteId);
@@ -222,19 +171,37 @@ export default function AgendaScreen() {
                   </View>
                 )}
               </View>
-              <IconButton icon="delete-outline" size={20} iconColor="#D32F2F" onPress={() => remove(item.id)} />
+              <View style={styles.actionButtons}>
+                <IconButton
+                  icon="pencil-outline"
+                  size={20}
+                  iconColor={palette.navy800}
+                  onPress={(event) => {
+                    event.stopPropagation();
+                    navigation.navigate('AgendaForm', { agendamentoId: item.id });
+                  }}
+                />
+                <IconButton
+                  icon="delete-outline"
+                  size={20}
+                  iconColor="#D32F2F"
+                  onPress={(event) => {
+                    event.stopPropagation();
+                    remove(item.id);
+                  }}
+                />
+              </View>
             </View>
             </TouchableOpacity>
           );
         }}
       />
 
-      <CrudDialog visible={dialogOpen} title={editingId ? 'Editar agendamento' : 'Novo agendamento'} fields={fields} values={form} isSaving={saving} onChange={(key, value) => setForm((current) => ({ ...current, [key]: value }))} onCancel={() => setDialogOpen(false)} onSave={save} />
       <FAB
         icon="plus"
         style={styles.fab}
         color={palette.white}
-        onPress={() => openForm()}
+        onPress={() => navigation.navigate('AgendaForm')}
       />
     </View>
   );
@@ -275,6 +242,7 @@ const styles = StyleSheet.create({
   card: { backgroundColor: palette.white, borderRadius: borderRadius.lg, flexDirection: 'row', overflow: 'hidden', ...shadows.sm },
   colorBar: { width: 5 },
   cardBody: { flex: 1, padding: spacing.md },
+  actionButtons: { justifyContent: 'center', marginRight: -4 },
   cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm },
   horaBox: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   hora: { fontSize: 16, fontWeight: '800', color: palette.slate900 },

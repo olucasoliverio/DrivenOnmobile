@@ -41,9 +41,9 @@ const menuItems: MenuItem[] = [
   },
   { 
     icon: 'attach-money',  
-    label: 'Financeiro',      
+    label: 'Contas a Receber',
     screen: 'Financeiro',      
-    desc: 'Controle de contas a pagar e receber' 
+    desc: 'Controle de contas a receber' 
   },
 ];
 
@@ -60,7 +60,11 @@ export default function MenuScreen() {
   };
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={[styles.contentContainer, { paddingBottom: insets.bottom + 96 }]}
+      showsVerticalScrollIndicator={false}
+    >
       {/* ── Profile Card com Gradiente ── */}
       <LinearGradient colors={gradients.navyDark} style={[styles.profileHeader, { paddingTop: insets.top + 20 }]}>
         <View style={styles.profileHeaderCircle} />
@@ -119,8 +123,6 @@ export default function MenuScreen() {
         </TouchableOpacity>
       </View>
 
-      <View style={{ height: 40 }} />
-
       {/* ── Custom Confirm Logout Modal ── */}
       <Modal
         visible={isLogoutModalVisible}
@@ -178,6 +180,9 @@ const styles = StyleSheet.create({
   container: { 
     flex: 1, 
     backgroundColor: palette.slate100 
+  },
+  contentContainer: {
+    flexGrow: 1,
   },
 
   // Profile Header

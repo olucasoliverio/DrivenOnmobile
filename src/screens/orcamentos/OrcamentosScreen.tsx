@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Alert, View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
+import { Alert, View, Text, StyleSheet, FlatList, ScrollView, TouchableOpacity } from 'react-native';
 import { Surface, FAB, IconButton } from 'react-native-paper';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRoute, useNavigation } from '@react-navigation/native';
@@ -11,6 +11,26 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import ScreenHeader from '../../components/ScreenHeader';
 import EmptyState from '../../components/EmptyState';
 import { sendEstimateMessage } from '../../services/whatsappService';
+import CalendarDatePicker from '../../components/CalendarDatePicker';
+
+type OrcamentoDateFilter = 'todos' | 'criados_mes' | 'vencidos' | 'vencem7' | 'personalizado';
+
+const orcamentoDateFilters: { key: OrcamentoDateFilter; label: string }[] = [
+  { key: 'todos', label: 'Todos' },
+  { key: 'criados_mes', label: 'Criados este mês' },
+  { key: 'vencidos', label: 'Vencidos' },
+  { key: 'vencem7', label: 'Vencem 7 dias' },
+  { key: 'personalizado', label: 'Personalizado' },
+];
+
+function isWithinCustomRange(value: string, start: string, end: string) {
+  const date = dayjs(value);
+  const startDate = start ? dayjs(start) : null;
+  const endDate = end ? dayjs(end) : null;
+  if (startDate?.isValid() && date.isBefore(startDate, 'day')) return false;
+  if (endDate?.isValid() && date.isAfter(endDate, 'day')) return false;
+  return true;
+}
 
 const statusConfig: Record<string, { label: string; color: string; bg: string }> = {
   aprovado: { label: 'Aprovado', color: '#2E7D32', bg: '#E8F5E9' },
@@ -30,65 +50,32 @@ export default function OrcamentosScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
-  const { orcamentos: orcamentosData, clientes, veiculos, createRecord, updateRecord, deleteRecord } = useDriveOnData();
+  const { orcamentos: orcamentosData, clientes, veiculos, deleteRecord } = useDriveOnData();
   const [filtro, setFiltro] = useState<'todos' | 'aprovado' | 'pendente' | 'recusado'>('todos');
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingId, setEditingId] = useState<number | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState<Record<string, string>>({});
+  const [filtroData, setFiltroData] = useState<OrcamentoDateFilter>('todos');
+  const [customStart, setCustomStart] = useState('');
+  const [customEnd, setCustomEnd] = useState('');
+  const [customDatePicker, setCustomDatePicker] = useState<null | 'start' | 'end'>(null);
 
-  const orcamentos = orcamentosData.filter(o => filtro === 'todos' || o.status === filtro);
-
-  const openForm = (item?: (typeof orcamentosData)[number]) => {
-    setEditingId(item?.id ?? null);
-    if (item) {
-      setForm({
-        clienteId: String(item.clienteId),
-        veiculoId: String(item.veiculoId),
-        descricao: item.itens?.[0]?.descricao ?? '',
-        valor: String(item.total),
-        data: dayjs(item.dataCriacao).format('YYYY-MM-DD'),
-      });
-    } else {
-      setForm({
-        clienteId: '',
-        veiculoId: '',
-        data: dayjs().format('YYYY-MM-DD'),
-      });
-    }
-    setDialogOpen(true);
-  };
+  const orcamentos = orcamentosData.filter(o => {
+    const matchStatus = filtro === 'todos' || o.status === filtro;
+    const criacao = dayjs(o.dataCriacao);
+    const validade = dayjs(o.validade);
+    const matchData =
+      filtroData === 'todos' ||
+      (filtroData === 'criados_mes' && criacao.isSame(dayjs(), 'month')) ||
+      (filtroData === 'vencidos' && o.status === 'pendente' && validade.isBefore(dayjs(), 'day')) ||
+      (filtroData === 'vencem7' && validade.isAfter(dayjs().subtract(1, 'day'), 'day') && validade.isBefore(dayjs().add(8, 'day'), 'day')) ||
+      (filtroData === 'personalizado' && isWithinCustomRange(o.dataCriacao, customStart, customEnd));
+    return matchStatus && matchData;
+  });
 
   useEffect(() => {
     if (route.params?.openForm) {
-      openForm();
+      navigation.navigate('OrcamentoForm');
       navigation.setParams({ openForm: undefined });
     }
   }, [route.params?.openForm]);
-
-  const save = async () => {
-    if (!form.clienteId || !form.veiculoId || !form.descricao?.trim() || !form.valor) {
-      Alert.alert('Campos obrigatorios', 'Informe cliente, veiculo, descricao e valor.');
-      return;
-    }
-    setSaving(true);
-    try {
-      const payload = {
-        clienteId: Number(form.clienteId),
-        veiculoId: Number(form.veiculoId),
-        descricao: form.descricao.trim(),
-        valor: Number(String(form.valor).replace(',', '.')),
-        data: form.data || dayjs().format('YYYY-MM-DD'),
-      };
-      if (editingId) await updateRecord('/orcamentos', editingId, payload);
-      else await createRecord('/orcamentos', payload);
-      setDialogOpen(false);
-    } catch (error: any) {
-      Alert.alert('Nao foi possivel salvar', error?.response?.data?.error ?? error?.message ?? 'Tente novamente.');
-    } finally {
-      setSaving(false);
-    }
-  };
 
   const remove = (id: number) => {
     Alert.alert('Remover orcamento?', 'Essa acao desativa o registro.', [
@@ -111,6 +98,48 @@ export default function OrcamentosScreen() {
             </Text>
           </TouchableOpacity>
         ))}
+      </View>
+
+      <View style={styles.dateFilterContainer}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.dateFilterRow}>
+          {orcamentoDateFilters.map(item => {
+            const isActive = filtroData === item.key;
+            return (
+              <TouchableOpacity
+                key={item.key}
+                style={[styles.dateChip, isActive && styles.dateChipActive]}
+                onPress={() => setFiltroData(item.key)}
+                activeOpacity={0.75}
+              >
+                <Text style={[styles.dateChipText, isActive && styles.dateChipTextActive]}>{item.label}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+        {filtroData === 'personalizado' ? (
+          <View style={styles.customRangeRow}>
+            <TouchableOpacity
+              style={styles.customDateButton}
+              activeOpacity={0.75}
+              onPress={() => setCustomDatePicker('start')}
+            >
+              <MaterialIcons name="calendar-today" size={16} color={palette.slate400} />
+              <Text style={[styles.customDateText, !customStart && styles.customDatePlaceholder]}>
+                {customStart ? dayjs(customStart).format('DD/MM/YYYY') : 'Início'}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.customDateButton}
+              activeOpacity={0.75}
+              onPress={() => setCustomDatePicker('end')}
+            >
+              <MaterialIcons name="event-available" size={16} color={palette.slate400} />
+              <Text style={[styles.customDateText, !customEnd && styles.customDatePlaceholder]}>
+                {customEnd ? dayjs(customEnd).format('DD/MM/YYYY') : 'Fim'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        ) : null}
       </View>
 
       <FlatList
@@ -142,7 +171,7 @@ export default function OrcamentosScreen() {
                       iconColor="#25D366"
                       onPress={() => {
                         const veiculoNome = veiculo ? `${veiculo.marca} ${veiculo.modelo}` : 'Veículo';
-                        const firstItemDesc = o.itens?.[0]?.descricao ?? 'Serviço da oficina';
+                        const firstItemDesc = o.itens?.[0]?.nome ?? 'Serviço da oficina';
                         sendEstimateMessage(
                           cliente.nome,
                           cliente.telefone,
@@ -163,12 +192,16 @@ export default function OrcamentosScreen() {
               <Text style={styles.clienteNome}>{cliente?.nome}</Text>
               <Text style={styles.veiculoText}>{veiculo ? `${veiculo.marca} ${veiculo.modelo} • ${veiculo.placa}` : ''}</Text>
               <View style={styles.itens}>
-                {o.itens.slice(0, 2).map((item, idx) => (
-                  <View key={idx} style={styles.itemRow}>
-                    <Text style={styles.itemNome} numberOfLines={1}>{item.descricao}</Text>
-                    <Text style={styles.itemValor}>R$ {(item.qtd * item.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</Text>
-                  </View>
-                ))}
+                {o.itens.slice(0, 2).map((item: any, idx: number) => {
+                  const qty = item.quantidade ?? item.qtd ?? 1;
+                  const price = item.precoUnitario ?? item.valor ?? 0;
+                  return (
+                    <View key={idx} style={styles.itemRow}>
+                      <Text style={styles.itemNome} numberOfLines={1}>{item.nome ?? item.descricao}</Text>
+                      <Text style={styles.itemValor}>R$ {(qty * price).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</Text>
+                    </View>
+                  );
+                })}
                 {o.itens.length > 2 && <Text style={styles.maisItens}>+{o.itens.length - 2} item(ns)</Text>}
               </View>
               <View style={styles.footer}>
@@ -189,8 +222,17 @@ export default function OrcamentosScreen() {
           );
         }}
       />
-      <CrudDialog visible={dialogOpen} title={editingId ? 'Editar orcamento' : 'Novo orcamento'} fields={fields} values={form} isSaving={saving} onChange={(key, value) => setForm((current) => ({ ...current, [key]: value }))} onCancel={() => setDialogOpen(false)} onSave={save} />
-      <FAB icon="plus" style={styles.fab} color="#FFF" onPress={() => openForm()} />
+      <FAB icon="plus" style={styles.fab} color="#FFF" onPress={() => navigation.navigate('OrcamentoForm')} />
+      <CalendarDatePicker
+        visible={customDatePicker != null}
+        value={customDatePicker === 'end' ? customEnd : customStart}
+        title={customDatePicker === 'end' ? 'Fim' : 'Início'}
+        onSelect={date => {
+          if (customDatePicker === 'end') setCustomEnd(date);
+          else setCustomStart(date);
+        }}
+        onClose={() => setCustomDatePicker(null)}
+      />
     </View>
   );
 }
@@ -202,6 +244,49 @@ const styles = StyleSheet.create({
   chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
   chipText: { fontSize: 12, fontWeight: '600', color: '#757575' },
   chipTextActive: { color: '#FFF' },
+  dateFilterContainer: { marginBottom: spacing.xs },
+  dateFilterRow: { paddingHorizontal: spacing.lg, gap: spacing.sm, paddingBottom: spacing.sm },
+  dateChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: borderRadius.full,
+    backgroundColor: palette.white,
+    borderWidth: 1,
+    borderColor: palette.slate200,
+  },
+  dateChipActive: {
+    backgroundColor: palette.navy50,
+    borderColor: palette.navy800,
+  },
+  dateChipText: { fontSize: 12, fontWeight: '700', color: palette.slate500 },
+  dateChipTextActive: { color: palette.navy800 },
+  customRangeRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.sm,
+  },
+  customDateButton: {
+    flex: 1,
+    minHeight: 42,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: palette.slate200,
+    backgroundColor: palette.white,
+    paddingHorizontal: spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  customDateText: {
+    flex: 1,
+    color: palette.slate900,
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  customDatePlaceholder: {
+    color: palette.slate400,
+  },
   card: { borderRadius: borderRadius.md, padding: spacing.md, backgroundColor: '#FFF' },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm },
   orcNum: { fontSize: 14, fontWeight: '700', color: colors.primary },

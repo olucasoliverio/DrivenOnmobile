@@ -1,34 +1,20 @@
 import React, { useEffect, useState } from 'react';
 import { Alert, View, Text, StyleSheet, FlatList, TextInput as RNTextInput, TouchableOpacity } from 'react-native';
-import { Surface, FAB, IconButton } from 'react-native-paper';
+import { FAB, IconButton } from 'react-native-paper';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDriveOnData } from '../../context/DriveOnDataContext';
 import { colors, spacing, borderRadius, palette, shadows } from '../../theme/theme';
-import CrudDialog, { type CrudField } from '../../components/CrudDialog';
 import ScreenHeader from '../../components/ScreenHeader';
 import EmptyState from '../../components/EmptyState';
-
-const fields: CrudField[] = [
-  { key: 'cliente_id', label: 'Cliente', keyboardType: 'number-pad' },
-  { key: 'marca', label: 'Marca', autoCapitalize: 'words' },
-  { key: 'modelo', label: 'Modelo', autoCapitalize: 'words' },
-  { key: 'placa', label: 'Placa', autoCapitalize: 'characters' },
-  { key: 'ano', label: 'Ano', keyboardType: 'number-pad' },
-  { key: 'cor', label: 'Cor', autoCapitalize: 'words' },
-];
 
 export default function VeiculosScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
-  const { veiculos: veiculosData, clientes, createRecord, updateRecord, deleteRecord } = useDriveOnData();
+  const { veiculos: veiculosData, clientes, deleteRecord } = useDriveOnData();
   const [busca, setBusca] = useState('');
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingId, setEditingId] = useState<number | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState<Record<string, string>>({});
 
   useEffect(() => {
     const detectedPlate = route.params?.detectedPlate;
@@ -44,51 +30,6 @@ export default function VeiculosScreen() {
       v.modelo.toLowerCase().includes(busca.toLowerCase()) ||
       cliente?.nome.toLowerCase().includes(busca.toLowerCase());
   });
-
-  const openForm = (item?: (typeof veiculosData)[number]) => {
-    setEditingId(item?.id ?? null);
-    setForm(item ? {
-      cliente_id: String(item.clienteId),
-      marca: item.marca,
-      modelo: item.modelo,
-      placa: item.placa,
-      ano: String(item.ano || ''),
-      cor: item.cor,
-    } : { cliente_id: '' });
-    setDialogOpen(true);
-  };
-
-  useEffect(() => {
-    if (route.params?.openForm) {
-      openForm();
-      navigation.setParams({ openForm: undefined });
-    }
-  }, [route.params?.openForm]);
-
-  const save = async () => {
-    if (!form.cliente_id || !form.marca?.trim() || !form.modelo?.trim() || !form.placa?.trim()) {
-      Alert.alert('Campos obrigatorios', 'Informe cliente, marca, modelo e placa.');
-      return;
-    }
-    setSaving(true);
-    try {
-      const payload = {
-        cliente_id: Number(form.cliente_id),
-        marca: form.marca.trim(),
-        modelo: form.modelo.trim(),
-        placa: form.placa.trim(),
-        ano: form.ano ? Number(form.ano) : null,
-        cor: form.cor?.trim() || null,
-      };
-      if (editingId) await updateRecord('/veiculos', editingId, payload);
-      else await createRecord('/veiculos', payload);
-      setDialogOpen(false);
-    } catch (error: any) {
-      Alert.alert('Nao foi possivel salvar', error?.response?.data?.error ?? error?.message ?? 'Tente novamente.');
-    } finally {
-      setSaving(false);
-    }
-  };
 
   const remove = (id: number) => {
     Alert.alert('Remover veiculo?', 'Essa acao desativa o registro.', [
@@ -150,7 +91,26 @@ export default function VeiculosScreen() {
                       <Text style={styles.kmText}>{v.km.toLocaleString('pt-BR')} km</Text>
                     </View>
                   </View>
-                  <IconButton icon="delete-outline" size={20} iconColor={palette.rose600} onPress={() => remove(v.id)} />
+                  <View style={styles.actionButtons}>
+                    <IconButton
+                      icon="pencil-outline"
+                      size={20}
+                      iconColor={palette.navy800}
+                      onPress={(event) => {
+                        event.stopPropagation();
+                        navigation.navigate('VeiculoForm', { veiculoId: v.id });
+                      }}
+                    />
+                    <IconButton
+                      icon="delete-outline"
+                      size={20}
+                      iconColor={palette.rose600}
+                      onPress={(event) => {
+                        event.stopPropagation();
+                        remove(v.id);
+                      }}
+                    />
+                  </View>
                 </View>
               </View>
             </TouchableOpacity>
@@ -158,8 +118,7 @@ export default function VeiculosScreen() {
         }}
       />
       <FAB icon="camera" style={styles.cameraFab} color="#FFF" onPress={() => navigation.navigate('PlacaScanner')} />
-      <CrudDialog visible={dialogOpen} title={editingId ? 'Editar veiculo' : 'Novo veiculo'} fields={fields} values={form} isSaving={saving} onChange={(key, value) => setForm((current) => ({ ...current, [key]: value }))} onCancel={() => setDialogOpen(false)} onSave={save} />
-      <FAB icon="plus" style={styles.fab} color="#FFF" onPress={() => openForm()} />
+      <FAB icon="plus" style={styles.fab} color="#FFF" onPress={() => navigation.navigate('VeiculoForm')} />
     </View>
   );
 }
@@ -191,6 +150,7 @@ const styles = StyleSheet.create({
     borderBottomColor: '#ECEFF2',
   },
   cardRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  actionButtons: { flexDirection: 'row', alignItems: 'center', marginRight: -8 },
   carIcon: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#F1F5F9', justifyContent: 'center', alignItems: 'center' },
   modelo: { fontSize: 15, fontWeight: '700', color: palette.slate900 },
   placaBadge: { backgroundColor: palette.slate700, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 },

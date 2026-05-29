@@ -53,9 +53,6 @@ export const mockPagamentos = [
   { id: 2, clienteId: 3, ordemId: 3, tipo: 'receber', descricao: 'OS #3 - Pedro Oliveira', valor: 180.00, data: dayjs().subtract(4, 'day').toISOString(), status: 'pago', formaPagamento: 'Cartão Débito' },
   { id: 3, clienteId: 2, ordemId: 2, tipo: 'receber', descricao: 'OS #2 - Maria Souza', valor: 280.00, data: dayjs().add(2, 'day').toISOString(), status: 'pendente', formaPagamento: '' },
   { id: 4, clienteId: 1, ordemId: 1, tipo: 'receber', descricao: 'OS #1 - João Silva', valor: 450.00, data: dayjs().add(1, 'day').toISOString(), status: 'pendente', formaPagamento: '' },
-  { id: 5, clienteId: null, ordemId: null, tipo: 'pagar', descricao: 'Compra de Peças - Fornecedor AutoParts', valor: 1500.00, data: dayjs().subtract(2, 'day').toISOString(), status: 'pago', formaPagamento: 'Transferência' },
-  { id: 6, clienteId: null, ordemId: null, tipo: 'pagar', descricao: 'Aluguel da Oficina', valor: 3200.00, data: dayjs().toISOString(), status: 'pago', formaPagamento: 'Débito Automático' },
-  { id: 7, clienteId: null, ordemId: null, tipo: 'pagar', descricao: 'Conta de Energia', valor: 480.00, data: dayjs().add(5, 'day').toISOString(), status: 'pendente', formaPagamento: '' },
 ];
 
 // ─── Estoque ─────────────────────────────────────────────────────────────────

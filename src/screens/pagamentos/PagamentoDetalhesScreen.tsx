@@ -5,19 +5,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { useDriveOnData } from '../../context/DriveOnDataContext';
 import { palette, spacing, borderRadius, shadows } from '../../theme/theme';
 import ScreenHeader from '../../components/ScreenHeader';
-import CrudDialog, { type CrudField } from '../../components/CrudDialog';
 import dayjs from 'dayjs';
-
-const editFields: CrudField[] = [
-  { key: 'tipo', label: 'Tipo (pagar ou receber)', autoCapitalize: 'none' },
-  { key: 'valor', label: 'Valor', keyboardType: 'decimal-pad' },
-  { key: 'data_vencimento', label: 'Vencimento (YYYY-MM-DD)', keyboardType: 'default' },
-  { key: 'descricao', label: 'Descrição', multiline: true },
-  { key: 'cliente_id', label: 'Cliente (opcional)', keyboardType: 'number-pad' },
-  { key: 'ordem_servico_id', label: 'Ordem de Serviço (opcional)', keyboardType: 'number-pad' },
-  { key: 'metodo', label: 'Método (pix, dinheiro, cartao, boleto)', autoCapitalize: 'none' },
-  { key: 'status', label: 'Status (pendente, pago)', autoCapitalize: 'none' },
-];
 
 export default function PagamentoDetalhesScreen() {
   const route = useRoute<any>();
@@ -25,9 +13,7 @@ export default function PagamentoDetalhesScreen() {
   const { pagamentoId } = route.params ?? { pagamentoId: 1 };
   const { pagamentos, clientes, ordens, updateRecord, deleteRecord } = useDriveOnData();
 
-  const [dialogOpen, setDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState<Record<string, string>>({});
 
   const p = pagamentos.find(item => item.id === pagamentoId);
   const cliente = p?.clienteId ? clientes.find(c => c.id === p.clienteId) : undefined;
@@ -44,54 +30,13 @@ export default function PagamentoDetalhesScreen() {
     );
   }
 
-  const isReceber = p.tipo === 'receber';
   const isPago = p.status === 'pago';
-
-  const openEditForm = () => {
-    setForm({
-      tipo: p.tipo,
-      valor: String(p.valor),
-      data_vencimento: dayjs(p.data).format('YYYY-MM-DD'),
-      descricao: p.descricao,
-      cliente_id: p.clienteId ? String(p.clienteId) : '',
-      ordem_servico_id: p.ordemId ? String(p.ordemId) : '',
-      metodo: p.formaPagamento || 'pix',
-      status: p.status || 'pendente',
-    });
-    setDialogOpen(true);
-  };
-
-  const save = async () => {
-    if (!form.tipo || !form.valor || !form.data_vencimento) {
-      Alert.alert('Campos obrigatórios', 'Por favor, preencha tipo, valor e vencimento.');
-      return;
-    }
-    setSaving(true);
-    try {
-      const payload = {
-        tipo: form.tipo.trim(),
-        valor: Number(String(form.valor).replace(',', '.')),
-        data_vencimento: form.data_vencimento,
-        descricao: form.descricao?.trim() || null,
-        cliente_id: form.cliente_id ? Number(form.cliente_id) : null,
-        ordem_servico_id: form.ordem_servico_id ? Number(form.ordem_servico_id) : null,
-        metodo: form.metodo?.trim() || 'pix',
-        status: form.status?.trim() || 'pendente',
-      };
-      await updateRecord('/pagamentos', p.id, payload);
-      setDialogOpen(false);
-    } catch (error: any) {
-      Alert.alert('Não foi possível salvar', error?.response?.data?.error ?? error?.message ?? 'Tente novamente.');
-    } finally {
-      setSaving(false);
-    }
-  };
 
   const marcarComoPago = async () => {
     setSaving(true);
     try {
       const payload = {
-        tipo: p.tipo,
+        tipo: 'receber',
         valor: p.valor,
         data_vencimento: dayjs(p.data).format('YYYY-MM-DD'),
         descricao: p.descricao || null,
@@ -129,13 +74,13 @@ export default function PagamentoDetalhesScreen() {
   return (
     <View style={styles.container}>
       <ScreenHeader
-        title="Lançamento"
-        subtitle={isReceber ? 'Conta a Receber' : 'Conta a Pagar'}
+        title="Conta a Receber"
+        subtitle="Detalhes do Recebimento"
         showBack={true}
         rightElement={
           <TouchableOpacity
             style={styles.headerEditBtn}
-            onPress={openEditForm}
+            onPress={() => navigation.navigate('PagamentoForm', { pagamentoId: p.id })}
             activeOpacity={0.7}
           >
             <MaterialIcons name="edit" size={22} color={palette.slate700} />
@@ -145,12 +90,12 @@ export default function PagamentoDetalhesScreen() {
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* Card Principal de Valores */}
-        <View style={[styles.mainCard, { borderLeftColor: isReceber ? palette.emerald600 : palette.rose600 }]}>
+        <View style={[styles.mainCard, { borderLeftColor: palette.emerald600 }]}>
           <View style={styles.cardHeaderRow}>
             <View style={styles.titleColumn}>
-              <Text style={styles.cardTitle}>{p.descricao || (isReceber ? 'Recebimento' : 'Pagamento')}</Text>
-              <Text style={[styles.cardTotal, { color: isReceber ? palette.emerald600 : palette.rose600 }]}>
-                {isReceber ? '+' : '-'} R$ {p.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              <Text style={styles.cardTitle}>{p.descricao || 'Recebimento'}</Text>
+              <Text style={[styles.cardTotal, { color: palette.emerald600 }]}>
+                + R$ {p.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
               </Text>
             </View>
             <View style={[styles.statusBadge, { backgroundColor: isPago ? 'rgba(16, 185, 129, 0.08)' : 'rgba(245, 158, 11, 0.08)' }]}>
@@ -226,27 +171,17 @@ export default function PagamentoDetalhesScreen() {
         {!isPago && (
           <TouchableOpacity style={styles.confirmBtn} activeOpacity={0.7} onPress={marcarComoPago}>
             <MaterialIcons name="check-circle" size={20} color={palette.white} />
-            <Text style={styles.confirmBtnText}>Marcar como Recebido/Pago</Text>
+            <Text style={styles.confirmBtnText}>Marcar como Recebido</Text>
           </TouchableOpacity>
         )}
 
         {/* Botão de Excluir */}
         <TouchableOpacity style={styles.deleteBtn} activeOpacity={0.7} onPress={removePagamento}>
           <MaterialIcons name="delete" size={20} color={palette.rose600} />
-          <Text style={styles.deleteBtnText}>Excluir Lançamento</Text>
+          <Text style={styles.deleteBtnText}>Excluir Conta</Text>
         </TouchableOpacity>
       </ScrollView>
 
-      <CrudDialog
-        visible={dialogOpen}
-        title="Editar Lançamento"
-        fields={editFields}
-        values={form}
-        isSaving={saving}
-        onChange={(key, value) => setForm((curr) => ({ ...curr, [key]: value }))}
-        onCancel={() => setDialogOpen(false)}
-        onSave={save}
-      />
     </View>
   );
 }

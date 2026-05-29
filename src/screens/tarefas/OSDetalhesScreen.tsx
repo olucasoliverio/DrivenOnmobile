@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Alert, Linking, View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { useRoute } from '@react-navigation/native';
+import { useRoute, useNavigation } from '@react-navigation/native';
 import { useDriveOnData } from '../../context/DriveOnDataContext';
 import { palette, spacing, borderRadius, shadows, gradients } from '../../theme/theme';
 import dayjs from 'dayjs';
@@ -36,6 +36,7 @@ function InfoRow({ icon, label, value, rightElement }: { icon: keyof typeof Mate
 export default function OSDetalhesScreen() {
   const insets = useSafeAreaInsets();
   const route = useRoute<any>();
+  const navigation = useNavigation<any>();
   const { osId } = route.params ?? { osId: 1 };
   const { ordens, clientes, veiculos, pagamentos, createRecord, updateRecord, refresh, configuracoes } = useDriveOnData();
   const os = ordens.find(o => o.id === osId) ?? ordens[0];
@@ -140,7 +141,19 @@ export default function OSDetalhesScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: palette.slate100 }}>
-      <ScreenHeader title="Detalhes da OS" showBack={true} />
+      <ScreenHeader
+        title="Detalhes da OS"
+        showBack={true}
+        rightElement={
+          <TouchableOpacity
+            style={styles.headerEditBtn}
+            onPress={() => navigation.navigate('OSForm', { osId: os.id })}
+            activeOpacity={0.7}
+          >
+            <MaterialIcons name="edit" size={22} color={palette.slate700} />
+          </TouchableOpacity>
+        }
+      />
       <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: insets.bottom + spacing.lg }} showsVerticalScrollIndicator={false}>
 
       {/* ── Hero Card ── */}
@@ -213,15 +226,20 @@ export default function OSDetalhesScreen() {
           <MaterialIcons name="build" size={16} color={palette.navy800} />
           <Text style={styles.sectionTitle}>Serviços / Peças</Text>
         </View>
-        {itens.map((item, idx) => (
-          <View key={idx} style={[styles.itemRow, idx < itens.length - 1 && styles.itemBorder]}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.itemNome}>{item.nome}</Text>
-              <Text style={styles.itemQtd}>Qtd: {item.qtd}</Text>
+        {(os.itens && os.itens.length > 0 ? os.itens : itens).map((item: any, idx: number) => {
+          const qty = item.quantidade ?? item.qtd ?? 1;
+          const price = item.precoUnitario ?? item.valor ?? 0;
+          const sub = item.subtotal ?? (qty * price);
+          return (
+            <View key={idx} style={[styles.itemRow, idx < (os.itens?.length || itens.length) - 1 && styles.itemBorder]}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.itemNome}>{item.nome ?? item.descricao}</Text>
+                <Text style={styles.itemQtd}>Qtd: {qty} · Un: R$ {price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</Text>
+              </View>
+              <Text style={styles.itemValor}>R$ {sub.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</Text>
             </View>
-            <Text style={styles.itemValor}>R$ {item.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</Text>
-          </View>
-        ))}
+          );
+        })}
         <View style={styles.totalRow}>
           <Text style={styles.totalLabel}>Total</Text>
           <Text style={styles.totalValor}>R$ {os.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</Text>
@@ -1276,5 +1294,13 @@ const styles = StyleSheet.create({
   paymentStatusTextSelected: {
     color: palette.white,
     fontWeight: '800',
+  },
+  headerEditBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: palette.slate100,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });

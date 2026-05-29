@@ -28,11 +28,7 @@ export default function OrcamentoDetalhesScreen() {
   const route = useRoute<any>();
   const navigation = useNavigation<any>();
   const { orcamentoId } = route.params ?? { orcamentoId: 1 };
-  const { orcamentos, clientes, veiculos, updateRecord, deleteRecord } = useDriveOnData();
-
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState<Record<string, string>>({});
+  const { orcamentos, clientes, veiculos, deleteRecord } = useDriveOnData();
 
   const orcamento = orcamentos.find(o => o.id === orcamentoId);
   const cliente = orcamento ? clientes.find(c => c.id === orcamento.clienteId) : undefined;
@@ -53,40 +49,7 @@ export default function OrcamentoDetalhesScreen() {
   const st = STATUS_MAP[orcamento.status] ?? { label: orcamento.status, color: palette.slate500, bg: palette.slate100 };
 
   const openEditForm = () => {
-    setForm({
-      cliente_id: String(orcamento.clienteId),
-      veiculo_id: String(orcamento.veiculoId),
-      status: orcamento.status,
-      total: String(orcamento.total),
-      dataCriacao: dayjs(orcamento.dataCriacao).format('YYYY-MM-DD'),
-      validade: dayjs(orcamento.validade).format('YYYY-MM-DD'),
-    });
-    setDialogOpen(true);
-  };
-
-  const save = async () => {
-    if (!form.cliente_id?.trim() || !form.veiculo_id?.trim() || !form.total?.trim()) {
-      Alert.alert('Campos obrigatórios', 'Por favor, preencha o cliente, veículo e o valor total.');
-      return;
-    }
-    setSaving(true);
-    try {
-      const payload = {
-        cliente_id: Number(form.cliente_id),
-        veiculo_id: Number(form.veiculo_id),
-        status: form.status.trim().toLowerCase(),
-        total: Number(String(form.total).replace(',', '.')),
-        dataCriacao: dayjs(form.dataCriacao).toISOString(),
-        validade: dayjs(form.validade).toISOString(),
-        itens: orcamento.itens, // Mantém os itens existentes
-      };
-      await updateRecord('/orcamentos', orcamento.id, payload);
-      setDialogOpen(false);
-    } catch (error: any) {
-      Alert.alert('Não foi possível salvar', error?.response?.data?.error ?? error?.message ?? 'Tente novamente.');
-    } finally {
-      setSaving(false);
-    }
+    navigation.navigate('OrcamentoForm', { orcamentoId: orcamento.id });
   };
 
   const removeOrcamento = () => {
@@ -113,7 +76,7 @@ export default function OrcamentoDetalhesScreen() {
       return;
     }
     const veiculoNome = veiculo ? `${veiculo.marca} ${veiculo.modelo}` : 'Veículo';
-    const firstItemDesc = orcamento.itens?.[0]?.descricao ?? 'Serviço de oficina';
+    const firstItemDesc = orcamento.itens?.[0]?.nome ?? 'Serviço de oficina';
     
     sendEstimateMessage(
       cliente.nome,
@@ -214,20 +177,25 @@ export default function OrcamentoDetalhesScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Itens e Serviços</Text>
           <View style={styles.itemsBox}>
-            {orcamento.itens.map((item, idx) => (
-              <View key={idx}>
-                <View style={styles.itemRow}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.itemDesc}>{item.descricao}</Text>
-                    <Text style={styles.itemMeta}>Qtd: {item.qtd} · Un: R$ {item.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</Text>
+            {orcamento.itens.map((item: any, idx: number) => {
+              const qty = item.quantidade ?? item.qtd ?? 1;
+              const price = item.precoUnitario ?? item.valor ?? 0;
+              const sub = item.subtotal ?? (qty * price);
+              return (
+                <View key={idx}>
+                  <View style={styles.itemRow}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.itemDesc}>{item.nome ?? item.descricao}</Text>
+                      <Text style={styles.itemMeta}>Qtd: {qty} · Un: R$ {price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</Text>
+                    </View>
+                    <Text style={styles.itemSubtotal}>
+                      R$ {sub.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    </Text>
                   </View>
-                  <Text style={styles.itemSubtotal}>
-                    R$ {(item.qtd * item.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                  </Text>
+                  {idx < orcamento.itens.length - 1 && <View style={styles.itemDivider} />}
                 </View>
-                {idx < orcamento.itens.length - 1 && <View style={styles.itemDivider} />}
-              </View>
-            ))}
+              );
+            })}
           </View>
         </View>
 
@@ -245,17 +213,6 @@ export default function OrcamentoDetalhesScreen() {
           <Text style={styles.deleteBtnText}>Excluir Orçamento</Text>
         </TouchableOpacity>
       </ScrollView>
-
-      <CrudDialog
-        visible={dialogOpen}
-        title="Editar Orçamento"
-        fields={editFields}
-        values={form}
-        isSaving={saving}
-        onChange={(key, value) => setForm((curr) => ({ ...curr, [key]: value }))}
-        onCancel={() => setDialogOpen(false)}
-        onSave={save}
-      />
     </View>
   );
 }

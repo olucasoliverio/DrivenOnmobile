@@ -42,7 +42,28 @@ export type Veiculo = {
   ano: number;
   placa: string;
   cor: string;
+  combustivel?: string;
   km: number;
+};
+
+export type Peca = {
+  id: number;
+  nome: string;
+  descricao?: string;
+  precoCusto?: number;
+  precoVenda: number;
+  estoque: number;
+};
+
+export type ItemOS = {
+  id?: number;
+  tipo: 'servico' | 'peca';
+  servicoId?: number | null;
+  pecaId?: number | null;
+  nome: string;
+  quantidade: number;
+  precoUnitario: number;
+  subtotal: number;
 };
 
 export type Ordem = {
@@ -55,6 +76,7 @@ export type Ordem = {
   dataPrevista: string;
   valor: number;
   mecanico: string;
+  itens: ItemOS[];
 };
 
 export type Agendamento = {
@@ -76,7 +98,7 @@ export type Orcamento = {
   total: number;
   dataCriacao: string;
   validade: string;
-  itens: { descricao: string; qtd: number; valor: number }[];
+  itens: ItemOS[];
 };
 
 export type Pagamento = {
@@ -158,6 +180,7 @@ export type DriveOnData = {
   orcamentos: Orcamento[];
   pagamentos: Pagamento[];
   estoque: EstoqueItem[];
+  pecas: Peca[];
   fornecedores: Fornecedor[];
   servicos: Servico[];
   usuarios: Usuario[];
@@ -183,11 +206,17 @@ export type ClientePayload = {
 export const fallbackDriveOnData: DriveOnData = {
   clientes: mockClientes,
   veiculos: mockVeiculos,
-  ordens: mockOrdens,
+  ordens: mockOrdens.map(o => ({ ...o, itens: [] })),
   agendamentos: mockAgendamentos,
-  orcamentos: mockOrcamentos,
+  orcamentos: mockOrcamentos.map(o => ({ ...o, itens: [] })),
   pagamentos: mockPagamentos,
   estoque: mockEstoque,
+  pecas: mockEstoque.map(p => ({
+    id: p.id,
+    nome: p.nome,
+    precoVenda: p.valorUnitario,
+    estoque: p.quantidade,
+  })),
   fornecedores: mockFornecedores,
   servicos: mockServicos,
   usuarios: mockUsuarios,
@@ -210,6 +239,7 @@ export const emptyDriveOnData: DriveOnData = {
   orcamentos: [],
   pagamentos: [],
   estoque: [],
+  pecas: [],
   fornecedores: [],
   servicos: [],
   usuarios: [],
@@ -302,6 +332,7 @@ export function adaptVeiculo(item: any): Veiculo {
     ano: numberValue(item.ano),
     placa: textValue(item.placa, ''),
     cor: textValue(item.cor, ''),
+    combustivel: textValue(item.combustivel ?? item.combustivel_tipo, ''),
     km: numberValue(item.km ?? item.quilometragem),
   };
 }
@@ -319,6 +350,7 @@ export function adaptOrdem(item: any): Ordem {
     dataPrevista,
     valor: numberValue(item.valor_total ?? item.valor),
     mecanico: textValue(item.funcionario?.nome ?? item.mecanico, 'Nao informado'),
+    itens: Array.isArray(item.itens) ? item.itens.map(adaptItemOS) : [],
   };
 }
 
@@ -415,7 +447,49 @@ export function adaptOrcamento(item: any): Orcamento {
     total: numberValue(item.valor ?? item.total),
     dataCriacao: textValue(item.data ?? item.created_at, dayjs().toISOString()),
     validade: textValue(item.validade ?? item.data ?? item.created_at, dayjs().add(7, 'day').toISOString()),
-    itens: Array.isArray(item.itens) ? item.itens : [],
+    itens: Array.isArray(item.itens) ? item.itens.map(adaptItemOS) : [],
+  };
+}
+
+export function adaptPeca(item: any): Peca {
+  return {
+    id: numberValue(item.id),
+    nome: textValue(item.nome, ''),
+    descricao: textValue(item.descricao ?? ''),
+    precoCusto: numberValue(item.preco_custo ?? item.precoCusto, 0),
+    precoVenda: numberValue(item.preco_venda ?? item.precoVenda, 0),
+    estoque: numberValue(item.estoque, 0),
+  };
+}
+
+export function adaptItemOS(i: any): ItemOS {
+  const tipo = i.tipo_item ?? i.tipo ?? 'servico';
+  const servicoId = i.servico_id ?? i.servicoId ?? null;
+  const pecaId = i.peca_id ?? i.pecaId ?? null;
+  
+  let nome = i.nome ?? i.descricao ?? '';
+  if (!nome && tipo === 'servico' && i.servico) {
+    nome = i.servico.nome;
+  } else if (!nome && tipo === 'peca' && i.peca) {
+    nome = i.peca.nome;
+  }
+  if (!nome) {
+    nome = tipo === 'servico' ? 'Serviço' : 'Peça';
+  }
+
+  const quantidade = numberValue(i.quantidade ?? i.qtd, 1);
+  const precoUnitario = numberValue(i.preco_unitario ?? i.precoUnitario ?? i.valor ?? i.preco, 0);
+  const subtotal = numberValue(i.subtotal ?? (quantidade * precoUnitario), 0);
+
+  return {
+    id: i.id ? numberValue(i.id) : undefined,
+    tipo,
+    servicoId,
+    pecaId,
+    nome,
+    quantidade,
+    precoUnitario,
+    subtotal,
   };
 }
 
@@ -515,6 +589,7 @@ export async function fetchDriveOnData(): Promise<DriveOnData> {
     orcamentosResult,
     pagamentosResult,
     estoqueResult,
+    pecasResult,
     fornecedoresResult,
     servicosResult,
     usuariosResult,
@@ -528,6 +603,7 @@ export async function fetchDriveOnData(): Promise<DriveOnData> {
     getList('/orcamentos', adaptOrcamento),
     getList('/pagamentos', adaptPagamento),
     getList('/estoque', adaptEstoque),
+    getList('/pecas', adaptPeca),
     getList('/fornecedores', adaptFornecedor),
     getList('/servicos', adaptServico),
     getList('/usuario', adaptUsuario),
@@ -545,6 +621,7 @@ export async function fetchDriveOnData(): Promise<DriveOnData> {
   const orcamentos = valueOrFallback(orcamentosResult, []);
   const pagamentos = valueOrFallback(pagamentosResult, []);
   const estoque = valueOrFallback(estoqueResult, []);
+  const pecas = valueOrFallback(pecasResult, []);
   const fornecedores = valueOrFallback(fornecedoresResult, []);
   const servicos = valueOrFallback(servicosResult, []);
   const usuarios = valueOrFallback(usuariosResult, []);
@@ -562,6 +639,7 @@ export async function fetchDriveOnData(): Promise<DriveOnData> {
     orcamentos,
     pagamentos,
     estoque,
+    pecas,
     fornecedores,
     servicos,
     usuarios,

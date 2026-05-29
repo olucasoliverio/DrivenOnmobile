@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Alert, View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput as RNTextInput } from 'react-native';
+import { Alert, View, Text, StyleSheet, FlatList, ScrollView, TouchableOpacity, TextInput as RNTextInput } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialIcons } from '@expo/vector-icons';
 import { FAB } from 'react-native-paper';
@@ -11,8 +11,28 @@ import dayjs from 'dayjs';
 import CrudDialog, { type CrudField } from '../../components/CrudDialog';
 import ScreenHeader from '../../components/ScreenHeader';
 import EmptyState from '../../components/EmptyState';
+import CalendarDatePicker from '../../components/CalendarDatePicker';
 
 type StatusKey = 'todos' | 'em_andamento' | 'aguardando' | 'aguardando_pecas' | 'concluido';
+type OSDateFilter = 'todos' | 'hoje' | 'semana' | 'mes' | 'atrasadas' | 'personalizado';
+
+const osDateFilters: { key: OSDateFilter; label: string }[] = [
+  { key: 'todos', label: 'Todas' },
+  { key: 'hoje', label: 'Hoje' },
+  { key: 'semana', label: 'Esta semana' },
+  { key: 'mes', label: 'Este mês' },
+  { key: 'atrasadas', label: 'Atrasadas' },
+  { key: 'personalizado', label: 'Personalizado' },
+];
+
+function isWithinCustomRange(value: string, start: string, end: string) {
+  const date = dayjs(value);
+  const startDate = start ? dayjs(start) : null;
+  const endDate = end ? dayjs(end) : null;
+  if (startDate?.isValid() && date.isBefore(startDate, 'day')) return false;
+  if (endDate?.isValid() && date.isAfter(endDate, 'day')) return false;
+  return true;
+}
 
 const osFields: CrudField[] = [
   { key: 'cliente_id', label: 'Cliente', keyboardType: 'number-pad' },
@@ -43,12 +63,13 @@ export default function TarefasScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
-  const { ordens: ordensData, clientes, veiculos, createRecord } = useDriveOnData();
+  const { ordens: ordensData, clientes, veiculos } = useDriveOnData();
   const [filtroStatus, setFiltroStatus] = useState<StatusKey>('todos');
+  const [filtroData, setFiltroData] = useState<OSDateFilter>('todos');
+  const [customStart, setCustomStart] = useState('');
+  const [customEnd, setCustomEnd] = useState('');
+  const [customDatePicker, setCustomDatePicker] = useState<null | 'start' | 'end'>(null);
   const [busca, setBusca] = useState('');
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState<Record<string, string>>({});
 
   const filtros: { key: StatusKey; label: string }[] = [
     { key: 'todos', label: 'Todas' },
@@ -62,49 +83,24 @@ export default function TarefasScreen() {
     const cliente = clientes.find(c => c.id === os.clienteId);
     const matchBusca = busca === '' || cliente?.nome.toLowerCase().includes(busca.toLowerCase()) || String(os.id).includes(busca);
     const matchStatus = filtroStatus === 'todos' || os.status === filtroStatus;
-    return matchBusca && matchStatus;
+    const entrada = dayjs(os.dataEntrada);
+    const prevista = dayjs(os.dataPrevista);
+    const matchData =
+      filtroData === 'todos' ||
+      (filtroData === 'hoje' && entrada.isSame(dayjs(), 'day')) ||
+      (filtroData === 'semana' && entrada.isSame(dayjs(), 'week')) ||
+      (filtroData === 'mes' && entrada.isSame(dayjs(), 'month')) ||
+      (filtroData === 'atrasadas' && os.status !== 'concluido' && prevista.isBefore(dayjs(), 'day')) ||
+      (filtroData === 'personalizado' && isWithinCustomRange(os.dataEntrada, customStart, customEnd));
+    return matchBusca && matchStatus && matchData;
   });
-
-  const openForm = () => {
-    setForm({
-      cliente_id: '',
-      veiculo_id: '',
-      funcionario_id: '',
-      observacoes: '',
-      valor_total: '',
-    });
-    setDialogOpen(true);
-  };
 
   useEffect(() => {
     if (route.params?.openForm) {
-      openForm();
+      navigation.navigate('OSForm');
       navigation.setParams({ openForm: undefined });
     }
   }, [route.params?.openForm]);
-
-  const save = async () => {
-    if (!form.cliente_id || !form.veiculo_id || !form.funcionario_id) {
-      Alert.alert('Campos obrigatorios', 'Informe cliente, veiculo e funcionario.');
-      return;
-    }
-    setSaving(true);
-    try {
-      await createRecord('/ordens', {
-        cliente_id: Number(form.cliente_id),
-        veiculo_id: Number(form.veiculo_id),
-        funcionario_id: Number(form.funcionario_id),
-        observacoes: form.observacoes?.trim() || '',
-        valor_total: Number(String(form.valor_total || '0').replace(',', '.')),
-        itens: [],
-      });
-      setDialogOpen(false);
-    } catch (error: any) {
-      Alert.alert('Nao foi possivel salvar', error?.response?.data?.error ?? error?.message ?? 'Tente novamente.');
-    } finally {
-      setSaving(false);
-    }
-  };
 
   return (
     <View style={styles.container}>
@@ -163,6 +159,48 @@ export default function TarefasScreen() {
       />
 
       {/* ── Lista de OS ── */}
+      <View style={styles.dateFilterContainer}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.dateFilterRow}>
+          {osDateFilters.map(item => {
+            const isActive = filtroData === item.key;
+            return (
+              <TouchableOpacity
+                key={item.key}
+                style={[styles.dateChip, isActive && styles.dateChipActive]}
+                onPress={() => setFiltroData(item.key)}
+                activeOpacity={0.75}
+              >
+                <Text style={[styles.dateChipText, isActive && styles.dateChipTextActive]}>{item.label}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+        {filtroData === 'personalizado' ? (
+          <View style={styles.customRangeRow}>
+            <TouchableOpacity
+              style={styles.customDateButton}
+              activeOpacity={0.75}
+              onPress={() => setCustomDatePicker('start')}
+            >
+              <MaterialIcons name="calendar-today" size={16} color={palette.slate400} />
+              <Text style={[styles.customDateText, !customStart && styles.customDatePlaceholder]}>
+                {customStart ? dayjs(customStart).format('DD/MM/YYYY') : 'Início'}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.customDateButton}
+              activeOpacity={0.75}
+              onPress={() => setCustomDatePicker('end')}
+            >
+              <MaterialIcons name="event-available" size={16} color={palette.slate400} />
+              <Text style={[styles.customDateText, !customEnd && styles.customDatePlaceholder]}>
+                {customEnd ? dayjs(customEnd).format('DD/MM/YYYY') : 'Fim'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        ) : null}
+      </View>
+
       <FlatList
         data={ordens}
         keyExtractor={item => String(item.id)}
@@ -217,8 +255,17 @@ export default function TarefasScreen() {
         }}
       />
 
-      <CrudDialog visible={dialogOpen} title="Nova ordem de servico" fields={osFields} values={form} isSaving={saving} onChange={(key, value) => setForm((current) => ({ ...current, [key]: value }))} onCancel={() => setDialogOpen(false)} onSave={save} />
-      <FAB icon="plus" style={styles.fab} color={palette.white} onPress={openForm} />
+      <FAB icon="plus" style={styles.fab} color={palette.white} onPress={() => navigation.navigate('OSForm')} />
+      <CalendarDatePicker
+        visible={customDatePicker != null}
+        value={customDatePicker === 'end' ? customEnd : customStart}
+        title={customDatePicker === 'end' ? 'Fim' : 'Início'}
+        onSelect={date => {
+          if (customDatePicker === 'end') setCustomEnd(date);
+          else setCustomStart(date);
+        }}
+        onClose={() => setCustomDatePicker(null)}
+      />
     </View>
   );
 }
@@ -254,6 +301,49 @@ const styles = StyleSheet.create({
   chipActive: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: borderRadius.full },
   chipText: { fontSize: 12, fontWeight: '600', color: palette.slate500 },
   chipTextActive: { fontSize: 12, fontWeight: '700', color: palette.white },
+  dateFilterContainer: { marginBottom: spacing.xs },
+  dateFilterRow: { paddingHorizontal: spacing.lg, gap: spacing.sm, paddingBottom: spacing.sm },
+  dateChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: borderRadius.full,
+    backgroundColor: palette.white,
+    borderWidth: 1,
+    borderColor: palette.slate200,
+  },
+  dateChipActive: {
+    backgroundColor: palette.navy50,
+    borderColor: palette.navy800,
+  },
+  dateChipText: { fontSize: 12, fontWeight: '700', color: palette.slate500 },
+  dateChipTextActive: { color: palette.navy800 },
+  customRangeRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.sm,
+  },
+  customDateButton: {
+    flex: 1,
+    minHeight: 42,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: palette.slate200,
+    backgroundColor: palette.white,
+    paddingHorizontal: spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  customDateText: {
+    flex: 1,
+    color: palette.slate900,
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  customDatePlaceholder: {
+    color: palette.slate400,
+  },
 
   // List
   mainList: { flex: 1 },

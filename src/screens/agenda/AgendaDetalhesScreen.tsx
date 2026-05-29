@@ -5,18 +5,9 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { useDriveOnData } from '../../context/DriveOnDataContext';
 import { palette, spacing, borderRadius, shadows } from '../../theme/theme';
 import ScreenHeader from '../../components/ScreenHeader';
-import CrudDialog, { type CrudField } from '../../components/CrudDialog';
 import dayjs from 'dayjs';
 
-const editFields: CrudField[] = [
-  { key: 'cliente_id', label: 'Cliente', keyboardType: 'number-pad' },
-  { key: 'veiculo_id', label: 'Veículo', keyboardType: 'number-pad' },
-  { key: 'data', label: 'Data (YYYY-MM-DD)', keyboardType: 'default' },
-  { key: 'hora', label: 'Hora (HH:MM)', keyboardType: 'default' },
-  { key: 'servico', label: 'Serviço', autoCapitalize: 'sentences' },
-  { key: 'status', label: 'Status (confirmado, pendente)', autoCapitalize: 'none' },
-  { key: 'observacao', label: 'Observações/Motivo', multiline: true },
-];
+
 
 export default function AgendaDetalhesScreen() {
   const route = useRoute<any>();
@@ -24,9 +15,7 @@ export default function AgendaDetalhesScreen() {
   const { agendamentoId } = route.params ?? { agendamentoId: 1 };
   const { agendamentos, clientes, veiculos, updateRecord, deleteRecord } = useDriveOnData();
 
-  const [dialogOpen, setDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState<Record<string, string>>({});
 
   const ag = agendamentos.find(a => a.id === agendamentoId);
   const cliente = ag ? clientes.find(c => c.id === ag.clienteId) : undefined;
@@ -45,43 +34,7 @@ export default function AgendaDetalhesScreen() {
 
   const isConfirmado = ag.status === 'confirmado';
 
-  const openEditForm = () => {
-    setForm({
-      cliente_id: String(ag.clienteId),
-      veiculo_id: String(ag.veiculoId),
-      data: dayjs(ag.data).format('YYYY-MM-DD'),
-      hora: ag.hora,
-      servico: ag.servico,
-      status: ag.status,
-      observacao: ag.observacao || '',
-    });
-    setDialogOpen(true);
-  };
 
-  const save = async () => {
-    if (!form.cliente_id?.trim() || !form.veiculo_id?.trim() || !form.data?.trim() || !form.hora?.trim() || !form.servico?.trim()) {
-      Alert.alert('Campos obrigatórios', 'Por favor, preencha cliente, veículo, data, hora e serviço.');
-      return;
-    }
-    setSaving(true);
-    try {
-      const payload = {
-        cliente_id: Number(form.cliente_id),
-        veiculo_id: Number(form.veiculo_id),
-        data: dayjs(form.data).toISOString(),
-        hora: form.hora.trim(),
-        servico: form.servico.trim(),
-        status: form.status.trim().toLowerCase(),
-        observacao: form.observacao.trim() || null,
-      };
-      await updateRecord('/agendamentos', ag.id, payload);
-      setDialogOpen(false);
-    } catch (error: any) {
-      Alert.alert('Não foi possível salvar', error?.response?.data?.error ?? error?.message ?? 'Tente novamente.');
-    } finally {
-      setSaving(false);
-    }
-  };
 
   const confirmarAgendamento = async () => {
     setSaving(true);
@@ -130,7 +83,7 @@ export default function AgendaDetalhesScreen() {
         rightElement={
           <TouchableOpacity
             style={styles.headerEditBtn}
-            onPress={openEditForm}
+            onPress={() => navigation.navigate('AgendaForm', { agendamentoId: ag.id })}
             activeOpacity={0.7}
           >
             <MaterialIcons name="edit" size={22} color={palette.slate700} />
@@ -223,16 +176,6 @@ export default function AgendaDetalhesScreen() {
         </TouchableOpacity>
       </ScrollView>
 
-      <CrudDialog
-        visible={dialogOpen}
-        title="Editar Agendamento"
-        fields={editFields}
-        values={form}
-        isSaving={saving}
-        onChange={(key, value) => setForm((curr) => ({ ...curr, [key]: value }))}
-        onCancel={() => setDialogOpen(false)}
-        onSave={save}
-      />
     </View>
   );
 }

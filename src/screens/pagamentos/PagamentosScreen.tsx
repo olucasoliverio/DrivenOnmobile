@@ -1,95 +1,65 @@
 import React, { useState } from 'react';
-import { Alert, View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
+import { Alert, View, Text, StyleSheet, FlatList, ScrollView, TouchableOpacity } from 'react-native';
 import { FAB } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useDriveOnData } from '../../context/DriveOnDataContext';
-import { colors, spacing, borderRadius, palette, shadows, gradients } from '../../theme/theme';
+import { spacing, borderRadius, palette, shadows } from '../../theme/theme';
 import dayjs from 'dayjs';
-import CrudDialog, { type CrudField } from '../../components/CrudDialog';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import EmptyState from '../../components/EmptyState';
 import ScreenHeader from '../../components/ScreenHeader';
-import { LinearGradient } from 'expo-linear-gradient';
+import CalendarDatePicker from '../../components/CalendarDatePicker';
 
-type Tab = 'extrato' | 'pagar' | 'receber';
+type Tab = 'todos' | 'pendente' | 'recebido';
+type DateFilter = 'todos' | 'hoje' | 'semana' | 'mes' | 'vencidas' | 'proximos7' | 'personalizado';
 
-const fields: CrudField[] = [
-  { key: 'tipo', label: 'Tipo (pagar ou receber)' },
-  { key: 'valor', label: 'Valor', keyboardType: 'decimal-pad' },
-  { key: 'data_vencimento', label: 'Vencimento (YYYY-MM-DD)' },
-  { key: 'descricao', label: 'Descricao', multiline: true },
-  { key: 'cliente_id', label: 'Cliente', keyboardType: 'number-pad' },
-  { key: 'ordem_servico_id', label: 'Ordem de Serviço (opcional)', keyboardType: 'number-pad' },
-  { key: 'metodo', label: 'Metodo (pix, dinheiro, cartao, boleto)' },
-  { key: 'status', label: 'Status (pendente, pago)' },
+const dateFilters: { key: DateFilter; label: string }[] = [
+  { key: 'todos', label: 'Todas' },
+  { key: 'hoje', label: 'Hoje' },
+  { key: 'semana', label: 'Esta semana' },
+  { key: 'mes', label: 'Este mês' },
+  { key: 'vencidas', label: 'Vencidas' },
+  { key: 'proximos7', label: 'Próx. 7 dias' },
+  { key: 'personalizado', label: 'Personalizado' },
 ];
+
+function isWithinCustomRange(value: string, start: string, end: string) {
+  const date = dayjs(value);
+  const startDate = start ? dayjs(start) : null;
+  const endDate = end ? dayjs(end) : null;
+  if (startDate?.isValid() && date.isBefore(startDate, 'day')) return false;
+  if (endDate?.isValid() && date.isAfter(endDate, 'day')) return false;
+  return true;
+}
 
 export default function PagamentosScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
-  const { pagamentos, createRecord, updateRecord, deleteRecord } = useDriveOnData();
-  const [tab, setTab] = useState<Tab>('extrato');
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingId, setEditingId] = useState<number | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState<Record<string, string>>({});
+  const { pagamentos, deleteRecord } = useDriveOnData();
+  const [tab, setTab] = useState<Tab>('todos');
+  const [dateFilter, setDateFilter] = useState<DateFilter>('todos');
+  const [customStart, setCustomStart] = useState('');
+  const [customEnd, setCustomEnd] = useState('');
+  const [customDatePicker, setCustomDatePicker] = useState<null | 'start' | 'end'>(null);
 
-  const dados = tab === 'extrato'
-    ? pagamentos
-    : pagamentos.filter(p => p.tipo === (tab === 'pagar' ? 'pagar' : 'receber'));
+  const contasReceber = pagamentos.filter(p => p.tipo === 'receber');
+  const contasFiltradasPorData = contasReceber.filter(p => {
+    const vencimento = dayjs(p.data);
+    if (dateFilter === 'hoje') return vencimento.isSame(dayjs(), 'day');
+    if (dateFilter === 'semana') return vencimento.isSame(dayjs(), 'week');
+    if (dateFilter === 'mes') return vencimento.isSame(dayjs(), 'month');
+    if (dateFilter === 'vencidas') return p.status === 'pendente' && vencimento.isBefore(dayjs(), 'day');
+    if (dateFilter === 'proximos7') return vencimento.isAfter(dayjs().subtract(1, 'day'), 'day') && vencimento.isBefore(dayjs().add(8, 'day'), 'day');
+    if (dateFilter === 'personalizado') return isWithinCustomRange(p.data, customStart, customEnd);
+    return true;
+  });
+  const dados = tab === 'todos'
+    ? contasFiltradasPorData
+    : contasFiltradasPorData.filter(p => p.status === (tab === 'recebido' ? 'pago' : 'pendente'));
 
-  const total = dados.reduce((acc, p) => acc + (p.tipo === 'receber' ? p.valor : -p.valor), 0);
-  const pendentes = dados.filter(p => p.status === 'pendente').reduce((acc, p) => acc + p.valor, 0);
-
-  const openForm = (item?: (typeof pagamentos)[number]) => {
-    setEditingId(item?.id ?? null);
-    setForm(item ? {
-      tipo: item.tipo,
-      valor: String(item.valor),
-      data_vencimento: dayjs(item.data).format('YYYY-MM-DD'),
-      descricao: item.descricao,
-      cliente_id: item.clienteId ? String(item.clienteId) : '',
-      ordem_servico_id: item.ordemId ? String(item.ordemId) : '',
-      metodo: item.formaPagamento || 'pix',
-      status: item.status || 'pendente',
-    } : {
-      tipo: tab === 'pagar' ? 'pagar' : 'receber',
-      data_vencimento: dayjs().format('YYYY-MM-DD'),
-      metodo: 'pix',
-      status: 'pendente',
-      cliente_id: '',
-      ordem_servico_id: '',
-    });
-    setDialogOpen(true);
-  };
-
-  const save = async () => {
-    if (!form.tipo || !form.valor || !form.data_vencimento) {
-      Alert.alert('Campos obrigatorios', 'Informe tipo, valor e vencimento.');
-      return;
-    }
-    setSaving(true);
-    try {
-      const payload = {
-        tipo: form.tipo.trim(),
-        valor: Number(String(form.valor).replace(',', '.')),
-        data_vencimento: form.data_vencimento,
-        descricao: form.descricao?.trim() || null,
-        cliente_id: form.cliente_id ? Number(form.cliente_id) : null,
-        ordem_servico_id: form.ordem_servico_id ? Number(form.ordem_servico_id) : null,
-        metodo: form.metodo?.trim() || 'pix',
-        status: form.status?.trim() || 'pendente',
-      };
-      if (editingId) await updateRecord('/pagamentos', editingId, payload);
-      else await createRecord('/pagamentos', payload);
-      setDialogOpen(false);
-    } catch (error: any) {
-      Alert.alert('Nao foi possivel salvar', error?.response?.data?.error ?? error?.message ?? 'Tente novamente.');
-    } finally {
-      setSaving(false);
-    }
-  };
+  const total = contasFiltradasPorData.reduce((acc, p) => acc + p.valor, 0);
+  const pendentes = contasFiltradasPorData.filter(p => p.status === 'pendente').reduce((acc, p) => acc + p.valor, 0);
 
   const remove = (id: number) => {
     Alert.alert('Remover pagamento?', 'Essa acao cancela o registro.', [
@@ -102,25 +72,25 @@ export default function PagamentosScreen() {
   };
 
   const tabs: { key: Tab; label: string }[] = [
-    { key: 'extrato', label: 'Todos' },
-    { key: 'pagar', label: 'A Pagar' },
-    { key: 'receber', label: 'A Receber' },
+    { key: 'todos', label: 'Todos' },
+    { key: 'pendente', label: 'Pendentes' },
+    { key: 'recebido', label: 'Recebidas' },
   ];
 
   return (
     <View style={styles.container}>
-      <ScreenHeader title="Financeiro" showBack={true} />
+      <ScreenHeader title="Contas a Receber" showBack={true} />
 
       {/* Resumo */}
       <View style={styles.resumoContainer}>
         <View style={styles.resumoCard}>
-          <View style={[styles.resumoIconBox, { backgroundColor: total >= 0 ? 'rgba(16, 185, 129, 0.08)' : 'rgba(239, 68, 68, 0.08)' }]}>
-            <MaterialIcons name="account-balance-wallet" size={18} color={total >= 0 ? palette.emerald600 : palette.rose600} />
+          <View style={[styles.resumoIconBox, { backgroundColor: 'rgba(16, 185, 129, 0.08)' }]}>
+            <MaterialIcons name="account-balance-wallet" size={18} color={palette.emerald600} />
           </View>
           <View style={styles.resumoTexts}>
-            <Text style={styles.resumoLabel}>Saldo Geral</Text>
-            <Text style={[styles.resumoValue, { color: total >= 0 ? palette.emerald600 : palette.rose600 }]}>
-              {total >= 0 ? '' : '-'}R$ {Math.abs(total).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            <Text style={styles.resumoLabel}>Total a Receber</Text>
+            <Text style={[styles.resumoValue, { color: palette.emerald600 }]}>
+              R$ {total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
             </Text>
           </View>
         </View>
@@ -130,7 +100,7 @@ export default function PagamentosScreen() {
             <MaterialIcons name="hourglass-empty" size={18} color={palette.amber500} />
           </View>
           <View style={styles.resumoTexts}>
-            <Text style={styles.resumoLabel}>Total Pendente</Text>
+            <Text style={styles.resumoLabel}>Em Aberto</Text>
             <Text style={[styles.resumoValue, { color: palette.amber500 }]}>
               R$ {pendentes.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
             </Text>
@@ -140,32 +110,65 @@ export default function PagamentosScreen() {
 
       {/* Filter Chips */}
       <View style={styles.chipsContainer}>
-        <FlatList
-          horizontal
-          data={tabs}
-          keyExtractor={item => item.key}
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.chipsRow}
-          renderItem={({ item }) => {
+        <View style={styles.segmentedFilter}>
+          {tabs.map(item => {
             const isActive = tab === item.key;
             return (
               <TouchableOpacity
+                key={item.key}
+                style={[styles.segmentButton, isActive && styles.segmentButtonActive]}
                 onPress={() => setTab(item.key)}
-                activeOpacity={0.7}
+                activeOpacity={0.75}
               >
-                {isActive ? (
-                  <LinearGradient colors={gradients.navyPrimary} style={styles.chipActive}>
-                    <Text style={styles.chipTextActive}>{item.label}</Text>
-                  </LinearGradient>
-                ) : (
-                  <View style={styles.chip}>
-                    <Text style={styles.chipText}>{item.label}</Text>
-                  </View>
-                )}
+                <Text style={[styles.segmentText, isActive && styles.segmentTextActive]}>
+                  {item.label}
+                </Text>
               </TouchableOpacity>
             );
-          }}
-        />
+          })}
+        </View>
+      </View>
+
+      <View style={styles.dateFilterContainer}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.dateFilterRow}>
+          {dateFilters.map(item => {
+            const isActive = dateFilter === item.key;
+            return (
+              <TouchableOpacity
+                key={item.key}
+                style={[styles.dateChip, isActive && styles.dateChipActive]}
+                onPress={() => setDateFilter(item.key)}
+                activeOpacity={0.75}
+              >
+                <Text style={[styles.dateChipText, isActive && styles.dateChipTextActive]}>{item.label}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+        {dateFilter === 'personalizado' ? (
+          <View style={styles.customRangeRow}>
+            <TouchableOpacity
+              style={styles.customDateButton}
+              activeOpacity={0.75}
+              onPress={() => setCustomDatePicker('start')}
+            >
+              <MaterialIcons name="calendar-today" size={16} color={palette.slate400} />
+              <Text style={[styles.customDateText, !customStart && styles.customDatePlaceholder]}>
+                {customStart ? dayjs(customStart).format('DD/MM/YYYY') : 'Início'}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.customDateButton}
+              activeOpacity={0.75}
+              onPress={() => setCustomDatePicker('end')}
+            >
+              <MaterialIcons name="event-available" size={16} color={palette.slate400} />
+              <Text style={[styles.customDateText, !customEnd && styles.customDatePlaceholder]}>
+                {customEnd ? dayjs(customEnd).format('DD/MM/YYYY') : 'Fim'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        ) : null}
       </View>
 
       {/* Lista */}
@@ -179,35 +182,34 @@ export default function PagamentosScreen() {
           <EmptyState
             icon="payment"
             message={
-              tab === 'extrato'
-                ? 'Nenhum lançamento no extrato'
-                : tab === 'pagar'
-                ? 'Nenhuma conta a pagar'
-                : 'Nenhuma conta a receber'
+              tab === 'todos'
+                ? 'Nenhuma conta a receber'
+                : tab === 'pendente'
+                ? 'Nenhuma conta pendente'
+                : 'Nenhuma conta recebida'
             }
             isFullPage
           />
         )}
         renderItem={({ item: p }) => {
-          const isReceber = p.tipo === 'receber';
           const isPago = p.status === 'pago';
           return (
             <TouchableOpacity onPress={() => navigation.navigate('PagamentoDetalhes', { pagamentoId: p.id })} activeOpacity={0.8}>
-              <View style={[styles.card, { borderLeftColor: isReceber ? palette.emerald600 : palette.rose600 }]}>
+              <View style={[styles.card, { borderLeftColor: palette.emerald600 }]}>
                 <View style={styles.cardRow}>
                   {/* Icon Box */}
-                  <View style={[styles.iconBox, { backgroundColor: isReceber ? 'rgba(16, 185, 129, 0.08)' : 'rgba(239, 68, 68, 0.08)' }]}>
+                  <View style={[styles.iconBox, { backgroundColor: 'rgba(16, 185, 129, 0.08)' }]}>
                     <MaterialIcons 
-                      name={isReceber ? 'arrow-downward' : 'arrow-upward'} 
+                      name="arrow-downward"
                       size={20} 
-                      color={isReceber ? palette.emerald600 : palette.rose600} 
+                      color={palette.emerald600}
                     />
                   </View>
 
                   {/* Details */}
                   <View style={{ flex: 1 }}>
                     <Text style={styles.desc} numberOfLines={1}>
-                      {p.descricao || (isReceber ? 'Recebimento' : 'Pagamento')}
+                      {p.descricao || 'Recebimento'}
                     </Text>
                     <View style={styles.metaRow}>
                       <View style={styles.metaItem}>
@@ -225,8 +227,8 @@ export default function PagamentosScreen() {
 
                   {/* Value and Status */}
                   <View style={{ alignItems: 'flex-end', marginRight: spacing.xs }}>
-                    <Text style={[styles.valorText, { color: isReceber ? palette.emerald600 : palette.rose600 }]}>
-                      {isReceber ? '+' : '-'} R$ {p.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    <Text style={[styles.valorText, { color: palette.emerald600 }]}>
+                      + R$ {p.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                     </Text>
                     <View style={[styles.statusBadge, { backgroundColor: isPago ? 'rgba(16, 185, 129, 0.08)' : 'rgba(245, 158, 11, 0.08)' }]}>
                       <View style={[styles.statusDot, { backgroundColor: isPago ? palette.emerald600 : palette.amber500 }]} />
@@ -236,22 +238,46 @@ export default function PagamentosScreen() {
                     </View>
                   </View>
 
-                  {/* Delete Button */}
-                  <TouchableOpacity 
-                    style={styles.deleteBtn}
-                    onPress={() => remove(p.id)}
-                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                  >
-                    <MaterialIcons name="delete-outline" size={20} color={palette.slate400} />
-                  </TouchableOpacity>
+                  <View style={styles.actionButtons}>
+                    <TouchableOpacity 
+                      style={styles.actionBtn}
+                      onPress={(event) => {
+                        event.stopPropagation();
+                        navigation.navigate('PagamentoForm', { pagamentoId: p.id });
+                      }}
+                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    >
+                      <MaterialIcons name="edit" size={19} color={palette.navy800} />
+                    </TouchableOpacity>
+
+                    <TouchableOpacity 
+                      style={styles.actionBtn}
+                      onPress={(event) => {
+                        event.stopPropagation();
+                        remove(p.id);
+                      }}
+                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    >
+                      <MaterialIcons name="delete-outline" size={20} color={palette.slate400} />
+                    </TouchableOpacity>
+                  </View>
                 </View>
               </View>
             </TouchableOpacity>
           );
         }}
       />
-      <CrudDialog visible={dialogOpen} title={editingId ? 'Editar pagamento' : 'Novo pagamento'} fields={fields} values={form} isSaving={saving} onChange={(key, value) => setForm((current) => ({ ...current, [key]: value }))} onCancel={() => setDialogOpen(false)} onSave={save} />
-      <FAB icon="plus" style={styles.fab} color={palette.white} onPress={() => openForm()} />
+      <FAB icon="plus" style={styles.fab} color={palette.white} onPress={() => navigation.navigate('PagamentoForm')} />
+      <CalendarDatePicker
+        visible={customDatePicker != null}
+        value={customDatePicker === 'end' ? customEnd : customStart}
+        title={customDatePicker === 'end' ? 'Fim' : 'Início'}
+        onSelect={date => {
+          if (customDatePicker === 'end') setCustomEnd(date);
+          else setCustomStart(date);
+        }}
+        onClose={() => setCustomDatePicker(null)}
+      />
     </View>
   );
 }
@@ -279,13 +305,80 @@ const styles = StyleSheet.create({
   resumoLabel: { fontSize: 10, color: palette.slate400, fontWeight: '700' },
   resumoValue: { fontSize: 14, fontWeight: '900', marginTop: 1, letterSpacing: -0.2 },
 
-  // Chips
-  chipsContainer: { marginTop: spacing.sm, flexGrow: 0 },
-  chipsRow: { paddingHorizontal: spacing.lg, gap: spacing.sm, paddingVertical: spacing.sm },
-  chip: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: borderRadius.full, backgroundColor: palette.white, borderWidth: 1, borderColor: palette.slate200 },
-  chipActive: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: borderRadius.full },
-  chipText: { fontSize: 12, fontWeight: '600', color: palette.slate500 },
-  chipTextActive: { fontSize: 12, fontWeight: '700', color: palette.white },
+  // Filters
+  chipsContainer: { paddingHorizontal: spacing.lg, paddingVertical: spacing.sm },
+  segmentedFilter: {
+    flexDirection: 'row',
+    backgroundColor: palette.white,
+    borderRadius: borderRadius.md,
+    padding: 4,
+    borderWidth: 1,
+    borderColor: palette.slate200,
+    ...shadows.sm,
+  },
+  segmentButton: {
+    flex: 1,
+    minHeight: 40,
+    borderRadius: borderRadius.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.xs,
+  },
+  segmentButtonActive: {
+    backgroundColor: palette.navy800,
+  },
+  segmentText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: palette.slate500,
+    textAlign: 'center',
+  },
+  segmentTextActive: {
+    color: palette.white,
+  },
+  dateFilterContainer: { marginBottom: spacing.xs },
+  dateFilterRow: { paddingHorizontal: spacing.lg, gap: spacing.sm, paddingBottom: spacing.sm },
+  dateChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: borderRadius.full,
+    backgroundColor: palette.white,
+    borderWidth: 1,
+    borderColor: palette.slate200,
+  },
+  dateChipActive: {
+    backgroundColor: palette.navy50,
+    borderColor: palette.navy800,
+  },
+  dateChipText: { fontSize: 12, fontWeight: '700', color: palette.slate500 },
+  dateChipTextActive: { color: palette.navy800 },
+  customRangeRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.sm,
+  },
+  customDateButton: {
+    flex: 1,
+    minHeight: 42,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: palette.slate200,
+    backgroundColor: palette.white,
+    paddingHorizontal: spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  customDateText: {
+    flex: 1,
+    color: palette.slate900,
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  customDatePlaceholder: {
+    color: palette.slate400,
+  },
 
   // List
   mainList: { flex: 1 },
@@ -311,7 +404,8 @@ const styles = StyleSheet.create({
   statusBadge: { flexDirection: 'row', alignItems: 'center', borderRadius: borderRadius.full, paddingHorizontal: 8, paddingVertical: 3, gap: 4, marginTop: 4 },
   statusDot: { width: 5, height: 5, borderRadius: 2.5 },
   statusText: { fontSize: 9, fontWeight: '800' },
-  deleteBtn: { padding: 4, justifyContent: 'center', alignItems: 'center' },
+  actionButtons: { flexDirection: 'row', alignItems: 'center', gap: 2 },
+  actionBtn: { padding: 4, justifyContent: 'center', alignItems: 'center' },
   fab: { 
     position: 'absolute', 
     bottom: 24, 

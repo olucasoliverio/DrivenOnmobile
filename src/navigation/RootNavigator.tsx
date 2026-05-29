@@ -15,12 +15,17 @@ import VeiculosScreen from '../screens/veiculos/VeiculosScreen';
 import VeiculoDetalhesScreen from '../screens/veiculos/VeiculoDetalhesScreen';
 import PlacaScannerScreen from '../screens/veiculos/PlacaScannerScreen';
 import OSDetalhesScreen from '../screens/tarefas/OSDetalhesScreen';
+import OSFormScreen from '../screens/tarefas/OSFormScreen';
 import AgendaScreen from '../screens/agenda/AgendaScreen';
 import AgendaDetalhesScreen from '../screens/agenda/AgendaDetalhesScreen';
 import OrcamentosScreen from '../screens/orcamentos/OrcamentosScreen';
 import OrcamentoDetalhesScreen from '../screens/orcamentos/OrcamentoDetalhesScreen';
+import OrcamentoFormScreen from '../screens/orcamentos/OrcamentoFormScreen';
 import PagamentosScreen from '../screens/pagamentos/PagamentosScreen';
 import PagamentoDetalhesScreen from '../screens/pagamentos/PagamentoDetalhesScreen';
+import VeiculoFormScreen from '../screens/veiculos/VeiculoFormScreen';
+import AgendaFormScreen from '../screens/agenda/AgendaFormScreen';
+import PagamentoFormScreen from '../screens/pagamentos/PagamentoFormScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -56,12 +61,17 @@ export default function RootNavigator() {
             <Stack.Screen name="VeiculoDetalhes" component={VeiculoDetalhesScreen} options={{ headerShown: false }} />
             <Stack.Screen name="PlacaScanner" component={PlacaScannerScreen} options={{ headerShown: false }} />
             <Stack.Screen name="OSDetalhes" component={OSDetalhesScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="OSForm" component={OSFormScreen} options={{ headerShown: false }} />
             <Stack.Screen name="Agenda" component={AgendaScreen} options={{ headerShown: false }} />
             <Stack.Screen name="AgendaDetalhes" component={AgendaDetalhesScreen} options={{ headerShown: false }} />
             <Stack.Screen name="Orcamentos" component={OrcamentosScreen} options={{ headerShown: false }} />
             <Stack.Screen name="OrcamentoDetalhes" component={OrcamentoDetalhesScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="OrcamentoForm" component={OrcamentoFormScreen} options={{ headerShown: false }} />
             <Stack.Screen name="Financeiro" component={PagamentosScreen} options={{ headerShown: false }} />
             <Stack.Screen name="PagamentoDetalhes" component={PagamentoDetalhesScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="VeiculoForm" component={VeiculoFormScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="AgendaForm" component={AgendaFormScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="PagamentoForm" component={PagamentoFormScreen} options={{ headerShown: false }} />
           </>
         ) : (
           <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />

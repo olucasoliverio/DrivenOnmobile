@@ -106,7 +106,7 @@ export default function ClienteDetalhesScreen() {
       const v = veiculosData.find(item => item.id === o.veiculoId);
       const veiculoNome = v ? `${v.marca} ${v.modelo}` : 'Veículo';
       const formattedValor = o.total.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
-      const desc = o.itens.map(i => i.descricao).join(', ') || 'Serviços';
+      const desc = o.itens.map(i => i.nome).join(', ') || 'Serviços';
       setWhatsappPreview(`Olá, *${cliente.nome}*! Segue o orçamento da *OS #${String(o.id).padStart(3, '0')}* da *${nomeOficina}* para o seu veículo *${veiculoNome}*:\n\n*Descrição:* ${desc}\n\n*Valor Estimado:* R$ ${formattedValor}\n\n📋 Aguardamos a sua aprovação para darmos início aos serviços. Ficamos no aguardo!`);
     } else if (selectedTemplate === 'completed') {
       if (!selectedItemId) {

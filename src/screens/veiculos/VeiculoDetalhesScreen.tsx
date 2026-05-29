@@ -1,21 +1,11 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Alert, View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useDriveOnData } from '../../context/DriveOnDataContext';
 import { palette, spacing, borderRadius, shadows } from '../../theme/theme';
 import ScreenHeader from '../../components/ScreenHeader';
-import CrudDialog, { type CrudField } from '../../components/CrudDialog';
 import dayjs from 'dayjs';
-
-const editFields: CrudField[] = [
-  { key: 'marca', label: 'Marca', autoCapitalize: 'words' },
-  { key: 'modelo', label: 'Modelo', autoCapitalize: 'words' },
-  { key: 'ano', label: 'Ano', keyboardType: 'number-pad' },
-  { key: 'placa', label: 'Placa', autoCapitalize: 'characters' },
-  { key: 'cor', label: 'Cor', autoCapitalize: 'words' },
-  { key: 'km', label: 'Quilometragem (KM)', keyboardType: 'number-pad' },
-];
 
 const STATUS_MAP: Record<string, { label: string; color: string; bg: string }> = {
   em_andamento:    { label: 'Em Andamento', color: palette.navy800,    bg: 'rgba(37, 99, 235, 0.08)' },
@@ -28,11 +18,7 @@ export default function VeiculoDetalhesScreen() {
   const route = useRoute<any>();
   const navigation = useNavigation<any>();
   const { veiculoId } = route.params ?? { veiculoId: 1 };
-  const { veiculos, clientes, ordens: ordensData, updateRecord, deleteRecord } = useDriveOnData();
-
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState<Record<string, string>>({});
+  const { veiculos, clientes, ordens: ordensData, deleteRecord } = useDriveOnData();
 
   const veiculo = veiculos.find(v => v.id === veiculoId);
   const cliente = veiculo ? clientes.find(c => c.id === veiculo.clienteId) : undefined;
@@ -48,43 +34,6 @@ export default function VeiculoDetalhesScreen() {
       </View>
     );
   }
-
-  const openEditForm = () => {
-    setForm({
-      marca: veiculo.marca,
-      modelo: veiculo.modelo,
-      ano: String(veiculo.ano),
-      placa: veiculo.placa,
-      cor: veiculo.cor,
-      km: String(veiculo.km),
-    });
-    setDialogOpen(true);
-  };
-
-  const save = async () => {
-    if (!form.marca?.trim() || !form.modelo?.trim() || !form.placa?.trim()) {
-      Alert.alert('Campos obrigatórios', 'Por favor, informe a marca, o modelo e a placa.');
-      return;
-    }
-    setSaving(true);
-    try {
-      const payload = {
-        marca: form.marca.trim(),
-        modelo: form.modelo.trim(),
-        ano: Number(form.ano || veiculo.ano),
-        placa: form.placa.trim().toUpperCase(),
-        cor: form.cor.trim(),
-        km: Number(form.km || veiculo.km),
-        cliente_id: veiculo.clienteId,
-      };
-      await updateRecord('/veiculos', veiculo.id, payload);
-      setDialogOpen(false);
-    } catch (error: any) {
-      Alert.alert('Não foi possível salvar', error?.response?.data?.error ?? error?.message ?? 'Tente novamente.');
-    } finally {
-      setSaving(false);
-    }
-  };
 
   const removeVeiculo = () => {
     Alert.alert('Excluir Veículo?', 'Esta ação não poderá ser desfeita.', [
@@ -113,7 +62,7 @@ export default function VeiculoDetalhesScreen() {
         rightElement={
           <TouchableOpacity
             style={styles.headerEditBtn}
-            onPress={openEditForm}
+            onPress={() => navigation.navigate('VeiculoForm', { veiculoId: veiculo.id })}
             activeOpacity={0.7}
           >
             <MaterialIcons name="edit" size={22} color={palette.slate700} />
@@ -143,6 +92,11 @@ export default function VeiculoDetalhesScreen() {
             <View style={styles.detailRow}>
               <Text style={styles.detailLabel}>Cor</Text>
               <Text style={styles.detailValue}>{veiculo.cor}</Text>
+            </View>
+            <View style={styles.detailDivider} />
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Combustivel</Text>
+              <Text style={styles.detailValue}>{veiculo.combustivel || '-'}</Text>
             </View>
             <View style={styles.detailDivider} />
             <View style={styles.detailRow}>
@@ -221,16 +175,6 @@ export default function VeiculoDetalhesScreen() {
         </TouchableOpacity>
       </ScrollView>
 
-      <CrudDialog
-        visible={dialogOpen}
-        title="Editar Veículo"
-        fields={editFields}
-        values={form}
-        isSaving={saving}
-        onChange={(key, value) => setForm((curr) => ({ ...curr, [key]: value }))}
-        onCancel={() => setDialogOpen(false)}
-        onSave={save}
-      />
     </View>
   );
 }
