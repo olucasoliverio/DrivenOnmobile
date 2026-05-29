@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Alert, View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal } from 'react-native';
 import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -9,6 +9,7 @@ import CrudDialog, { type CrudField } from '../../components/CrudDialog';
 import { sendWhatsAppMessage } from '../../services/whatsappService';
 import dayjs from 'dayjs';
 import { LinearGradient } from 'expo-linear-gradient';
+import { API_BASE_URL, getAuthToken } from '../../api/api';
 
 const editFields: CrudField[] = [
   { key: 'cliente_id', label: 'Cliente', keyboardType: 'number-pad' },
@@ -39,6 +40,25 @@ export default function OrcamentoDetalhesScreen() {
   const orcamento = orcamentos.find(o => o.id === orcamentoId);
   const cliente = orcamento ? clientes.find(c => c.id === orcamento.clienteId) : undefined;
   const veiculo = orcamento ? veiculos.find(v => v.id === orcamento.veiculoId) : undefined;
+  
+  const [shortUrl, setShortUrl] = useState('');
+
+  useEffect(() => {
+    async function loadShortUrl() {
+      if (!orcamento?.id) return;
+      try {
+        const { default: api } = await import('../../api/api');
+        const response = await api.post(`/orcamentos/${orcamento.id}/share`);
+        const code = response.data?.code;
+        if (code) {
+          setShortUrl(`${API_BASE_URL}/s/${code}`);
+        }
+      } catch (error) {
+        console.error('Erro ao gerar link curto:', error);
+      }
+    }
+    loadShortUrl();
+  }, [orcamento?.id]);
   
   if (!orcamento) {
     return (
@@ -82,12 +102,14 @@ export default function OrcamentoDetalhesScreen() {
     const placa = veiculo?.placa ?? '—';
     const formattedValor = orcamento.total.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
     const orcNum = String(orcamento.id).padStart(3, '0');
+    const token = getAuthToken();
+    const pdfUrl = shortUrl || `${API_BASE_URL}/orcamentos/${orcamento.id}/pdf${token ? `?token=${token}` : ''}`;
 
     switch (orcamento.status) {
       case 'aprovado':
-        return `Olá, *${cliente.nome}*! Confirmamos a aprovação do orçamento *ORC #${orcNum}* para o seu veículo *${veiculoNome}* (placa *${placa}*). 🛠️🚗\n\n*Valor Total:* R$ ${formattedValor}\n\nLogo daremos início aos serviços e te manteremos informado. Obrigado pela preferência!`;
+        return `Olá, *${cliente.nome}*! Confirmamos a aprovação do orçamento *ORC #${orcNum}* para o seu veículo *${veiculoNome}* (placa *${placa}*). 🛠️🚗\n\n*Valor Total:* R$ ${formattedValor}\n\nPara ver o detalhamento, acesse:\n🔗 ${pdfUrl}\n\nLogo daremos início aos serviços e te manteremos informado. Obrigado pela preferência!`;
       case 'recusado':
-        return `Olá, *${cliente.nome}*! Registramos a sua resposta para o orçamento *ORC #${orcNum}* do veículo *${veiculoNome}* (placa *${placa}*) como *Recusado*.\n\nAgradecemos a atenção e nos colocamos à disposição para futuras necessidades!`;
+        return `Olá, *${cliente.nome}*! Registramos a sua resposta para o orçamento *ORC #${orcNum}* do veículo *${veiculoNome}* (placa *${placa}*) como *Recusado*.\n\nVisualizar orçamento:\n🔗 ${pdfUrl}\n\nAgradecemos a atenção e nos colocamos à disposição para futuras necessidades!`;
       case 'pendente':
       default:
         const itemsList = orcamento.itens?.map(item => {
@@ -95,7 +117,7 @@ export default function OrcamentoDetalhesScreen() {
           const price = item.precoUnitario;
           return `- ${item.nome} (Qtd: ${qty} · R$ ${(qty * price).toLocaleString('pt-BR', { minimumFractionDigits: 2 })})`;
         }).join('\n') || 'Sem itens informados';
-        return `Olá, *${cliente.nome}*! Segue o orçamento *ORC #${orcNum}* para o seu veículo *${veiculoNome}* (placa *${placa}*):\n\n*Itens:*\n${itemsList}\n\n*Total:* R$ ${formattedValor}\n\n📋 Aguardamos a sua aprovação para iniciarmos os serviços!`;
+        return `Olá, *${cliente.nome}*! Segue o orçamento *ORC #${orcNum}* para o seu veículo *${veiculoNome}* (placa *${placa}*):\n\n*Itens:*\n${itemsList}\n\n*Total:* R$ ${formattedValor}\n\nPara ver o orçamento completo, acesse:\n🔗 ${pdfUrl}\n\n📋 Aguardamos a sua aprovação para iniciarmos os serviços!`;
     }
   };
 

@@ -1,20 +1,5 @@
 import dayjs from 'dayjs';
 import api from '../api/api';
-import {
-  mockAgendamentos,
-  mockClientes,
-  mockConfiguracoes,
-  mockDashboard,
-  mockEstoque,
-  mockFornecedores,
-  mockOrcamentos,
-  mockOrdens,
-  mockPagamentos,
-  mockServicos,
-  mockUsuarios,
-  mockVeiculos,
-  mockFuncionarios,
-} from '../data/mockData';
 
 export type Cliente = {
   id: number;
@@ -170,7 +155,17 @@ export type Configuracoes = {
   cep: string;
   logo: string | null;
 };
-export type Dashboard = typeof mockDashboard;
+export type Dashboard = {
+  osAbertas: number;
+  osConcluidas: number;
+  agendamentosHoje: number;
+  receitaMes: number;
+  receitaAnterior: number;
+  clientesAtivos: number;
+  ticketMedio: number;
+  receitaMensal: { mes: string; valor: number }[];
+  statusOS: { status: string; count: number; color: string }[];
+};
 
 export type DriveOnData = {
   clientes: Cliente[];
@@ -201,34 +196,6 @@ export type ClientePayload = {
   numero?: string;
   complemento?: string;
   cidade_id?: number;
-};
-
-export const fallbackDriveOnData: DriveOnData = {
-  clientes: mockClientes,
-  veiculos: mockVeiculos,
-  ordens: mockOrdens.map(o => ({ ...o, itens: [] })),
-  agendamentos: mockAgendamentos,
-  orcamentos: mockOrcamentos.map(o => ({ ...o, itens: [] })),
-  pagamentos: mockPagamentos,
-  estoque: mockEstoque,
-  pecas: mockEstoque.map(p => ({
-    id: p.id,
-    nome: p.nome,
-    precoVenda: p.valorUnitario,
-    estoque: p.quantidade,
-  })),
-  fornecedores: mockFornecedores,
-  servicos: mockServicos,
-  usuarios: mockUsuarios,
-  funcionarios: mockFuncionarios.map(f => ({
-    id: f.id,
-    nome: f.nome,
-    email: f.email,
-    telefone: f.telefone,
-    cargo: f.cargo,
-  })),
-  configuracoes: mockConfiguracoes,
-  dashboard: mockDashboard,
 };
 
 export const emptyDriveOnData: DriveOnData = {
@@ -629,7 +596,7 @@ export async function fetchDriveOnData(): Promise<DriveOnData> {
 
   const configuracoes = oficinaResult.status === 'fulfilled'
     ? adaptConfiguracoes(oficinaResult.value.data)
-    : mockConfiguracoes;
+    : emptyDriveOnData.configuracoes;
 
   const baseData = {
     clientes,
