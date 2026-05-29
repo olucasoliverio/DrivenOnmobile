@@ -26,7 +26,7 @@ export async function sendWhatsAppMessage(phone: string, text: string): Promise<
  * Envia mensagem de Boas-vindas para o cliente
  */
 export async function sendWelcomeMessage(nome: string, phone: string) {
-  const text = `Olá, *${nome}*! É um prazer ter você como cliente da nossa oficina. Seu cadastro foi realizado com sucesso! 🚗💨\nQualquer dúvida, estamos sempre à disposição.`;
+  const text = `Olá, *${nome}*! É um prazer ter você como cliente da nossa oficina. Seu cadastro foi realizado com sucesso! 🚗💨\n\nQualquer dúvida, estamos sempre à disposição.`;
   const success = await sendWhatsAppMessage(phone, text);
   if (success) {
     Alert.alert('Sucesso', 'Mensagem de boas-vindas enviada com sucesso no WhatsApp!');
@@ -63,7 +63,7 @@ export async function sendEstimateMessage(
   valor: number
 ) {
   const formattedValor = valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
-  const text = `Olá, *${nome}*! Segue o orçamento da *OS #${String(osId).padStart(3, '0')}* para o seu veículo *${veiculo}*:\n\n*Descrição:* ${descricao}\n*Valor Estimado:* R$ ${formattedValor}\n\n📋 Aguardamos a sua aprovação para darmos início aos serviços. Ficamos no aguardo!`;
+  const text = `Olá, *${nome}*! Segue o orçamento da *OS #${String(osId).padStart(3, '0')}* para o seu veículo *${veiculo}*:\n\n*Descrição:* ${descricao}\n\n*Valor Estimado:* R$ ${formattedValor}\n\n📋 Aguardamos a sua aprovação para darmos início aos serviços. Ficamos no aguardo!`;
   const success = await sendWhatsAppMessage(phone, text);
   if (success) {
     Alert.alert('Sucesso', 'Orçamento enviado com sucesso via WhatsApp!');

@@ -1,8 +1,9 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, Dimensions, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Dimensions, TouchableOpacity, FlatList } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { MaterialIcons } from '@expo/vector-icons';
+import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
 import { useDriveOnData } from '../../context/DriveOnDataContext';
 import EmptyState from '../../components/EmptyState';
 import { palette, spacing, borderRadius, shadows, gradients } from '../../theme/theme';
@@ -11,203 +12,255 @@ import 'dayjs/locale/pt-br';
 dayjs.locale('pt-br');
 
 const { width } = Dimensions.get('window');
-const CARD_WIDTH = (width - spacing.lg * 2 - spacing.sm * 3) / 2;
 
-// ─── Status Badge (Estilo pastel moderno com indicador dot) ───────────────────
-const STATUS_MAP: Record<string, { label: string; color: string; bg: string }> = {
-  em_andamento:    { label: 'Em Andamento',   color: palette.navy800,    bg: 'rgba(37, 99, 235, 0.08)' },
-  aguardando:      { label: 'Aguardando',     color: '#C2410C',          bg: '#FFF7ED' },
-  aguardando_pecas:{ label: 'Aguard. Peças',  color: palette.violet600,  bg: '#F5F3FF' },
-  concluido:       { label: 'Concluído',      color: palette.emerald600, bg: '#ECFDF5' },
+// ─── Status Config ───────────────────────────────────────────────────────────
+const STATUS_MAP: Record<string, { label: string; color: string; bg: string; progress: number }> = {
+  aguardando:       { label: 'Aguardando',     color: palette.slate500,   bg: palette.slate50,   progress: 0.15 },
+  em_andamento:     { label: 'Em Andamento',   color: palette.navy800,    bg: 'rgba(15, 23, 42, 0.04)', progress: 0.55 },
+  aguardando_pecas: { label: 'Aguard. Peças',  color: palette.slate500,   bg: palette.slate50,   progress: 0.35 },
+  concluido:        { label: 'Concluído',      color: palette.slate500,   bg: palette.slate50,   progress: 1.0 },
 };
 
-function StatusBadge({ status }: { status: string }) {
-  const s = STATUS_MAP[status] ?? { label: status, color: palette.slate500, bg: palette.slate100 };
+// ─── KPI Horizontal Card ─────────────────────────────────────────────────────
+type IconName = keyof typeof MaterialIcons.glyphMap;
+function KpiChip({ icon, label, value }: {
+  icon: IconName; label: string; value: string;
+}) {
   return (
-    <View style={[styles.statusBadge, { backgroundColor: s.bg }]}>
-      <View style={[styles.statusDot, { backgroundColor: s.color }]} />
-      <Text style={[styles.statusBadgeText, { color: s.color }]}>{s.label}</Text>
+    <View style={styles.kpiChip}>
+      <View style={styles.kpiIconBox}>
+        <MaterialIcons name={icon} size={18} color={palette.slate500} />
+      </View>
+      <View style={styles.kpiChipBody}>
+        <Text style={styles.kpiChipValue}>{value}</Text>
+        <Text style={styles.kpiChipLabel}>{label}</Text>
+      </View>
     </View>
   );
 }
 
-// ─── KPI Card (Visual clean com ícone flutuante sutil) ────────────────────────
-type IconName = keyof typeof MaterialIcons.glyphMap;
-function KpiCard({ icon, label, value, sub, iconBg, iconColor }: {
-  icon: IconName; label: string; value: string; sub?: string; iconBg: string; iconColor: string;
+// ─── Quick Action Button ─────────────────────────────────────────────────────
+function QuickAction({ icon, label, color, onPress }: {
+  icon: IconName; label: string; color: string; onPress: () => void;
 }) {
   return (
-    <View style={styles.kpiCard}>
-      <View style={styles.kpiHeaderRow}>
-        <View style={[styles.kpiIconBox, { backgroundColor: iconBg }]}>
-          <MaterialIcons name={icon} size={18} color={iconColor} />
-        </View>
-        {sub ? <Text style={styles.kpiSub}>{sub}</Text> : null}
+    <TouchableOpacity style={styles.quickAction} activeOpacity={0.7} onPress={onPress}>
+      <View style={[styles.quickActionIcon, { backgroundColor: color }]}>
+        <MaterialIcons name={icon} size={20} color={palette.white} />
       </View>
-      <Text style={styles.kpiValue}>{value}</Text>
-      <Text style={styles.kpiLabel}>{label}</Text>
-    </View>
+      <Text style={styles.quickActionLabel}>{label}</Text>
+    </TouchableOpacity>
   );
 }
 
 // ─── Screen ──────────────────────────────────────────────────────────────────
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
+  const navigation = useNavigation<any>();
   const {
     dashboard: d,
     ordens,
     agendamentos,
     clientes,
     veiculos,
+    pagamentos,
+    configuracoes,
   } = useDriveOnData();
-  
-  const variacao = ((d.receitaMes - d.receitaAnterior) / d.receitaAnterior * 100).toFixed(1);
-  const ordensAbertas = ordens.filter(o => o.status !== 'concluido');
+
+  const ordensAbertas = ordens.filter(o => o.status !== 'concluido' && o.status !== 'cancelada');
   const agendamentosHoje = agendamentos.filter(a => dayjs(a.data).isSame(dayjs(), 'day'));
-  const maxReceita = Math.max(...d.receitaMensal.map(r => r.valor));
   const hora = dayjs().hour();
   const saudacao = hora < 12 ? 'Bom dia' : hora < 18 ? 'Boa tarde' : 'Boa noite';
+  const nomeOficina = configuracoes?.nomeOficina || 'DriveOn';
+
+  // ── Atividade Recente (sintética a partir dos dados) ──
+  const atividadeRecente = React.useMemo(() => {
+    const items: { id: string; icon: IconName; iconColor: string; iconBg: string; title: string; sub: string; date: string; screen: string; params?: any }[] = [];
+    
+    // Últimas OS
+    ordens.slice(-5).forEach(os => {
+      const cliente = clientes.find(c => c.id === os.clienteId);
+      const st = STATUS_MAP[os.status];
+      items.push({
+        id: `os-${os.id}`,
+        icon: 'build',
+        iconColor: st?.color ?? palette.slate500,
+        iconBg: st?.bg ?? palette.slate100,
+        title: `OS #${String(os.id).padStart(3, '0')} — ${st?.label ?? os.status}`,
+        sub: cliente?.nome ?? 'Cliente',
+        date: os.dataEntrada,
+        screen: 'OSDetalhes',
+        params: { osId: os.id },
+      });
+    });
+
+    // Últimos clientes
+    clientes.slice(-3).forEach(c => {
+      items.push({
+        id: `cli-${c.id}`,
+        icon: 'person-add',
+        iconColor: palette.navy800,
+        iconBg: 'rgba(37, 99, 235, 0.08)',
+        title: `Novo cliente cadastrado`,
+        sub: c.nome,
+        date: dayjs().subtract(1, 'day').toISOString(),
+        screen: 'ClienteDetalhes',
+        params: { clienteId: c.id },
+      });
+    });
+
+    // Últimos pagamentos recebidos
+    pagamentos.filter(p => p.status === 'pago').slice(-3).forEach(p => {
+      items.push({
+        id: `pag-${p.id}`,
+        icon: 'payments',
+        iconColor: palette.emerald600,
+        iconBg: 'rgba(16, 185, 129, 0.08)',
+        title: `Pagamento recebido`,
+        sub: `R$ ${p.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+        date: p.data,
+        screen: 'OSDetalhes',
+        params: { osId: p.ordemId },
+      });
+    });
+
+    return items
+      .sort((a, b) => dayjs(b.date).valueOf() - dayjs(a.date).valueOf())
+      .slice(0, 5);
+  }, [ordens, clientes, pagamentos]);
+
+  // ── KPI data ──
+  const variacao = d.receitaAnterior > 0 
+    ? ((d.receitaMes - d.receitaAnterior) / d.receitaAnterior * 100).toFixed(1) 
+    : '0.0';
+
+  const kpis = [
+    { icon: 'attach-money' as IconName, label: 'Receita', value: `R$ ${(d.receitaMes / 1000).toFixed(1)}k` },
+    { icon: 'build' as IconName, label: 'OS Abertas', value: String(ordensAbertas.length) },
+    { icon: 'event' as IconName, label: 'Agenda Hoje', value: String(agendamentosHoje.length) },
+    { icon: 'people' as IconName, label: 'Clientes', value: String(clientes.length) },
+    { icon: 'directions-car' as IconName, label: 'Veículos', value: String(veiculos.length) },
+  ];
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
 
-      {/* ── Header Gradiente Moderno ── */}
-      <LinearGradient colors={gradients.navyDark} style={[styles.header, { paddingTop: insets.top + 16 }]}>
+      {/* ── Header ── */}
+      <LinearGradient colors={gradients.navyDark} style={[styles.header, { paddingTop: insets.top + spacing.md }]}>
         <View style={styles.headerCircle1} />
         <View style={styles.headerCircle2} />
         <View style={styles.headerContent}>
-          <View>
-            <Text style={styles.greeting}>{saudacao}! 👋</Text>
-            <Text style={styles.dateText}>{dayjs().format('dddd, D [de] MMMM')}</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.greeting}>{saudacao}!</Text>
+            <Text style={styles.dateText}>{nomeOficina} · {dayjs().format('dddd, D [de] MMMM')}</Text>
           </View>
-          <View style={styles.avatarCircle}>
-            <Text style={styles.avatarText}>AD</Text>
+          <View style={styles.avatarContainer}>
+            <LinearGradient colors={[palette.navy600, palette.navy800]} style={styles.avatarCircle}>
+              <Text style={styles.avatarText}>AD</Text>
+            </LinearGradient>
           </View>
-        </View>
-
-        {/* KPIs Grid no Header */}
-        <View style={styles.kpiGrid}>
-          <KpiCard
-            icon="attach-money"
-            label="Receita"
-            value={`R$ ${(d.receitaMes / 1000).toFixed(1)}k`}
-            sub={`+${variacao}%`}
-            iconBg="rgba(245,158,11,0.15)"
-            iconColor={palette.amber400}
-          />
-          <KpiCard
-            icon="build"
-            label="OS Abertas"
-            value={String(d.osAbertas)}
-            sub={`${d.osConcluidas} ok`}
-            iconBg="rgba(255,255,255,0.08)"
-            iconColor={palette.white}
-          />
-          <KpiCard
-            icon="event"
-            label="Agenda Hoje"
-            value={String(agendamentosHoje.length)}
-            iconBg="rgba(16,185,129,0.15)"
-            iconColor="#34D399"
-          />
-          <KpiCard
-            icon="people"
-            label="Clientes"
-            value={String(d.clientesAtivos)}
-            iconBg="rgba(167,139,250,0.15)"
-            iconColor="#A78BFA"
-          />
         </View>
       </LinearGradient>
 
-      {/* ── Gráfico de Receita Redesenhado ── */}
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Receita Mensal</Text>
-          <View style={styles.sectionBadge}>
-            <Text style={styles.sectionBadgeText}>2025</Text>
-          </View>
-        </View>
-        <View style={styles.chartCard}>
-          <View style={styles.bars}>
-            {d.receitaMensal.map((item) => {
-              const isActive = item.mes === 'Abr';
-              const pct = (item.valor / maxReceita) * 100;
-              return (
-                <View key={item.mes} style={styles.barWrapper}>
-                  <Text style={[styles.barValue, isActive && styles.barValueActive]}>
-                    {(item.valor / 1000).toFixed(0)}k
-                  </Text>
-                  <View style={styles.barTrack}>
-                    {isActive ? (
-                      <LinearGradient
-                        colors={gradients.navyPrimary}
-                        style={[styles.barFill, { height: `${pct}%`, borderTopLeftRadius: 4, borderTopRightRadius: 4 }]}
-                      />
-                    ) : (
-                      <View style={[styles.barFill, { height: `${pct}%`, backgroundColor: palette.slate300, borderTopLeftRadius: 4, borderTopRightRadius: 4 }]} />
-                    )}
-                  </View>
-                  <Text style={[styles.barLabel, isActive && styles.barLabelActive]}>
-                    {item.mes}
-                  </Text>
-                </View>
-              );
-            })}
-          </View>
-        </View>
+      {/* ── KPIs Horizontal Scroll (comentado por ora) ──
+      <FlatList
+        data={kpis}
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        keyExtractor={(_, i) => `kpi-${i}`}
+        contentContainerStyle={styles.kpiList}
+        style={styles.kpiContainer}
+        renderItem={({ item }) => (
+          <KpiChip
+            icon={item.icon}
+            label={item.label}
+            value={item.value}
+          />
+        )}
+      />
+      */}
+
+      {/* ── Atalhos Rápidos ── */}
+      <View style={[styles.quickActionsRow, { marginTop: spacing.lg }]}>
+        <QuickAction icon="build" label="Nova OS" color={palette.slate500} onPress={() => navigation.navigate('OS', { screen: 'TarefasList', params: { openForm: true } })} />
+        <QuickAction icon="person-add" label="Novo Cliente" color={palette.slate500} onPress={() => navigation.navigate('Clientes', { openForm: true })} />
+        <QuickAction icon="event" label="Agendar" color={palette.slate500} onPress={() => navigation.navigate('Agenda', { openForm: true })} />
+        <QuickAction icon="directions-car" label="Veículos" color={palette.slate500} onPress={() => navigation.navigate('Veiculos', { openForm: true })} />
       </View>
 
-      {/* ── OS em Andamento Redesenhada ── */}
+      {/* ── OS em Andamento ── */}
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>OS em Andamento</Text>
-          <View style={[styles.sectionBadge, { backgroundColor: 'rgba(245, 158, 11, 0.12)' }]}>
-            <Text style={[styles.sectionBadgeText, { color: '#B45309' }]}>{ordensAbertas.length} abertas</Text>
+          <View>
+            <Text style={styles.sectionTitle}>OS em Andamento</Text>
+          </View>
+          <View style={[styles.sectionBadge, { backgroundColor: 'rgba(37, 99, 235, 0.08)' }]}>  
+            <Text style={[styles.sectionBadgeText, { color: palette.navy800 }]}>{ordensAbertas.length} ativas</Text>
           </View>
         </View>
         {ordensAbertas.length === 0 ? (
           <EmptyState icon="build" message="Nenhuma OS em andamento" />
         ) : (
-          ordensAbertas.map((os) => {
-          const cliente = clientes.find(c => c.id === os.clienteId);
-          const veiculo = veiculos.find(v => v.id === os.veiculoId);
-          return (
-            <TouchableOpacity key={os.id} style={styles.osCard} activeOpacity={0.8}>
-              <View style={styles.osContent}>
-                <View style={styles.osHeader}>
-                  <View style={styles.osNumBox}>
-                    <Text style={styles.osNumText}>#{String(os.id).padStart(3, '0')}</Text>
+          ordensAbertas.slice(0, 5).map((os) => {
+            const cliente = clientes.find(c => c.id === os.clienteId);
+            const veiculo = veiculos.find(v => v.id === os.veiculoId);
+            const s = STATUS_MAP[os.status] ?? { color: palette.slate400, bg: palette.slate100, progress: 0, label: os.status };
+            return (
+              <TouchableOpacity
+                key={os.id}
+                style={styles.osCard}
+                activeOpacity={0.75}
+                onPress={() => navigation.navigate('OSDetalhes', { osId: os.id })}
+              >
+                <View style={styles.osContent}>
+                  <View style={styles.osHeader}>
+                    <View style={styles.osNumBox}>
+                      <Text style={styles.osNumText}>OS #{String(os.id).padStart(3, '0')}</Text>
+                    </View>
+                    <View style={[styles.statusBadge, { backgroundColor: s.bg }]}>
+                      <View style={[styles.statusDot, { backgroundColor: s.color }]} />
+                      <Text style={[styles.statusBadgeText, { color: s.color }]}>{s.label}</Text>
+                    </View>
                   </View>
-                  <StatusBadge status={os.status} />
-                </View>
-                <Text style={styles.osCliente}>{cliente?.nome ?? '—'}</Text>
-                <Text style={styles.osVeiculo}>
-                  {veiculo ? `${veiculo.marca} ${veiculo.modelo} · ${veiculo.placa}` : '—'}
-                </Text>
-                <Text style={styles.osDesc} numberOfLines={1}>{os.descricao}</Text>
-                <View style={styles.osDivider} />
-                <View style={styles.osFooter}>
-                  <View style={styles.osFooterItem}>
-                    <MaterialIcons name="event" size={14} color={palette.slate400} />
-                    <Text style={styles.osFooterText}>{dayjs(os.dataPrevista).format('DD [de] MMM')}</Text>
-                  </View>
-                  <Text style={styles.osValor}>
-                    R$ {os.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+
+                  <Text style={styles.osCliente}>{cliente?.nome ?? '—'}</Text>
+                  <Text style={styles.osVeiculo}>
+                    {veiculo ? `${veiculo.marca} ${veiculo.modelo} · ${veiculo.placa}` : '—'}
                   </Text>
+
+                  {/* Progress Bar */}
+                  <View style={styles.progressContainer}>
+                    <View style={styles.progressTrack}>
+                      <View style={[styles.progressFill, { width: `${s.progress * 100}%`, backgroundColor: s.color }]} />
+                    </View>
+                    <Text style={[styles.progressText, { color: s.color }]}>{Math.round(s.progress * 100)}%</Text>
+                  </View>
+
+                  <View style={styles.osFooter}>
+                    <View style={styles.osFooterLeft}>
+                      <MaterialIcons name="event" size={13} color={palette.slate400} />
+                      <Text style={styles.osFooterText}>{dayjs(os.dataPrevista).format('DD/MM/YY')}</Text>
+                    </View>
+                    <Text style={styles.osValor}>
+                      R$ {os.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    </Text>
+                  </View>
                 </View>
-              </View>
-            </TouchableOpacity>
-          );
-        }))}
+                <View style={styles.osChevron}>
+                  <MaterialIcons name="chevron-right" size={20} color={palette.slate300} />
+                </View>
+              </TouchableOpacity>
+            );
+          })
+        )}
       </View>
 
-      {/* ── Agenda de Hoje (Estilo Timeline Moderno) ── */}
+      {/* ── Agenda de Hoje ── */}
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Agenda de Hoje</Text>
-          <View style={[styles.sectionBadge, agendamentosHoje.length > 0 && { backgroundColor: 'rgba(16, 185, 129, 0.1)' }]}>
-            <Text style={[styles.sectionBadgeText, agendamentosHoje.length > 0 && { color: '#059669' }]}>
+          <View style={[styles.sectionBadge, agendamentosHoje.length > 0 && { backgroundColor: 'rgba(16, 185, 129, 0.08)' }]}>
+            <Text style={[styles.sectionBadgeText, agendamentosHoje.length > 0 && { color: palette.emerald600 }]}>
               {agendamentosHoje.length} {agendamentosHoje.length === 1 ? 'evento' : 'eventos'}
             </Text>
           </View>
@@ -219,21 +272,22 @@ export default function HomeScreen() {
             const cliente = clientes.find(c => c.id === ag.clienteId);
             const veiculo = veiculos.find(v => v.id === ag.veiculoId);
             const isConfirmado = ag.status === 'confirmado';
+            const accentColor = isConfirmado ? palette.emerald600 : palette.amber500;
             return (
               <View key={ag.id} style={styles.agCard}>
-                <View style={styles.agTimelineColumn}>
-                  <Text style={styles.agTimeText}>{ag.hora}</Text>
-                  <View style={[styles.agIndicatorLine, { backgroundColor: isConfirmado ? palette.emerald600 : palette.amber500 }]} />
+                <View style={styles.agTimeCol}>
+                  <Text style={styles.agTime}>{ag.hora}</Text>
+                  <View style={[styles.agDot, { backgroundColor: accentColor }]} />
                 </View>
                 <View style={styles.agInfo}>
                   <Text style={styles.agCliente}>{cliente?.nome}</Text>
-                  <Text style={styles.agVeiculo}>
+                  <Text style={styles.agServico} numberOfLines={1}>
                     {veiculo ? `${veiculo.marca} ${veiculo.modelo}` : ''} · {ag.servico}
                   </Text>
                 </View>
-                <View style={[styles.agBadge, { backgroundColor: isConfirmado ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)' }]}>
-                  <Text style={[styles.agBadgeText, { color: isConfirmado ? palette.emerald600 : palette.amber500 }]}>
-                    {isConfirmado ? 'Confirmado' : 'Aguardando'}
+                <View style={[styles.agBadge, { backgroundColor: isConfirmado ? 'rgba(16, 185, 129, 0.08)' : 'rgba(245, 158, 11, 0.08)' }]}>
+                  <Text style={[styles.agBadgeText, { color: accentColor }]}>
+                    {isConfirmado ? 'Confirmado' : 'Pendente'}
                   </Text>
                 </View>
               </View>
@@ -242,8 +296,39 @@ export default function HomeScreen() {
         )}
       </View>
 
-      {/* Margem inferior generosa para não cobrir com o Tab Bar flutuante */}
-      <View style={{ height: 110 }} />
+      {/* ── Atividade Recente ── */}
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Atividade Recente</Text>
+        </View>
+        {atividadeRecente.length === 0 ? (
+          <EmptyState icon="history" message="Nenhuma atividade recente" />
+        ) : (
+          <View style={styles.activityCard}>
+            {atividadeRecente.map((item, idx) => (
+              <TouchableOpacity
+                key={item.id}
+                style={[styles.activityRow, idx < atividadeRecente.length - 1 && styles.activityRowBorder]}
+                activeOpacity={0.7}
+                onPress={() => navigation.navigate(item.screen as any, item.params)}
+              >
+                <View style={[styles.activityIconBox, { backgroundColor: item.iconBg }]}>
+                  <MaterialIcons name={item.icon} size={16} color={item.iconColor} />
+                </View>
+                <View style={styles.activityBody}>
+                  <Text style={styles.activityTitle} numberOfLines={1}>{item.title}</Text>
+                  <Text style={styles.activitySub} numberOfLines={1}>{item.sub}</Text>
+                </View>
+                <MaterialIcons name="chevron-right" size={16} color={palette.slate300} />
+                <Text style={styles.activityDate}>{dayjs(item.date).format('DD/MM')}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+      </View>
+
+      {/* Bottom spacing for tab bar */}
+      <View style={{ height: insets.bottom + 90 }} />
     </ScrollView>
   );
 }
@@ -253,107 +338,149 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: palette.slate100 },
 
   // Header
-  header: { paddingBottom: 28, overflow: 'hidden' },
-  headerCircle1: { position: 'absolute', width: 240, height: 240, borderRadius: 120, backgroundColor: 'rgba(255,255,255,0.03)', top: -80, right: -60 },
-  headerCircle2: { position: 'absolute', width: 160, height: 160, borderRadius: 80, backgroundColor: 'rgba(255,255,255,0.03)', bottom: -40, left: -40 },
-  headerContent: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: spacing.lg, marginBottom: spacing.lg },
-  greeting: { fontSize: 26, fontWeight: '900', color: palette.white, letterSpacing: -0.5 },
-  dateText: { fontSize: 14, color: 'rgba(255,255,255,0.6)', marginTop: 2, textTransform: 'capitalize' },
-  avatarCircle: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.1)', borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.25)', justifyContent: 'center', alignItems: 'center' },
-  avatarText: { color: palette.white, fontWeight: '800', fontSize: 14 },
+  header: {
+    paddingBottom: spacing.lg,
+    borderBottomLeftRadius: borderRadius.xl,
+    borderBottomRightRadius: borderRadius.xl,
+    overflow: 'hidden',
+    ...shadows.md,
+  },
+  headerCircle1: { position: 'absolute', width: 200, height: 200, borderRadius: 100, backgroundColor: 'rgba(255,255,255,0.02)', top: -60, right: -50 },
+  headerCircle2: { position: 'absolute', width: 140, height: 140, borderRadius: 70, backgroundColor: 'rgba(255,255,255,0.02)', bottom: -30, left: -30 },
+  headerContent: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: spacing.lg },
+  greeting: { fontSize: 24, fontWeight: '900', color: palette.white, letterSpacing: -0.5 },
+  dateText: { fontSize: 12, color: 'rgba(255,255,255,0.5)', marginTop: 3, fontWeight: '600' },
+  avatarContainer: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  avatarCircle: { width: 42, height: 42, borderRadius: 21, justifyContent: 'center', alignItems: 'center', borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.2)' },
+  avatarText: { color: palette.white, fontWeight: '900', fontSize: 14 },
 
-  // KPI grid (2×2 no header)
-  kpiGrid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: spacing.lg, gap: spacing.sm },
-  kpiCard: { width: CARD_WIDTH, backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: borderRadius.lg, padding: spacing.md, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', ...shadows.sm },
-  kpiHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm },
-  kpiIconBox: { width: 34, height: 34, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
-  kpiValue: { fontSize: 20, fontWeight: '900', color: palette.white, letterSpacing: -0.5 },
-  kpiLabel: { fontSize: 11, color: 'rgba(255,255,255,0.5)', fontWeight: '600', marginTop: 2 },
-  kpiSub: { fontSize: 10, color: '#34D399', fontWeight: '700' },
-
-  // Sections
-  section: { marginTop: spacing.xl },
-  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: spacing.lg, marginBottom: spacing.md },
-  sectionTitle: { fontSize: 15, fontWeight: '800', color: palette.slate900, letterSpacing: -0.2 },
-  sectionBadge: { backgroundColor: palette.slate100, borderRadius: borderRadius.full, paddingHorizontal: 10, paddingVertical: 3 },
-  sectionBadgeText: { fontSize: 11, fontWeight: '700', color: palette.slate500 },
-
-  // Chart Card
-  chartCard: {
-    marginHorizontal: spacing.lg,
+  // KPI horizontal scroll
+  kpiContainer: { marginTop: -2 },
+  kpiList: { paddingHorizontal: spacing.lg, paddingVertical: spacing.md, gap: spacing.sm },
+  kpiChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: palette.white,
-    borderRadius: borderRadius.lg,
-    padding: spacing.md,
+    borderRadius: borderRadius.md,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
     borderWidth: 1,
-    borderColor: 'rgba(15, 23, 42, 0.05)',
+    borderColor: 'rgba(15, 23, 42, 0.04)',
+    gap: spacing.sm,
+    minWidth: 150,
     ...shadows.sm,
   },
-  bars: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', height: 110, paddingHorizontal: 4 },
-  barWrapper: { flex: 1, alignItems: 'center', gap: 4 },
-  barTrack: { width: 16, height: 80, borderRadius: 4, backgroundColor: '#F1F5F9', justifyContent: 'flex-end', overflow: 'hidden' },
-  barFill: { width: '100%' },
-  barLabel: { fontSize: 10, color: palette.slate400, marginTop: 2, fontWeight: '600' },
-  barLabelActive: { color: palette.navy800, fontWeight: '800' },
-  barValue: { fontSize: 9, color: palette.slate400, marginBottom: 2, fontWeight: '600' },
-  barValueActive: { color: palette.navy800, fontWeight: '800' },
+  kpiIconBox: { width: 36, height: 36, borderRadius: 10, justifyContent: 'center', alignItems: 'center', backgroundColor: palette.slate50 },
+  kpiChipBody: { flex: 1 },
+  kpiChipValue: { fontSize: 18, fontWeight: '900', color: palette.slate900, letterSpacing: -0.3 },
+  kpiChipLabel: { fontSize: 10, color: palette.slate400, fontWeight: '700', marginTop: 1 },
+
+  // Quick Actions
+  quickActionsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-evenly',
+    paddingHorizontal: spacing.md,
+    marginBottom: spacing.sm,
+  },
+  quickAction: { alignItems: 'center', gap: 6 },
+  quickActionIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...shadows.sm,
+  },
+  quickActionLabel: { fontSize: 10, fontWeight: '700', color: palette.slate500 },
+
+  // Sections
+  section: { marginTop: spacing.md },
+  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: spacing.lg, marginBottom: spacing.sm },
+  sectionTitle: { fontSize: 15, fontWeight: '800', color: palette.slate900, letterSpacing: -0.2 },
+  sectionBadge: { backgroundColor: palette.white, borderRadius: borderRadius.full, paddingHorizontal: 10, paddingVertical: 3, borderWidth: 1, borderColor: 'rgba(15, 23, 42, 0.04)' },
+  sectionBadgeText: { fontSize: 10, fontWeight: '800', color: palette.slate500 },
 
   // OS cards
   osCard: {
     marginHorizontal: spacing.lg,
     marginBottom: spacing.sm,
     backgroundColor: palette.white,
-    borderRadius: borderRadius.lg,
+    borderRadius: borderRadius.md,
     flexDirection: 'row',
     borderWidth: 1,
-    borderColor: 'rgba(15, 23, 42, 0.05)',
+    borderColor: 'rgba(15, 23, 42, 0.04)',
+    borderLeftWidth: 3,
+    borderLeftColor: palette.slate200,
     overflow: 'hidden',
     ...shadows.sm,
   },
   osContent: { flex: 1, padding: spacing.md },
-  osHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm },
-  osNumBox: { backgroundColor: palette.slate100, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 4 },
-  osNumText: { fontSize: 11, fontWeight: '800', color: palette.slate500 },
-  statusBadge: { flexDirection: 'row', alignItems: 'center', borderRadius: borderRadius.full, paddingHorizontal: 10, paddingVertical: 4, gap: 6 },
-  statusDot: { width: 6, height: 6, borderRadius: 3 },
-  statusBadgeText: { fontSize: 11, fontWeight: '800' },
-  osCliente: { fontSize: 15, fontWeight: '800', color: palette.slate900 },
-  osVeiculo: { fontSize: 12, color: palette.slate500, marginTop: 2, fontWeight: '500' },
-  osDesc: { fontSize: 12, color: palette.slate400, marginTop: 6, fontWeight: '500' },
-  osDivider: { height: 1, backgroundColor: 'rgba(15, 23, 42, 0.05)', marginVertical: spacing.sm },
-  osFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  osFooterItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  osFooterText: { fontSize: 12, color: palette.slate500, fontWeight: '500' },
-  osValor: { fontSize: 15, fontWeight: '900', color: palette.navy800 },
+  osHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.xs },
+  osNumBox: { backgroundColor: palette.slate50, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
+  osNumText: { fontSize: 10, fontWeight: '800', color: palette.slate500 },
+  statusBadge: { flexDirection: 'row', alignItems: 'center', borderRadius: borderRadius.full, paddingHorizontal: 8, paddingVertical: 3, gap: 4 },
+  statusDot: { width: 5, height: 5, borderRadius: 2.5 },
+  statusBadgeText: { fontSize: 10, fontWeight: '800' },
+  osCliente: { fontSize: 14, fontWeight: '800', color: palette.slate900, letterSpacing: -0.2 },
+  osVeiculo: { fontSize: 11, color: palette.slate400, marginTop: 1, fontWeight: '500' },
 
-  // Agenda cards (Timeline)
+  // Progress bar
+  progressContainer: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: spacing.sm },
+  progressTrack: { flex: 1, height: 4, borderRadius: 2, backgroundColor: palette.slate100, overflow: 'hidden' },
+  progressFill: { height: '100%', borderRadius: 2 },
+  progressText: { fontSize: 10, fontWeight: '800', minWidth: 30, textAlign: 'right' },
+
+  osFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: spacing.sm },
+  osFooterLeft: { flexDirection: 'row', alignItems: 'center', gap: 3 },
+  osFooterText: { fontSize: 11, color: palette.slate400, fontWeight: '500' },
+  osValor: { fontSize: 14, fontWeight: '900', color: palette.navy900 },
+  osChevron: { justifyContent: 'center', alignItems: 'center', paddingRight: spacing.sm },
+
+  // Agenda
   agCard: {
     marginHorizontal: spacing.lg,
     marginBottom: spacing.sm,
     backgroundColor: palette.white,
-    borderRadius: borderRadius.lg,
+    borderRadius: borderRadius.md,
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(15, 23, 42, 0.05)',
+    borderColor: 'rgba(15, 23, 42, 0.04)',
+    borderLeftWidth: 3,
+    borderLeftColor: palette.slate200,
+    paddingVertical: 10,
     ...shadows.sm,
-    paddingVertical: spacing.sm,
   },
-  agTimelineColumn: {
-    paddingLeft: spacing.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minWidth: 70,
-  },
-  agTimeText: { fontSize: 15, fontWeight: '900', color: palette.slate900 },
-  agIndicatorLine: { width: 3, height: 22, borderRadius: 1.5, marginTop: 4 },
-  agInfo: { flex: 1, paddingHorizontal: spacing.md },
-  agCliente: { fontSize: 14, fontWeight: '800', color: palette.slate900 },
-  agVeiculo: { fontSize: 12, color: palette.slate500, marginTop: 2, fontWeight: '500' },
-  agBadge: { borderRadius: borderRadius.full, paddingHorizontal: 10, paddingVertical: 4, marginRight: spacing.md },
-  agBadgeText: { fontSize: 11, fontWeight: '800' },
+  agTimeCol: { paddingLeft: spacing.md, alignItems: 'center', minWidth: 60 },
+  agTime: { fontSize: 14, fontWeight: '900', color: palette.slate900 },
+  agDot: { width: 6, height: 6, borderRadius: 3, marginTop: 3 },
+  agInfo: { flex: 1, paddingHorizontal: spacing.sm },
+  agCliente: { fontSize: 13, fontWeight: '800', color: palette.slate900 },
+  agServico: { fontSize: 11, color: palette.slate400, marginTop: 1, fontWeight: '500' },
+  agBadge: { borderRadius: borderRadius.full, paddingHorizontal: 9, paddingVertical: 3, marginRight: spacing.md },
+  agBadgeText: { fontSize: 10, fontWeight: '800' },
 
-  // Empty state
-  emptyCard: { marginHorizontal: spacing.lg, backgroundColor: palette.white, borderRadius: borderRadius.lg, padding: spacing.xl, alignItems: 'center', gap: spacing.sm, ...shadows.sm },
-  emptyText: { fontSize: 14, color: palette.slate400, fontWeight: '500' },
+  // Activity
+  activityCard: {
+    marginHorizontal: spacing.lg,
+    backgroundColor: palette.white,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: 'rgba(15, 23, 42, 0.04)',
+    overflow: 'hidden',
+    ...shadows.sm,
+  },
+  activityRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.md, paddingVertical: 10, gap: spacing.sm },
+  activityRowBorder: { borderBottomWidth: 1, borderBottomColor: 'rgba(15, 23, 42, 0.04)' },
+  activityIconBox: { width: 32, height: 32, borderRadius: 8, justifyContent: 'center', alignItems: 'center' },
+  activityBody: { flex: 1 },
+  activityTitle: { fontSize: 12, fontWeight: '700', color: palette.slate900 },
+  activitySub: { fontSize: 11, color: palette.slate400, fontWeight: '500', marginTop: 1 },
+  activityDate: { fontSize: 10, color: palette.slate400, fontWeight: '700' },
 });
-

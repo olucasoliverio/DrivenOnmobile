@@ -280,7 +280,7 @@ export default function CrudDialog({
           dismissableBackButton={true}
           style={[
             styles.dialog,
-            keyboardHeight > 0 && { transform: [{ translateY: -keyboardHeight / 2 }] }
+            { transform: [{ translateY: keyboardHeight > 0 ? -keyboardHeight / 2 : 0 }] }
           ]}
         >
           <KeyboardAvoidingView

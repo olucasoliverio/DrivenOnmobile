@@ -26,6 +26,10 @@ export function registerOnUnauthorized(callback: () => void) {
   onUnauthorizedCallback = callback;
 }
 
+export function getAuthToken() {
+  return authToken;
+}
+
 export function setAuthToken(token: string | null) {
   console.log('[API] Setting token in memory:', token ? `${token.substring(0, 15)}...` : 'null');
   authToken = token;

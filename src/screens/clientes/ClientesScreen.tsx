@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
-import { Alert, View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput as RNTextInput } from 'react-native';
-import { MaterialIcons } from '@expo/vector-icons';
+import React, { useState, useEffect } from 'react';
+import { Alert, View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput as RNTextInput, Modal } from 'react-native';
+import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { FAB } from 'react-native-paper';
+import { LinearGradient } from 'expo-linear-gradient';
 import CrudDialog, { type CrudField } from '../../components/CrudDialog';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { useDriveOnData } from '../../context/DriveOnDataContext';
-import { palette, spacing, borderRadius, shadows } from '../../theme/theme';
+import { palette, spacing, borderRadius, shadows, gradients } from '../../theme/theme';
 import ScreenHeader from '../../components/ScreenHeader';
 import EmptyState from '../../components/EmptyState';
 import { sendWelcomeMessage } from '../../services/whatsappService';
@@ -22,10 +23,20 @@ const fields: CrudField[] = [
 
 export default function ClientesScreen() {
   const navigation = useNavigation<any>();
+  const route = useRoute<any>();
   const { clientes: clientesData, veiculos, ordens, createCliente } = useDriveOnData();
   const [busca, setBusca] = useState('');
   const [isFormOpen, setIsFormOpen] = useState(false);
+
+  useEffect(() => {
+    if (route.params?.openForm) {
+      setIsFormOpen(true);
+      navigation.setParams({ openForm: undefined });
+    }
+  }, [route.params?.openForm]);
   const [isSaving, setIsSaving] = useState(false);
+  const [isWelcomeModalVisible, setIsWelcomeModalVisible] = useState(false);
+  const [registeredCliente, setRegisteredCliente] = useState<{ nome: string; telefone: string } | null>(null);
   const [form, setForm] = useState({
     nome: '',
     telefone: '',
@@ -67,19 +78,8 @@ export default function ClientesScreen() {
       setIsFormOpen(false);
 
       if (novoCliente?.telefone) {
-        Alert.alert(
-          'Cliente Cadastrado!',
-          'Deseja enviar uma mensagem de boas-vindas no WhatsApp do cliente?',
-          [
-            { text: 'Não', style: 'cancel' },
-            {
-              text: 'Sim, enviar',
-              onPress: () => {
-                sendWelcomeMessage(novoCliente.nome, novoCliente.telefone);
-              },
-            },
-          ]
-        );
+        setRegisteredCliente({ nome: novoCliente.nome, telefone: novoCliente.telefone });
+        setIsWelcomeModalVisible(true);
       }
     } catch (error: any) {
       Alert.alert(
@@ -206,6 +206,58 @@ export default function ClientesScreen() {
         color={palette.white} 
         onPress={() => setIsFormOpen(true)} 
       />
+
+      {/* ── Welcome Message Confirm Modal ── */}
+      <Modal
+        visible={isWelcomeModalVisible}
+        transparent={true}
+        animationType="fade"
+        statusBarTranslucent={true}
+        onRequestClose={() => setIsWelcomeModalVisible(false)}
+      >
+        <View style={styles.dialogBackdrop}>
+          <View style={styles.dialogContent}>
+            <View style={[styles.dialogIconBox, { backgroundColor: '#E8F5E9' }]}>
+              <MaterialCommunityIcons name="whatsapp" size={36} color="#25D366" />
+            </View>
+            
+            <Text style={styles.dialogTitle}>Cliente Cadastrado!</Text>
+            <Text style={styles.dialogDescription}>
+              Deseja enviar uma mensagem de boas-vindas no WhatsApp de *{registeredCliente?.nome}*?
+            </Text>
+
+            <View style={styles.dialogActionRow}>
+              <TouchableOpacity
+                style={styles.dialogCancelButton}
+                activeOpacity={0.7}
+                onPress={() => setIsWelcomeModalVisible(false)}
+              >
+                <Text style={styles.dialogCancelButtonText}>Não</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.dialogConfirmButton}
+                activeOpacity={0.8}
+                onPress={() => {
+                  setIsWelcomeModalVisible(false);
+                  if (registeredCliente) {
+                    sendWelcomeMessage(registeredCliente.nome, registeredCliente.telefone);
+                  }
+                }}
+              >
+                <LinearGradient
+                  colors={['#25D366', '#128C7E']}
+                  style={styles.dialogConfirmButtonGradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                >
+                  <Text style={styles.dialogConfirmButtonText}>Sim, enviar</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -298,6 +350,81 @@ const styles = StyleSheet.create({
     backgroundColor: palette.navy800,
     borderRadius: borderRadius.lg,
     ...shadows.lg
+  },
+
+  // Centered Confirm Dialog Modal
+  dialogBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: spacing.xl,
+  },
+  dialogContent: {
+    width: '100%',
+    backgroundColor: palette.white,
+    borderRadius: borderRadius.lg,
+    padding: spacing.lg,
+    alignItems: 'center',
+    ...shadows.lg,
+  },
+  dialogIconBox: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: spacing.md,
+  },
+  dialogTitle: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: palette.slate900,
+    marginBottom: spacing.sm,
+    textAlign: 'center',
+  },
+  dialogDescription: {
+    fontSize: 13,
+    color: palette.slate500,
+    textAlign: 'center',
+    lineHeight: 18,
+    marginBottom: spacing.lg,
+    fontWeight: '500',
+  },
+  dialogActionRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    width: '100%',
+  },
+  dialogCancelButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: borderRadius.md,
+    borderWidth: 1.5,
+    borderColor: palette.slate200,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: palette.white,
+  },
+  dialogCancelButtonText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: palette.slate700,
+  },
+  dialogConfirmButton: {
+    flex: 1,
+    borderRadius: borderRadius.md,
+    overflow: 'hidden',
+  },
+  dialogConfirmButtonGradient: {
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dialogConfirmButtonText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: palette.white,
   },
 });
 

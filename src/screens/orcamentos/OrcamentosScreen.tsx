@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Alert, View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
 import { Surface, FAB, IconButton } from 'react-native-paper';
 import { MaterialIcons } from '@expo/vector-icons';
+import { useRoute, useNavigation } from '@react-navigation/native';
 import { useDriveOnData } from '../../context/DriveOnDataContext';
-import { colors, spacing, borderRadius } from '../../theme/theme';
+import { colors, spacing, borderRadius, palette } from '../../theme/theme';
 import dayjs from 'dayjs';
 import CrudDialog, { type CrudField } from '../../components/CrudDialog';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -27,6 +28,8 @@ const fields: CrudField[] = [
 
 export default function OrcamentosScreen() {
   const insets = useSafeAreaInsets();
+  const navigation = useNavigation<any>();
+  const route = useRoute<any>();
   const { orcamentos: orcamentosData, clientes, veiculos, createRecord, updateRecord, deleteRecord } = useDriveOnData();
   const [filtro, setFiltro] = useState<'todos' | 'aprovado' | 'pendente' | 'recusado'>('todos');
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -47,17 +50,21 @@ export default function OrcamentosScreen() {
         data: dayjs(item.dataCriacao).format('YYYY-MM-DD'),
       });
     } else {
-      const defaultClientId = clientes[0]?.id ? String(clientes[0].id) : '';
-      const clientVeiculos = defaultClientId ? veiculos.filter(v => v.clienteId === Number(defaultClientId)) : [];
-      const defaultVeiculoId = clientVeiculos[0]?.id ? String(clientVeiculos[0].id) : '';
       setForm({
-        clienteId: defaultClientId,
-        veiculoId: defaultVeiculoId,
+        clienteId: '',
+        veiculoId: '',
         data: dayjs().format('YYYY-MM-DD'),
       });
     }
     setDialogOpen(true);
   };
+
+  useEffect(() => {
+    if (route.params?.openForm) {
+      openForm();
+      navigation.setParams({ openForm: undefined });
+    }
+  }, [route.params?.openForm]);
 
   const save = async () => {
     if (!form.clienteId || !form.veiculoId || !form.descricao?.trim() || !form.valor) {
@@ -95,6 +102,7 @@ export default function OrcamentosScreen() {
 
   return (
     <View style={styles.container}>
+      <ScreenHeader title="Orçamentos" showBack={true} />
       <View style={styles.chips}>
         {(['todos', 'aprovado', 'pendente', 'recusado'] as const).map(f => (
           <TouchableOpacity key={f} style={[styles.chip, filtro === f && styles.chipActive]} onPress={() => setFiltro(f)}>
@@ -108,7 +116,7 @@ export default function OrcamentosScreen() {
       <FlatList
         data={orcamentos}
         keyExtractor={item => String(item.id)}
-        contentContainerStyle={{ padding: spacing.lg, gap: spacing.sm, paddingBottom: 160, flexGrow: 1 }}
+        contentContainerStyle={{ padding: spacing.lg, gap: spacing.sm, paddingBottom: 100, flexGrow: 1 }}
         ListEmptyComponent={() => (
           <EmptyState
             icon="description"
@@ -122,7 +130,7 @@ export default function OrcamentosScreen() {
           const st = statusConfig[o.status] ?? { label: o.status, color: '#757575', bg: '#F5F5F5' };
           const isVencido = dayjs(o.validade).isBefore(dayjs()) && o.status === 'pendente';
           return (
-            <TouchableOpacity onPress={() => openForm(o)} activeOpacity={0.8}>
+            <TouchableOpacity onPress={() => navigation.navigate('OrcamentoDetalhes', { orcamentoId: o.id })} activeOpacity={0.8}>
             <Surface style={styles.card} elevation={1}>
               <View style={styles.cardHeader}>
                 <Text style={styles.orcNum}>ORC #{String(o.id).padStart(3, '0')}</Text>
@@ -188,7 +196,7 @@ export default function OrcamentosScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
+  container: { flex: 1, backgroundColor: palette.slate100 },
   chips: { flexDirection: 'row', padding: spacing.lg, paddingBottom: spacing.sm, gap: spacing.sm },
   chip: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, backgroundColor: '#F0F0F0', borderWidth: 1, borderColor: '#E0E0E0' },
   chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
@@ -210,5 +218,5 @@ const styles = StyleSheet.create({
   dataLabel: { fontSize: 10, color: '#9E9E9E', fontWeight: '600' },
   dataText: { fontSize: 12, color: colors.onBackground },
   total: { fontSize: 18, fontWeight: '800', color: colors.primary },
-  fab: { position: 'absolute', bottom: 96, right: 20, backgroundColor: colors.primary, borderRadius: 16, elevation: 8 },
+  fab: { position: 'absolute', bottom: 24, right: 20, backgroundColor: colors.primary, borderRadius: 16, elevation: 8 },
 });

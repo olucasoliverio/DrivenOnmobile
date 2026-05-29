@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Alert, View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput as RNTextInput } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialIcons } from '@expo/vector-icons';
 import { FAB } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { useDriveOnData } from '../../context/DriveOnDataContext';
 import { palette, spacing, borderRadius, shadows, gradients } from '../../theme/theme';
 import dayjs from 'dayjs';
@@ -42,6 +42,7 @@ function StatusBadge({ status }: { status: string }) {
 export default function TarefasScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
+  const route = useRoute<any>();
   const { ordens: ordensData, clientes, veiculos, createRecord } = useDriveOnData();
   const [filtroStatus, setFiltroStatus] = useState<StatusKey>('todos');
   const [busca, setBusca] = useState('');
@@ -65,15 +66,22 @@ export default function TarefasScreen() {
   });
 
   const openForm = () => {
-    const defaultClientId = clientes[0]?.id ? String(clientes[0].id) : '';
-    const clientVeiculos = defaultClientId ? veiculos.filter(v => v.clienteId === Number(defaultClientId)) : [];
-    const defaultVeiculoId = clientVeiculos[0]?.id ? String(clientVeiculos[0].id) : '';
     setForm({
-      cliente_id: defaultClientId,
-      veiculo_id: defaultVeiculoId,
+      cliente_id: '',
+      veiculo_id: '',
+      funcionario_id: '',
+      observacoes: '',
+      valor_total: '',
     });
     setDialogOpen(true);
   };
+
+  useEffect(() => {
+    if (route.params?.openForm) {
+      openForm();
+      navigation.setParams({ openForm: undefined });
+    }
+  }, [route.params?.openForm]);
 
   const save = async () => {
     if (!form.cliente_id || !form.veiculo_id || !form.funcionario_id) {

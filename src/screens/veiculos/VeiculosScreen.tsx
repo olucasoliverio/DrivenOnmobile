@@ -54,9 +54,16 @@ export default function VeiculosScreen() {
       placa: item.placa,
       ano: String(item.ano || ''),
       cor: item.cor,
-    } : { cliente_id: clientes[0]?.id ? String(clientes[0].id) : '' });
+    } : { cliente_id: '' });
     setDialogOpen(true);
   };
+
+  useEffect(() => {
+    if (route.params?.openForm) {
+      openForm();
+      navigation.setParams({ openForm: undefined });
+    }
+  }, [route.params?.openForm]);
 
   const save = async () => {
     if (!form.cliente_id || !form.marca?.trim() || !form.modelo?.trim() || !form.placa?.trim()) {
@@ -117,7 +124,7 @@ export default function VeiculosScreen() {
           const isFirst = index === 0;
           const isLast = index === veiculos.length - 1;
           return (
-            <TouchableOpacity onPress={() => openForm(v)} activeOpacity={0.8}>
+            <TouchableOpacity onPress={() => navigation.navigate('VeiculoDetalhes', { veiculoId: v.id })} activeOpacity={0.8}>
               <View style={[
                 styles.listItem,
                 isFirst && styles.listItemFirst,

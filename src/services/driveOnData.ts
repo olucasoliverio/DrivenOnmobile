@@ -400,14 +400,19 @@ export function adaptConfiguracoes(item: any): Configuracoes {
 }
 
 function buildDashboard(data: Omit<DriveOnData, 'dashboard' | 'configuracoes'>): Dashboard {
-  const osAbertas = data.ordens.filter((ordem) => ordem.status !== 'concluido').length;
-  const osConcluidas = data.ordens.filter((ordem) => ordem.status === 'concluido').length;
-  const receitaMes = data.pagamentos
-    .filter((pagamento) => pagamento.tipo === 'receber' && pagamento.status === 'pago' && dayjs(pagamento.data).isSame(dayjs(), 'month'))
-    .reduce((sum, pagamento) => sum + pagamento.valor, 0);
-  const receitaAnterior = data.pagamentos
-    .filter((pagamento) => pagamento.tipo === 'receber' && pagamento.status === 'pago' && dayjs(pagamento.data).isSame(dayjs().subtract(1, 'month'), 'month'))
-    .reduce((sum, pagamento) => sum + pagamento.valor, 0);
+  const ordens = data?.ordens || [];
+  const pagamentos = data?.pagamentos || [];
+  const agendamentos = data?.agendamentos || [];
+  const clientes = data?.clientes || [];
+
+  const osAbertas = ordens.filter((ordem) => ordem && ordem.status !== 'concluido').length;
+  const osConcluidas = ordens.filter((ordem) => ordem && ordem.status === 'concluido').length;
+  const receitaMes = pagamentos
+    .filter((pagamento) => pagamento && pagamento.tipo === 'receber' && pagamento.status === 'pago' && dayjs(pagamento.data).isSame(dayjs(), 'month'))
+    .reduce((sum, pagamento) => sum + (pagamento.valor || 0), 0);
+  const receitaAnterior = pagamentos
+    .filter((pagamento) => pagamento && pagamento.tipo === 'receber' && pagamento.status === 'pago' && dayjs(pagamento.data).isSame(dayjs().subtract(1, 'month'), 'month'))
+    .reduce((sum, pagamento) => sum + (pagamento.valor || 0), 0);
 
   const statusCounts = {
     em_andamento: 0,
@@ -415,10 +420,12 @@ function buildDashboard(data: Omit<DriveOnData, 'dashboard' | 'configuracoes'>):
     aguardando_pecas: 0,
     concluido: 0,
   };
-  data.ordens.forEach(os => {
-    const s = os.status as keyof typeof statusCounts;
-    if (statusCounts[s] !== undefined) {
-      statusCounts[s]++;
+  ordens.forEach(os => {
+    if (os && os.status) {
+      const s = os.status as keyof typeof statusCounts;
+      if (statusCounts[s] !== undefined) {
+        statusCounts[s]++;
+      }
     }
   });
   const statusOS = [
@@ -432,13 +439,14 @@ function buildDashboard(data: Omit<DriveOnData, 'dashboard' | 'configuracoes'>):
   for (let i = 5; i >= 0; i--) {
     const targetMonth = dayjs().subtract(i, 'month');
     const label = targetMonth.format('MMM');
-    const valor = data.pagamentos
+    const valor = pagamentos
       .filter((pagamento) => 
+        pagamento &&
         pagamento.tipo === 'receber' && 
         pagamento.status === 'pago' && 
         dayjs(pagamento.data).isSame(targetMonth, 'month')
       )
-      .reduce((sum, pagamento) => sum + pagamento.valor, 0);
+      .reduce((sum, pagamento) => sum + (pagamento.valor || 0), 0);
     receitaMensal.push({
       mes: label.charAt(0).toUpperCase() + label.slice(1).replace('.', ''),
       valor,
@@ -448,10 +456,10 @@ function buildDashboard(data: Omit<DriveOnData, 'dashboard' | 'configuracoes'>):
   return {
     osAbertas,
     osConcluidas,
-    agendamentosHoje: data.agendamentos.filter((agendamento) => dayjs(agendamento.data).isSame(dayjs(), 'day')).length,
+    agendamentosHoje: agendamentos.filter((agendamento) => agendamento && dayjs(agendamento.data).isSame(dayjs(), 'day')).length,
     receitaMes,
     receitaAnterior: receitaAnterior || receitaMes || 1,
-    clientesAtivos: data.clientes.length,
+    clientesAtivos: clientes.length,
     ticketMedio: osConcluidas ? receitaMes / osConcluidas : 0,
     receitaMensal,
     statusOS,

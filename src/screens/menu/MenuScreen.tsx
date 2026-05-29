@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useState } from 'react';
+import { Alert, View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -39,6 +39,12 @@ const menuItems: MenuItem[] = [
     screen: 'Orcamentos',      
     desc: 'Gerenciar orçamentos e propostas' 
   },
+  { 
+    icon: 'attach-money',  
+    label: 'Financeiro',      
+    screen: 'Financeiro',      
+    desc: 'Controle de contas a pagar e receber' 
+  },
 ];
 
 export default function MenuScreen() {
@@ -46,6 +52,12 @@ export default function MenuScreen() {
   const navigation = useNavigation<any>();
   const { user, signOut } = useAuth();
   const initials = user?.nome?.substring(0, 2).toUpperCase() ?? 'AD';
+
+  const [isLogoutModalVisible, setIsLogoutModalVisible] = useState(false);
+
+  const handleLogout = () => {
+    setIsLogoutModalVisible(true);
+  };
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
@@ -95,7 +107,7 @@ export default function MenuScreen() {
 
       {/* ── Seção de Logout ── */}
       <View style={styles.logoutSection}>
-        <TouchableOpacity style={styles.logoutBtn} onPress={signOut} activeOpacity={0.7}>
+        <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout} activeOpacity={0.7}>
           <View style={styles.logoutIconBox}>
             <MaterialIcons name="logout" size={20} color={palette.rose600} />
           </View>
@@ -108,6 +120,56 @@ export default function MenuScreen() {
       </View>
 
       <View style={{ height: 40 }} />
+
+      {/* ── Custom Confirm Logout Modal ── */}
+      <Modal
+        visible={isLogoutModalVisible}
+        transparent={true}
+        animationType="fade"
+        statusBarTranslucent={true}
+        onRequestClose={() => setIsLogoutModalVisible(false)}
+      >
+        <View style={styles.dialogBackdrop}>
+          <View style={styles.dialogContent}>
+            <View style={[styles.dialogIconBox, { backgroundColor: 'rgba(239, 68, 68, 0.08)' }]}>
+              <MaterialIcons name="logout" size={32} color={palette.rose600} />
+            </View>
+            
+            <Text style={styles.dialogTitle}>Deseja sair do aplicativo?</Text>
+            <Text style={styles.dialogDescription}>
+              Você será desconectado da sua conta ativa e precisará informar seu e-mail e senha no próximo acesso.
+            </Text>
+
+            <View style={styles.dialogActionRow}>
+              <TouchableOpacity
+                style={styles.dialogCancelButton}
+                activeOpacity={0.7}
+                onPress={() => setIsLogoutModalVisible(false)}
+              >
+                <Text style={styles.dialogCancelButtonText}>Voltar</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.dialogConfirmButton}
+                activeOpacity={0.8}
+                onPress={() => {
+                  setIsLogoutModalVisible(false);
+                  signOut();
+                }}
+              >
+                <LinearGradient
+                  colors={[palette.rose600, '#DC2626']}
+                  style={styles.dialogConfirmButtonGradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                >
+                  <Text style={styles.dialogConfirmButtonText}>Sim, Sair</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 }
@@ -265,5 +327,79 @@ const styles = StyleSheet.create({
     fontSize: 12, 
     color: '#F87171', 
     marginTop: 2 
+  },
+  // Confirm Dialog Modal Styles
+  dialogBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: spacing.xl,
+  },
+  dialogContent: {
+    width: '100%',
+    backgroundColor: palette.white,
+    borderRadius: borderRadius.lg,
+    padding: spacing.lg,
+    alignItems: 'center',
+    ...shadows.lg,
+  },
+  dialogIconBox: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: spacing.md,
+  },
+  dialogTitle: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: palette.slate900,
+    marginBottom: spacing.sm,
+    textAlign: 'center',
+  },
+  dialogDescription: {
+    fontSize: 13,
+    color: palette.slate500,
+    textAlign: 'center',
+    lineHeight: 18,
+    marginBottom: spacing.lg,
+    fontWeight: '500',
+  },
+  dialogActionRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    width: '100%',
+  },
+  dialogCancelButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: borderRadius.md,
+    borderWidth: 1.5,
+    borderColor: palette.slate200,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: palette.white,
+  },
+  dialogCancelButtonText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: palette.slate700,
+  },
+  dialogConfirmButton: {
+    flex: 1,
+    borderRadius: borderRadius.md,
+    overflow: 'hidden',
+  },
+  dialogConfirmButtonGradient: {
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dialogConfirmButtonText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: palette.white,
   },
 });

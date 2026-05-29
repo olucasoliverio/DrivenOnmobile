@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Alert, View, Text, StyleSheet, TouchableOpacity, FlatList, Dimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialIcons } from '@expo/vector-icons';
 import { FAB, IconButton } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { useDriveOnData } from '../../context/DriveOnDataContext';
 import { palette, spacing, borderRadius, shadows, gradients } from '../../theme/theme';
 import CrudDialog, { type CrudField } from '../../components/CrudDialog';
@@ -34,6 +35,8 @@ function getDaysOfWeek() {
 
 export default function AgendaScreen() {
   const insets = useSafeAreaInsets();
+  const navigation = useNavigation<any>();
+  const route = useRoute<any>();
   const { agendamentos, clientes, veiculos, createRecord, updateRecord, deleteRecord } = useDriveOnData();
   const [selectedDate, setSelectedDate] = useState(dayjs());
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -58,18 +61,22 @@ export default function AgendaScreen() {
         observacao: item.observacao,
       });
     } else {
-      const defaultClientId = clientes[0]?.id ? String(clientes[0].id) : '';
-      const clientVeiculos = defaultClientId ? veiculos.filter(v => v.clienteId === Number(defaultClientId)) : [];
-      const defaultVeiculoId = clientVeiculos[0]?.id ? String(clientVeiculos[0].id) : '';
       setForm({
-        cliente_id: defaultClientId,
-        veiculo_id: defaultVeiculoId,
+        cliente_id: '',
+        veiculo_id: '',
         data_inicio: selectedDate.hour(9).minute(0).format('YYYY-MM-DD HH:mm'),
         data_fim: selectedDate.hour(10).minute(0).format('YYYY-MM-DD HH:mm'),
       });
     }
     setDialogOpen(true);
   };
+
+  useEffect(() => {
+    if (route.params?.openForm) {
+      openForm();
+      navigation.setParams({ openForm: undefined });
+    }
+  }, [route.params?.openForm]);
 
   const parseDate = (value: string) => dayjs(value.trim().replace(' ', 'T')).toISOString();
 
@@ -110,6 +117,7 @@ export default function AgendaScreen() {
 
   return (
     <View style={styles.container}>
+      <ScreenHeader title="Agenda" showBack={true} />
 
       {/* ── Week Header com fundo claro ── */}
       <View style={styles.weekHeader}>
@@ -170,7 +178,7 @@ export default function AgendaScreen() {
           const veiculo = veiculos.find(v => v.id === item.veiculoId);
           const isConfirmado = item.status === 'confirmado';
           return (
-            <TouchableOpacity onPress={() => openForm(item)} activeOpacity={0.8}>
+            <TouchableOpacity onPress={() => navigation.navigate('AgendaDetalhes', { agendamentoId: item.id })} activeOpacity={0.8}>
             <View style={styles.card}>
               {/* Barra lateral colorida */}
               <LinearGradient
@@ -261,7 +269,7 @@ const styles = StyleSheet.create({
   dayInfoText: { fontSize: 12, fontWeight: '600', color: palette.slate500 },
 
   // List
-  listContent: { padding: spacing.lg, paddingTop: spacing.sm, gap: spacing.sm, paddingBottom: 160 },
+  listContent: { padding: spacing.lg, paddingTop: spacing.sm, gap: spacing.sm, paddingBottom: 100 },
 
   // Card
   card: { backgroundColor: palette.white, borderRadius: borderRadius.lg, flexDirection: 'row', overflow: 'hidden', ...shadows.sm },
@@ -286,7 +294,7 @@ const styles = StyleSheet.create({
   // FAB
   fab: { 
     position: 'absolute', 
-    bottom: 96, 
+    bottom: 24, 
     right: 20, 
     backgroundColor: palette.navy800,
     borderRadius: borderRadius.lg,

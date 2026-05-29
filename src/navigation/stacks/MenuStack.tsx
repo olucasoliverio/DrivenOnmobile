@@ -1,8 +1,6 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import MenuScreen from '../../screens/menu/MenuScreen';
-import AgendaScreen from '../../screens/agenda/AgendaScreen';
-import OrcamentosScreen from '../../screens/orcamentos/OrcamentosScreen';
 import { palette } from '../../theme/theme';
 
 const Stack = createNativeStackNavigator();
@@ -19,8 +17,6 @@ export default function MenuStack() {
       }}
     >
       <Stack.Screen name="Menu" component={MenuScreen} options={{ headerShown: false }} />
-      <Stack.Screen name="Agenda" component={AgendaScreen} options={{ title: 'Agenda' }} />
-      <Stack.Screen name="Orcamentos" component={OrcamentosScreen} options={{ title: 'Orçamentos' }} />
     </Stack.Navigator>
   );
 }
