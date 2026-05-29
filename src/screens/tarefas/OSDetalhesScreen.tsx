@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Alert, Linking, View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal } from 'react-native';
+import { Alert, Linking, View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal, ActivityIndicator } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRoute, useNavigation } from '@react-navigation/native';
@@ -113,6 +113,7 @@ export default function OSDetalhesScreen() {
   const [selectedMetodo, setSelectedMetodo] = useState<'pix' | 'dinheiro' | 'cartao' | 'boleto'>('pix');
   const [selectedStatus, setSelectedStatus] = useState<'pendente' | 'pago'>('pago');
   const [isRegisteringPayment, setIsRegisteringPayment] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   useEffect(() => {
     if (isSuccessModalVisible) {
@@ -289,7 +290,9 @@ export default function OSDetalhesScreen() {
               <TouchableOpacity 
                 style={[styles.btnPrimary, { marginTop: spacing.sm }]} 
                 activeOpacity={0.8}
+                disabled={isProcessing}
                 onPress={async () => {
+                  setIsProcessing(true);
                   try {
                     await updateRecord('/pagamentos', pagamentoOS.id, {
                       status: 'pago',
@@ -299,12 +302,20 @@ export default function OSDetalhesScreen() {
                     Alert.alert('Sucesso', 'Recebimento registrado com sucesso!');
                   } catch (error: any) {
                     Alert.alert('Erro', error?.response?.data?.error ?? error?.message);
+                  } finally {
+                    setIsProcessing(false);
                   }
                 }}
               >
                 <LinearGradient colors={gradients.navyPrimary} style={styles.btnGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
-                  <MaterialIcons name="check" size={18} color={palette.white} />
-                  <Text style={styles.btnPrimaryText}>Registrar como Recebido</Text>
+                  {isProcessing ? (
+                    <ActivityIndicator size="small" color={palette.white} />
+                  ) : (
+                    <>
+                      <MaterialIcons name="check" size={18} color={palette.white} />
+                      <Text style={styles.btnPrimaryText}>Registrar como Recebido</Text>
+                    </>
+                  )}
                 </LinearGradient>
               </TouchableOpacity>
             )}
@@ -333,19 +344,29 @@ export default function OSDetalhesScreen() {
             <TouchableOpacity 
               style={styles.btnPrimary} 
               activeOpacity={0.8} 
+              disabled={isProcessing}
               onPress={async () => {
+                setIsProcessing(true);
                 try {
                   await updateRecord('/ordens', os.id, { status: 'em_andamento' });
                   await refresh();
                   sugerirNotificacaoWhatsApp();
                 } catch (error: any) {
                   Alert.alert('Erro', error?.response?.data?.error ?? error?.message);
+                } finally {
+                  setIsProcessing(false);
                 }
               }}
             >
               <LinearGradient colors={gradients.navyPrimary} style={styles.btnGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
-                <MaterialIcons name="play-arrow" size={18} color={palette.white} />
-                <Text style={styles.btnPrimaryText}>Iniciar Serviço</Text>
+                {isProcessing ? (
+                  <ActivityIndicator size="small" color={palette.white} />
+                ) : (
+                  <>
+                    <MaterialIcons name="play-arrow" size={18} color={palette.white} />
+                    <Text style={styles.btnPrimaryText}>Iniciar Serviço</Text>
+                  </>
+                )}
               </LinearGradient>
             </TouchableOpacity>
 
@@ -499,8 +520,10 @@ export default function OSDetalhesScreen() {
               <TouchableOpacity
                 style={styles.dialogConfirmButton}
                 activeOpacity={0.8}
+                disabled={isProcessing}
                 onPress={async () => {
                   setIsConfirmModalVisible(false);
+                  setIsProcessing(true);
                   try {
                     await updateRecord('/ordens', os.id, {
                       status: 'concluida',
@@ -510,6 +533,8 @@ export default function OSDetalhesScreen() {
                     setIsPaymentModalVisible(true);
                   } catch (error: any) {
                     Alert.alert('Nao foi possivel concluir', error?.response?.data?.error ?? error?.message ?? 'Tente novamente.');
+                  } finally {
+                    setIsProcessing(false);
                   }
                 }}
               >
@@ -558,8 +583,10 @@ export default function OSDetalhesScreen() {
               <TouchableOpacity
                 style={styles.dialogConfirmButton}
                 activeOpacity={0.8}
+                disabled={isProcessing}
                 onPress={async () => {
                   setIsConfirmCancelModalVisible(false);
+                  setIsProcessing(true);
                   try {
                     await updateRecord('/ordens', os.id, {
                       status: 'cancelada',
@@ -568,6 +595,8 @@ export default function OSDetalhesScreen() {
                     sugerirNotificacaoWhatsApp();
                   } catch (error: any) {
                     Alert.alert('Não foi possível cancelar', error?.response?.data?.error ?? error?.message ?? 'Tente novamente.');
+                  } finally {
+                    setIsProcessing(false);
                   }
                 }}
               >
@@ -830,7 +859,6 @@ export default function OSDetalhesScreen() {
                 activeOpacity={0.8}
                 onPress={() => {
                   setIsPaymentModalVisible(false);
-                  sugerirNotificacaoWhatsApp();
                 }}
               >
                 <Text style={styles.dialogCancelBtnText}>Ignorar</Text>
@@ -869,7 +897,11 @@ export default function OSDetalhesScreen() {
                 }}
               >
                 <LinearGradient colors={gradients.navyPrimary} style={styles.dialogSendBtnGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
-                  <Text style={styles.dialogSendBtnText}>Confirmar</Text>
+                  {isRegisteringPayment ? (
+                    <ActivityIndicator size="small" color={palette.white} />
+                  ) : (
+                    <Text style={styles.dialogSendBtnText}>Confirmar</Text>
+                  )}
                 </LinearGradient>
               </TouchableOpacity>
             </View>

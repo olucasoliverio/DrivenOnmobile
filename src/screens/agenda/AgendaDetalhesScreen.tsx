@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Alert, View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { Alert, View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useDriveOnData } from '../../context/DriveOnDataContext';
@@ -169,9 +169,20 @@ export default function AgendaDetalhesScreen() {
 
         {/* Ação Primária: Confirmar */}
         {!isConfirmado && (
-          <TouchableOpacity style={styles.confirmBtn} activeOpacity={0.7} onPress={confirmarAgendamento}>
-            <MaterialIcons name="check-circle" size={20} color={palette.white} />
-            <Text style={styles.confirmBtnText}>Confirmar Presença</Text>
+          <TouchableOpacity 
+            style={styles.confirmBtn} 
+            activeOpacity={0.7} 
+            disabled={saving}
+            onPress={confirmarAgendamento}
+          >
+            {saving ? (
+              <ActivityIndicator size="small" color={palette.white} />
+            ) : (
+              <>
+                <MaterialIcons name="check-circle" size={20} color={palette.white} />
+                <Text style={styles.confirmBtnText}>Confirmar Presença</Text>
+              </>
+            )}
           </TouchableOpacity>
         )}
 

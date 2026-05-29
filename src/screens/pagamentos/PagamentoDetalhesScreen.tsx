@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Alert, View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { Alert, View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useDriveOnData } from '../../context/DriveOnDataContext';
@@ -169,9 +169,20 @@ export default function PagamentoDetalhesScreen() {
 
         {/* Ação Primária: Marcar como Pago */}
         {!isPago && (
-          <TouchableOpacity style={styles.confirmBtn} activeOpacity={0.7} onPress={marcarComoPago}>
-            <MaterialIcons name="check-circle" size={20} color={palette.white} />
-            <Text style={styles.confirmBtnText}>Marcar como Recebido</Text>
+          <TouchableOpacity 
+            style={styles.confirmBtn} 
+            activeOpacity={0.7} 
+            disabled={saving}
+            onPress={marcarComoPago}
+          >
+            {saving ? (
+              <ActivityIndicator size="small" color={palette.white} />
+            ) : (
+              <>
+                <MaterialIcons name="check-circle" size={20} color={palette.white} />
+                <Text style={styles.confirmBtnText}>Marcar como Recebido</Text>
+              </>
+            )}
           </TouchableOpacity>
         )}
 
