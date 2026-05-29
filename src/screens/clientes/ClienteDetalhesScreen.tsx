@@ -11,6 +11,7 @@ import { sendWelcomeMessage, sendWhatsAppMessage, sendOSCompletedMessage, sendEs
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import ScreenHeader from '../../components/ScreenHeader';
 import { Portal, Dialog, Button, TextInput } from 'react-native-paper';
+import api from '../../api/api';
 
 const STATUS_MAP: Record<string, { label: string; color: string; bg: string }> = {
   em_andamento:    { label: 'Em Andamento', color: palette.navy800,    bg: 'rgba(37, 99, 235, 0.08)' },
@@ -29,6 +30,12 @@ const editFields: CrudField[] = [
   { key: 'nome', label: 'Nome', autoCapitalize: 'words' },
   { key: 'telefone', label: 'Telefone', keyboardType: 'phone-pad' },
   { key: 'email', label: 'E-mail', keyboardType: 'email-address', autoCapitalize: 'none' },
+  { key: 'cep', label: 'CEP', keyboardType: 'number-pad' },
+  { key: 'logradouro', label: 'Logradouro', autoCapitalize: 'words' },
+  { key: 'numero', label: 'Número', keyboardType: 'number-pad' },
+  { key: 'complemento', label: 'Complemento', autoCapitalize: 'sentences' },
+  { key: 'cidade', label: 'Cidade', autoCapitalize: 'words' },
+  { key: 'uf', label: 'UF (Estado)', autoCapitalize: 'characters' },
   { key: 'observacoes', label: 'Observações', multiline: true },
 ];
 
@@ -182,11 +189,41 @@ export default function ClienteDetalhesScreen() {
     );
   }
 
+  const handleFormChange = async (key: string, value: string) => {
+    setForm((current) => ({ ...current, [key]: value }));
+
+    if (key === 'cep') {
+      const cleanCep = value.replace(/\D/g, '');
+      if (cleanCep.length === 8) {
+        try {
+          const res = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`);
+          const data = await res.json();
+          if (!data.erro) {
+            setForm((current) => ({
+              ...current,
+              logradouro: data.logradouro || '',
+              cidade: data.localidade || '',
+              uf: data.uf || '',
+            }));
+          }
+        } catch (err) {
+          console.error('Error fetching CEP:', err);
+        }
+      }
+    }
+  };
+
   const openEdit = () => {
     setForm({
       nome: cliente.nome,
       telefone: cliente.telefone,
       email: cliente.email,
+      cep: cliente.cep || '',
+      logradouro: cliente.logradouro || '',
+      numero: cliente.numero || '',
+      complemento: cliente.complemento || '',
+      cidade: cliente.cidadeNome || cliente.cidade || '',
+      uf: cliente.uf || '',
       observacoes: '',
     });
     setDialogOpen(true);
@@ -199,11 +236,30 @@ export default function ClienteDetalhesScreen() {
     }
     setSaving(true);
     try {
+      let cidadeId: number | undefined = undefined;
+
+      if (form.cidade?.trim() && form.uf?.trim()) {
+        try {
+          const resCidade = await api.post('/cidade', {
+            nome: form.cidade.trim(),
+            uf: form.uf.trim().toUpperCase(),
+          });
+          cidadeId = resCidade.data?.id;
+        } catch (err) {
+          console.error('Erro ao cadastrar/buscar cidade:', err);
+        }
+      }
+
       await updateRecord('/clientes', cliente.id, {
         nome: form.nome.trim(),
         telefone: form.telefone?.trim() || null,
         email: form.email?.trim() || null,
         observacoes: form.observacoes?.trim() || null,
+        cep: form.cep?.trim() || null,
+        logradouro: form.logradouro?.trim() || null,
+        numero: form.numero?.trim() || null,
+        complemento: form.complemento?.trim() || null,
+        cidade_id: cidadeId || null,
       });
       setDialogOpen(false);
     } catch (error: any) {
@@ -367,7 +423,7 @@ export default function ClienteDetalhesScreen() {
         </TouchableOpacity>
       </View>
 
-      <CrudDialog visible={dialogOpen} title="Editar cliente" fields={editFields} values={form} isSaving={saving} onChange={(key, value) => setForm((current) => ({ ...current, [key]: value }))} onCancel={() => setDialogOpen(false)} onSave={save} />
+      <CrudDialog visible={dialogOpen} title="Editar cliente" fields={editFields} values={form} isSaving={saving} onChange={handleFormChange} onCancel={() => setDialogOpen(false)} onSave={save} />
 
       {/* ── WhatsApp Custom Dialog Style CRUD ── */}
       {isWhatsAppDialogVisible && (

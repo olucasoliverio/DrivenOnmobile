@@ -24,6 +24,13 @@ export type Cliente = {
   email: string;
   cidade: string;
   endereco: string;
+  cep?: string;
+  logradouro?: string;
+  numero?: string;
+  complemento?: string;
+  cidadeId?: number;
+  cidadeNome?: string;
+  uf?: string;
 };
 
 export type Veiculo = {
@@ -165,6 +172,11 @@ export type ClientePayload = {
   cpf?: string;
   data_nascimento?: string;
   observacoes?: string;
+  cep?: string;
+  logradouro?: string;
+  numero?: string;
+  complemento?: string;
+  cidade_id?: number;
 };
 
 export const fallbackDriveOnData: DriveOnData = {
@@ -248,14 +260,34 @@ const formatTime = (value: unknown) => {
 };
 
 export function adaptCliente(item: any): Cliente {
+  const addressParts = [
+    item.logradouro,
+    item.numero ? `Nº ${item.numero}` : '',
+    item.complemento
+  ].filter(Boolean);
+  const formattedEndereco = addressParts.length > 0
+    ? addressParts.join(', ')
+    : textValue(item.endereco ?? item.observacao, '');
+
+  const cidadeText = item.cidade?.nome
+    ? `${item.cidade.nome}${item.cidade.uf ? ` - ${item.cidade.uf}` : ''}`
+    : textValue(item.cidade, '');
+
   return {
     id: numberValue(item.id),
     nome: textValue(item.nome, 'Cliente sem nome'),
     cpf: textValue(item.cpf, ''),
     telefone: textValue(item.telefone, ''),
     email: textValue(item.email, ''),
-    cidade: textValue(item.cidade?.nome ?? item.cidade, ''),
-    endereco: textValue(item.endereco ?? item.logradouro ?? item.observacao, ''),
+    cidade: cidadeText,
+    endereco: formattedEndereco,
+    cep: textValue(item.cep, ''),
+    logradouro: textValue(item.logradouro, ''),
+    numero: textValue(item.numero, ''),
+    complemento: textValue(item.complemento, ''),
+    cidadeId: item.cidade_id == null ? undefined : numberValue(item.cidade_id),
+    cidadeNome: textValue(item.cidade?.nome, ''),
+    uf: textValue(item.cidade?.uf, ''),
   };
 }
 
@@ -549,6 +581,11 @@ export async function createCliente(payload: ClientePayload): Promise<Cliente> {
     cpf: payload.cpf || undefined,
     data_nascimento: payload.data_nascimento || undefined,
     observacoes: payload.observacoes || undefined,
+    cep: payload.cep || undefined,
+    logradouro: payload.logradouro || undefined,
+    numero: payload.numero || undefined,
+    complemento: payload.complemento || undefined,
+    cidade_id: payload.cidade_id || undefined,
   });
 
   return adaptCliente(data);

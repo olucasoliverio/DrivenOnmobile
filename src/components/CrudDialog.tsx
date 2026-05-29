@@ -36,6 +36,14 @@ function formatTelefone(val: string): string {
   return `(${clean.substring(0, 2)}) ${clean.substring(2, 3)} ${clean.substring(3, 11)}`;
 }
 
+function formatCep(val: string): string {
+  const clean = val.replace(/\D/g, '');
+  const len = clean.length;
+  if (len === 0) return '';
+  if (len <= 5) return clean;
+  return `${clean.substring(0, 5)}-${clean.substring(5, 8)}`;
+}
+
 type FormInputProps = {
   field: CrudField;
   initialValue: string;
@@ -65,10 +73,14 @@ function FormInput({ field, initialValue, onChange, visible }: FormInputProps) {
                      field.key.toLowerCase().includes('phone') || 
                      field.key.toLowerCase().includes('celular');
 
+  const isCep = field.key.toLowerCase() === 'cep';
+
   const handleChangeText = (text: string) => {
     let processed = text;
     if (isTelefone) {
       processed = formatTelefone(text);
+    } else if (isCep) {
+      processed = formatCep(text);
     }
     setValue(processed);
     onChange(field.key, processed);
@@ -92,7 +104,7 @@ function FormInput({ field, initialValue, onChange, visible }: FormInputProps) {
       outlineStyle={{ borderRadius: borderRadius.md }}
       theme={{ colors: { background: palette.slate50 } }}
       left={<TextInput.Icon icon={getFieldIcon(field.key)} color={palette.slate400} />}
-      maxLength={isTelefone ? 15 : undefined}
+      maxLength={isTelefone ? 15 : isCep ? 9 : undefined}
     />
   );
 }
@@ -102,6 +114,7 @@ function getFieldIcon(key: string): string {
   if (k.includes('email')) return 'email-outline';
   if (k.includes('telefone') || k.includes('phone') || k.includes('celular') || k.includes('fone')) return 'phone-outline';
   if (k.includes('cpf') || k.includes('cnpj') || k.includes('documento')) return 'card-account-details-outline';
+  if (k === 'cep' || k.includes('logradouro') || k.includes('endereco') || k.includes('cidade') || k.includes('uf') || k.includes('complemento') || k.includes('numero') || k.includes('bairro')) return 'map-marker-outline';
   if (k.includes('observaca') || k.includes('observacao') || k.includes('obs') || k.includes('descri') || k.includes('descricao')) return 'note-text-outline';
   if (k.includes('marca') || k.includes('modelo') || k.includes('placa') || k.includes('cor') || k.includes('veiculo')) return 'car-outline';
   if (k.includes('data') || k.includes('ano') || k.includes('vencimento') || k.includes('inicio') || k.includes('fim')) return 'calendar-outline';

@@ -10,14 +10,19 @@ import { palette, spacing, borderRadius, shadows, gradients } from '../../theme/
 import ScreenHeader from '../../components/ScreenHeader';
 import EmptyState from '../../components/EmptyState';
 import { sendWelcomeMessage } from '../../services/whatsappService';
-
-
+import api from '../../api/api';
 
 const fields: CrudField[] = [
   { key: 'nome', label: 'Nome', autoCapitalize: 'words' },
   { key: 'telefone', label: 'Telefone', keyboardType: 'phone-pad' },
   { key: 'email', label: 'E-mail', keyboardType: 'email-address', autoCapitalize: 'none' },
   { key: 'cpf', label: 'CPF', keyboardType: 'number-pad' },
+  { key: 'cep', label: 'CEP', keyboardType: 'number-pad' },
+  { key: 'logradouro', label: 'Logradouro', autoCapitalize: 'words' },
+  { key: 'numero', label: 'Número', keyboardType: 'number-pad' },
+  { key: 'complemento', label: 'Complemento', autoCapitalize: 'sentences' },
+  { key: 'cidade', label: 'Cidade', autoCapitalize: 'words' },
+  { key: 'uf', label: 'UF (Estado)', autoCapitalize: 'characters' },
   { key: 'observacoes', label: 'Observações', multiline: true },
 ];
 
@@ -34,14 +39,22 @@ export default function ClientesScreen() {
       navigation.setParams({ openForm: undefined });
     }
   }, [route.params?.openForm]);
+  
   const [isSaving, setIsSaving] = useState(false);
   const [isWelcomeModalVisible, setIsWelcomeModalVisible] = useState(false);
   const [registeredCliente, setRegisteredCliente] = useState<{ nome: string; telefone: string } | null>(null);
+  
   const [form, setForm] = useState({
     nome: '',
     telefone: '',
     email: '',
     cpf: '',
+    cep: '',
+    logradouro: '',
+    numero: '',
+    complemento: '',
+    cidade: '',
+    uf: '',
     observacoes: '',
   });
 
@@ -51,12 +64,44 @@ export default function ClientesScreen() {
     c.cpf.includes(busca)
   );
 
-  const updateForm = (field: keyof typeof form, value: string) => {
+  const updateForm = async (field: keyof typeof form, value: string) => {
     setForm((current) => ({ ...current, [field]: value }));
+
+    if (field === 'cep') {
+      const cleanCep = value.replace(/\D/g, '');
+      if (cleanCep.length === 8) {
+        try {
+          const res = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`);
+          const data = await res.json();
+          if (!data.erro) {
+            setForm((current) => ({
+              ...current,
+              logradouro: data.logradouro || '',
+              cidade: data.localidade || '',
+              uf: data.uf || '',
+            }));
+          }
+        } catch (err) {
+          console.error('Error fetching CEP:', err);
+        }
+      }
+    }
   };
 
   const resetForm = () => {
-    setForm({ nome: '', telefone: '', email: '', cpf: '', observacoes: '' });
+    setForm({
+      nome: '',
+      telefone: '',
+      email: '',
+      cpf: '',
+      cep: '',
+      logradouro: '',
+      numero: '',
+      complemento: '',
+      cidade: '',
+      uf: '',
+      observacoes: '',
+    });
   };
 
   const handleCreateCliente = async () => {
@@ -67,12 +112,31 @@ export default function ClientesScreen() {
 
     setIsSaving(true);
     try {
+      let cidadeId: number | undefined = undefined;
+
+      if (form.cidade.trim() && form.uf.trim()) {
+        try {
+          const resCidade = await api.post('/cidade', {
+            nome: form.cidade.trim(),
+            uf: form.uf.trim().toUpperCase(),
+          });
+          cidadeId = resCidade.data?.id;
+        } catch (err) {
+          console.error('Erro ao cadastrar/buscar cidade:', err);
+        }
+      }
+
       const novoCliente = await createCliente({
         nome: form.nome.trim(),
         telefone: form.telefone.trim(),
         email: form.email.trim(),
         cpf: form.cpf.trim(),
         observacoes: form.observacoes.trim(),
+        cep: form.cep.trim(),
+        logradouro: form.logradouro.trim(),
+        numero: form.numero.trim(),
+        complemento: form.complemento.trim(),
+        cidade_id: cidadeId,
       });
       resetForm();
       setIsFormOpen(false);
