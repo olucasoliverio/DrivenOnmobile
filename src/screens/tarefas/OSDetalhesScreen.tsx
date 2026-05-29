@@ -63,6 +63,7 @@ export default function OSDetalhesScreen() {
     loadShortUrl();
   }, [os?.id]);
 
+
   if (!os) {
     return (
       <View style={styles.container}>
@@ -112,6 +113,15 @@ export default function OSDetalhesScreen() {
   const [selectedMetodo, setSelectedMetodo] = useState<'pix' | 'dinheiro' | 'cartao' | 'boleto'>('pix');
   const [selectedStatus, setSelectedStatus] = useState<'pendente' | 'pago'>('pago');
   const [isRegisteringPayment, setIsRegisteringPayment] = useState(false);
+
+  useEffect(() => {
+    if (isSuccessModalVisible) {
+      const timer = setTimeout(() => {
+        setIsSuccessModalVisible(false);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [isSuccessModalVisible]);
 
   const sugerirNotificacaoWhatsApp = () => {
     if (cliente?.telefone) {
@@ -697,8 +707,15 @@ export default function OSDetalhesScreen() {
         statusBarTranslucent={true}
         onRequestClose={() => setIsWhatsAppPromptVisible(false)}
       >
-        <View style={styles.dialogBackdrop}>
-          <View style={styles.dialogContent}>
+        <TouchableOpacity
+          style={styles.dialogBackdrop}
+          activeOpacity={1}
+          onPress={() => setIsWhatsAppPromptVisible(false)}
+        >
+          <TouchableOpacity
+            activeOpacity={1}
+            style={styles.dialogContent}
+          >
             <View style={[styles.dialogIconBox, { backgroundColor: 'rgba(37, 211, 102, 0.08)' }]}>
               <MaterialCommunityIcons name="whatsapp" size={32} color="#25D366" />
             </View>
@@ -735,8 +752,8 @@ export default function OSDetalhesScreen() {
                 </LinearGradient>
               </TouchableOpacity>
             </View>
-          </View>
-        </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
       </Modal>
 
       {/* ── Registrar Cobrança Modal ── */}
@@ -868,8 +885,15 @@ export default function OSDetalhesScreen() {
         statusBarTranslucent={true}
         onRequestClose={() => setIsSuccessModalVisible(false)}
       >
-        <View style={styles.dialogBackdrop}>
-          <View style={styles.dialogContent}>
+        <TouchableOpacity
+          style={styles.dialogBackdrop}
+          activeOpacity={1}
+          onPress={() => setIsSuccessModalVisible(false)}
+        >
+          <TouchableOpacity
+            activeOpacity={1}
+            style={styles.dialogContent}
+          >
             <View style={[styles.dialogIconBox, { backgroundColor: 'rgba(37, 211, 102, 0.08)' }]}>
               <MaterialCommunityIcons name="check-circle" size={32} color="#25D366" />
             </View>
@@ -895,8 +919,8 @@ export default function OSDetalhesScreen() {
                 </LinearGradient>
               </TouchableOpacity>
             </View>
-          </View>
-        </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
       </Modal>
     </View>
   );

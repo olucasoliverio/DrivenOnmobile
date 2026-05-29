@@ -9,7 +9,7 @@ import CrudDialog, { type CrudField } from '../../components/CrudDialog';
 import { sendWhatsAppMessage } from '../../services/whatsappService';
 import dayjs from 'dayjs';
 import { LinearGradient } from 'expo-linear-gradient';
-import { API_BASE_URL, getAuthToken } from '../../api/api';
+import api, { API_BASE_URL, getAuthToken } from '../../api/api';
 
 const editFields: CrudField[] = [
   { key: 'cliente_id', label: 'Cliente', keyboardType: 'number-pad' },
@@ -59,6 +59,15 @@ export default function OrcamentoDetalhesScreen() {
     }
     loadShortUrl();
   }, [orcamento?.id]);
+
+  useEffect(() => {
+    if (isSuccessModalVisible) {
+      const timer = setTimeout(() => {
+        setIsSuccessModalVisible(false);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [isSuccessModalVisible]);
   
   if (!orcamento) {
     return (
@@ -387,7 +396,7 @@ export default function OrcamentoDetalhesScreen() {
               onPress={async () => {
                 setIsStatusModalVisible(false);
                 try {
-                  await updateRecord('/orcamentos', orcamento.id, { status: 'aprovado' });
+                  await api.patch(`/orcamentos/${orcamento.id}/status`, { status: 'aprovado' });
                   await refresh();
                   sugerirConversaoOS();
                 } catch (error: any) {
@@ -410,7 +419,7 @@ export default function OrcamentoDetalhesScreen() {
               onPress={async () => {
                 setIsStatusModalVisible(false);
                 try {
-                  await updateRecord('/orcamentos', orcamento.id, { status: 'recusado' });
+                  await api.patch(`/orcamentos/${orcamento.id}/status`, { status: 'recusado' });
                   await refresh();
                   sugerirNotificacaoWhatsApp();
                 } catch (error: any) {
@@ -433,7 +442,7 @@ export default function OrcamentoDetalhesScreen() {
               onPress={async () => {
                 setIsStatusModalVisible(false);
                 try {
-                  await updateRecord('/orcamentos', orcamento.id, { status: 'analise' });
+                  await api.patch(`/orcamentos/${orcamento.id}/status`, { status: 'analise' });
                   await refresh();
                   sugerirNotificacaoWhatsApp();
                 } catch (error: any) {
@@ -469,8 +478,15 @@ export default function OrcamentoDetalhesScreen() {
         statusBarTranslucent={true}
         onRequestClose={() => setIsWhatsAppPromptVisible(false)}
       >
-        <View style={styles.dialogBackdrop}>
-          <View style={styles.dialogContent}>
+        <TouchableOpacity
+          style={styles.dialogBackdrop}
+          activeOpacity={1}
+          onPress={() => setIsWhatsAppPromptVisible(false)}
+        >
+          <TouchableOpacity
+            activeOpacity={1}
+            style={styles.dialogContent}
+          >
             <View style={[styles.dialogIconBox, { backgroundColor: 'rgba(37, 211, 102, 0.08)' }]}>
               <MaterialCommunityIcons name="whatsapp" size={32} color="#25D366" />
             </View>
@@ -507,8 +523,8 @@ export default function OrcamentoDetalhesScreen() {
                 </LinearGradient>
               </TouchableOpacity>
             </View>
-          </View>
-        </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
       </Modal>
 
       {/* ── Success Modal ── */}
@@ -519,8 +535,15 @@ export default function OrcamentoDetalhesScreen() {
         statusBarTranslucent={true}
         onRequestClose={() => setIsSuccessModalVisible(false)}
       >
-        <View style={styles.dialogBackdrop}>
-          <View style={styles.dialogContent}>
+        <TouchableOpacity
+          style={styles.dialogBackdrop}
+          activeOpacity={1}
+          onPress={() => setIsSuccessModalVisible(false)}
+        >
+          <TouchableOpacity
+            activeOpacity={1}
+            style={styles.dialogContent}
+          >
             <View style={[styles.dialogIconBox, { backgroundColor: '#E8F5E9' }]}>
               <MaterialIcons name="check" size={32} color={palette.emerald600} />
             </View>
@@ -530,22 +553,24 @@ export default function OrcamentoDetalhesScreen() {
               A notificação do orçamento foi disparada com sucesso para o WhatsApp de {cliente?.nome}.
             </Text>
 
-            <TouchableOpacity
-              style={[styles.dialogConfirmButton, { width: '100%' }]}
-              activeOpacity={0.8}
-              onPress={() => setIsSuccessModalVisible(false)}
-            >
-              <LinearGradient
-                colors={gradients.navyPrimary}
-                style={styles.dialogConfirmButtonGradient}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
+            <View style={styles.dialogActionRow}>
+              <TouchableOpacity
+                style={styles.dialogConfirmButton}
+                activeOpacity={0.8}
+                onPress={() => setIsSuccessModalVisible(false)}
               >
-                <Text style={styles.dialogConfirmButtonText}>Ok</Text>
-              </LinearGradient>
-            </TouchableOpacity>
-          </View>
-        </View>
+                <LinearGradient
+                  colors={gradients.navyPrimary}
+                  style={styles.dialogConfirmButtonGradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                >
+                  <Text style={styles.dialogConfirmButtonText}>Ok</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
       </Modal>
     </View>
   );

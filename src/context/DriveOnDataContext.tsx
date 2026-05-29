@@ -14,7 +14,7 @@ type DriveOnDataContextData = DriveOnData & {
   error: string | null;
   refresh: () => Promise<void>;
   createCliente: (payload: ClientePayload) => Promise<Cliente>;
-  createRecord: (path: string, payload: Record<string, unknown>) => Promise<void>;
+  createRecord: (path: string, payload: Record<string, unknown>) => Promise<any>;
   updateRecord: (path: string, id: number, payload: Record<string, unknown>) => Promise<void>;
   deleteRecord: (path: string, id: number) => Promise<void>;
 };
@@ -66,8 +66,9 @@ export function DriveOnDataProvider({ children }: { children: React.ReactNode })
 
   const createRecord = useCallback(async (path: string, payload: Record<string, unknown>) => {
     const { default: api } = await import('../api/api');
-    await api.post(path, payload);
+    const response = await api.post(path, payload);
     await refresh();
+    return response.data;
   }, [refresh]);
 
   const updateRecord = useCallback(async (path: string, id: number, payload: Record<string, unknown>) => {

@@ -169,13 +169,18 @@ export default function OSFormScreen() {
         })),
       };
 
+      let newOS: any = null;
       if (isEditing && os) {
         await updateRecord('/ordens', os.id, payload);
       } else {
-        await createRecord('/ordens', payload);
+        newOS = await createRecord('/ordens', payload);
       }
 
-      navigation.goBack();
+      if (!isEditing && orcamentoId && newOS && newOS.id) {
+        navigation.replace('OSDetalhes', { osId: newOS.id });
+      } else {
+        navigation.goBack();
+      }
     } catch (err: any) {
       Alert.alert(
         'Erro ao salvar',
