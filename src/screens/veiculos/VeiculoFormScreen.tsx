@@ -11,10 +11,12 @@ import {
   Modal,
   FlatList,
   TextInput as RNTextInput,
+  BackHandler,
+  Keyboard,
 } from 'react-native';
 import { Button, TextInput } from 'react-native-paper';
 import { MaterialIcons } from '@expo/vector-icons';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import { useDriveOnData } from '../../context/DriveOnDataContext';
 import { useAuth } from '../../context/AuthContext';
 import { palette, spacing, borderRadius, shadows } from '../../theme/theme';
@@ -51,6 +53,7 @@ export default function VeiculoFormScreen() {
   const [clienteModalVisible, setClienteModalVisible] = useState(false);
   const [clienteSearch, setClienteSearch] = useState('');
   const [fuelModalVisible, setFuelModalVisible] = useState(false);
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
   const [form, setForm] = useState({
     clienteId: null as number | null,
     clienteNome: '',
@@ -91,6 +94,43 @@ export default function VeiculoFormScreen() {
       }
     }
   }, [isEditing, veiculo?.id, clientes, initialClienteId]);
+
+  useEffect(() => {
+    const showSub = Keyboard.addListener('keyboardDidShow', () => setIsKeyboardVisible(true));
+    const hideSub = Keyboard.addListener('keyboardDidHide', () => setIsKeyboardVisible(false));
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
+
+  const handleBack = React.useCallback(() => {
+    if (isKeyboardVisible) {
+      Keyboard.dismiss();
+      return true;
+    }
+    if (clienteModalVisible) {
+      setClienteModalVisible(false);
+      setClienteSearch('');
+      return true;
+    }
+    if (fuelModalVisible) {
+      setFuelModalVisible(false);
+      return true;
+    }
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+      return true;
+    }
+    return false;
+  }, [clienteModalVisible, fuelModalVisible, isKeyboardVisible, navigation]);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      const subscription = BackHandler.addEventListener('hardwareBackPress', handleBack);
+      return () => subscription.remove();
+    }, [handleBack]),
+  );
 
   const filteredClientes = clientes.filter(c =>
     c.nome.toLowerCase().includes(clienteSearch.toLowerCase())
@@ -150,6 +190,7 @@ export default function VeiculoFormScreen() {
         title={isEditing ? 'Editar Veículo' : 'Novo Veículo'}
         subtitle={isEditing ? 'Atualize as informações do veículo' : 'Cadastre um novo veículo'}
         showBack={true}
+        onBack={handleBack}
       />
       <KeyboardAvoidingView 
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}

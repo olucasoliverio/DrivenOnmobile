@@ -25,6 +25,7 @@ interface ScreenHeaderProps {
   subtitle?: string;
   /** Mostrar botão de voltar (padrão: false) */
   showBack?: boolean;
+  onBack?: () => void;
   /** Elemento extra no canto direito */
   rightElement?: React.ReactNode;
   /** Cor de fundo (padrão: branco) */
@@ -35,6 +36,7 @@ export default function ScreenHeader({
   title,
   subtitle,
   showBack = false,
+  onBack,
   rightElement,
   backgroundColor = palette.white,
 }: ScreenHeaderProps) {
@@ -49,7 +51,7 @@ export default function ScreenHeader({
         {showBack && (
           <TouchableOpacity
             style={styles.backBtn}
-            onPress={() => navigation.goBack()}
+            onPress={onBack ?? (() => navigation.goBack())}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
             <MaterialIcons name="arrow-back" size={24} color={palette.slate700} />
