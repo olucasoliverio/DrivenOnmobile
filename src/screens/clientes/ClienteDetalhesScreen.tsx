@@ -253,8 +253,20 @@ export default function ClienteDetalhesScreen() {
       {/* ── Veículos Redesenhados ── */}
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
-          <MaterialIcons name="directions-car" size={18} color={palette.navy800} />
-          <Text style={styles.sectionTitle}>Veículos ({veiculos.length})</Text>
+          <View style={styles.sectionHeaderTitleGroup}>
+            <MaterialIcons name="directions-car" size={18} color={palette.navy800} />
+            <Text style={styles.sectionTitle}>Veículos ({veiculos.length})</Text>
+          </View>
+          {veiculos.length > 0 && (
+            <TouchableOpacity
+              style={styles.sectionAddButton}
+              activeOpacity={0.75}
+              onPress={() => navigation.navigate('VeiculoForm', { clienteId: cliente.id })}
+            >
+              <MaterialIcons name="add" size={16} color={palette.navy800} />
+              <Text style={styles.sectionAddButtonText}>Adicionar</Text>
+            </TouchableOpacity>
+          )}
         </View>
         {veiculos.map(v => (
           <TouchableOpacity
@@ -275,7 +287,23 @@ export default function ClienteDetalhesScreen() {
           </TouchableOpacity>
         ))}
         {veiculos.length === 0 && (
-          <Text style={styles.emptyText}>Nenhum veículo cadastrado</Text>
+          <View style={styles.emptyVehicleCard}>
+            <View style={styles.emptyVehicleIcon}>
+              <MaterialIcons name="directions-car" size={28} color={palette.navy800} />
+            </View>
+            <Text style={styles.emptyVehicleTitle}>Nenhum veículo cadastrado</Text>
+            <Text style={styles.emptyVehicleText}>
+              Cadastre o veículo deste cliente para criar OS, orçamentos e agendamentos.
+            </Text>
+            <TouchableOpacity
+              style={styles.emptyVehicleButton}
+              activeOpacity={0.8}
+              onPress={() => navigation.navigate('VeiculoForm', { clienteId: cliente.id })}
+            >
+              <MaterialIcons name="add" size={18} color={palette.white} />
+              <Text style={styles.emptyVehicleButtonText}>Cadastrar Veículo</Text>
+            </TouchableOpacity>
+          </View>
         )}
       </View>
 
@@ -775,13 +803,36 @@ const styles = StyleSheet.create({
   sectionHeader: { 
     flexDirection: 'row', 
     alignItems: 'center', 
+    justifyContent: 'space-between',
     gap: spacing.sm, 
     marginBottom: spacing.md, 
     paddingBottom: spacing.sm, 
     borderBottomWidth: 1, 
     borderBottomColor: 'rgba(15, 23, 42, 0.04)' 
   },
+  sectionHeaderTitleGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    flex: 1,
+  },
   sectionTitle: { fontSize: 14, fontWeight: '800', color: palette.slate900, letterSpacing: -0.2 },
+  sectionAddButton: {
+    minHeight: 34,
+    borderRadius: borderRadius.full,
+    paddingHorizontal: spacing.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: palette.navy50,
+    borderWidth: 1,
+    borderColor: 'rgba(37, 99, 235, 0.12)',
+  },
+  sectionAddButtonText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: palette.navy800,
+  },
 
   // Info rows
   infoRow: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.sm, gap: spacing.sm },
@@ -804,6 +855,53 @@ const styles = StyleSheet.create({
   veiculoIconBox: { width: 36, height: 36, borderRadius: 10, backgroundColor: 'rgba(37, 99, 235, 0.05)', justifyContent: 'center', alignItems: 'center' },
   veiculoNome: { fontSize: 14, fontWeight: '700', color: palette.slate900 },
   veiculoInfo: { fontSize: 12, color: palette.slate500, fontWeight: '500', marginTop: 2 },
+  emptyVehicleCard: {
+    alignItems: 'center',
+    backgroundColor: palette.slate50,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: palette.slate200,
+    padding: spacing.lg,
+  },
+  emptyVehicleIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 18,
+    backgroundColor: palette.white,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: spacing.md,
+    ...shadows.sm,
+  },
+  emptyVehicleTitle: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: palette.slate900,
+    textAlign: 'center',
+  },
+  emptyVehicleText: {
+    fontSize: 14,
+    color: palette.slate500,
+    lineHeight: 20,
+    textAlign: 'center',
+    marginTop: spacing.xs,
+    marginBottom: spacing.md,
+  },
+  emptyVehicleButton: {
+    minHeight: 48,
+    borderRadius: borderRadius.md,
+    paddingHorizontal: spacing.lg,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+    backgroundColor: palette.navy800,
+  },
+  emptyVehicleButtonText: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: palette.white,
+  },
 
   // OS rows
   osRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.sm },

@@ -22,12 +22,18 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#1565C0"
       },
-      "edgeToEdgeEnabled": true,
+      "edgeToEdgeEnabled": false,
+      "softwareKeyboardLayoutMode": "resize",
       "predictiveBackGestureEnabled": false,
       "permissions": [
         "android.permission.CAMERA",
         "android.permission.RECORD_AUDIO"
       ]
+    },
+    "androidNavigationBar": {
+      "barStyle": "dark-content",
+      "backgroundColor": "#F1F5F9",
+      "enforceContrast": false
     },
     "web": {
       "favicon": "./assets/favicon.png"

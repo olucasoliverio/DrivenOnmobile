@@ -4,12 +4,14 @@ import { Surface, FAB, IconButton } from 'react-native-paper';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { useDriveOnData } from '../../context/DriveOnDataContext';
+import { useAuth } from '../../context/AuthContext';
 import { colors, spacing, borderRadius, palette, shadows } from '../../theme/theme';
 import dayjs from 'dayjs';
 import CrudDialog, { type CrudField } from '../../components/CrudDialog';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import ScreenHeader from '../../components/ScreenHeader';
 import EmptyState from '../../components/EmptyState';
+import LoadingState from '../../components/LoadingState';
 import { sendEstimateMessage } from '../../services/whatsappService';
 import AdvancedFilterModal from '../../components/AdvancedFilterModal';
 
@@ -53,7 +55,8 @@ export default function OrcamentosScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
-  const { orcamentos: orcamentosData, clientes, veiculos, deleteRecord, refresh } = useDriveOnData();
+  const { orcamentos: orcamentosData, clientes, veiculos, deleteRecord, refresh, isLoading } = useDriveOnData();
+  const { can } = useAuth();
   const [filtro, setFiltro] = useState<'todos' | 'aprovado' | 'analise' | 'recusado'>('todos');
   const [filtroData, setFiltroData] = useState<OrcamentoDateFilter>('mes');
   const [customStart, setCustomStart] = useState('');
@@ -155,11 +158,18 @@ export default function OrcamentosScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[palette.navy800]} />
         }
         ListEmptyComponent={() => (
-          <EmptyState
-            icon="description"
-            message={filtro !== 'todos' ? `Nenhum orçamento ${filtro} encontrado` : 'Nenhum orçamento cadastrado'}
-            isFullPage
-          />
+          isLoading ? (
+            <LoadingState message="Carregando orcamentos..." isFullPage />
+          ) : (
+            <EmptyState
+              icon="description"
+              message={filtro !== 'todos' ? `Nenhum orçamento ${filtro} encontrado` : 'Nenhum orçamento cadastrado'}
+              helper={filtro !== 'todos' ? 'Altere os filtros para ver outros orçamentos.' : 'Crie um orçamento para apresentar valores ao cliente.'}
+              actionLabel={filtro !== 'todos' || !can('orcamentos', 'create') ? undefined : 'Novo Orçamento'}
+              onAction={filtro !== 'todos' || !can('orcamentos', 'create') ? undefined : () => navigation.navigate('OrcamentoForm')}
+              isFullPage
+            />
+          )
         )}
         renderItem={({ item: o }) => {
           const cliente = clientes.find(c => c.id === o.clienteId);
@@ -214,7 +224,9 @@ export default function OrcamentosScreen() {
           );
         }}
       />
-      <FAB icon="plus" style={styles.fab} color="#FFF" onPress={() => navigation.navigate('OrcamentoForm')} />
+      {can('orcamentos', 'create') && (
+        <FAB icon="plus" style={styles.fab} color="#FFF" onPress={() => navigation.navigate('OrcamentoForm')} />
+      )}
       <AdvancedFilterModal
         visible={filterModalVisible}
         periodValue={filtroData}

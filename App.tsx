@@ -6,7 +6,7 @@ import { AuthProvider } from './src/context/AuthContext';
 import { DriveOnDataProvider } from './src/context/DriveOnDataContext';
 import { AlertProvider } from './src/context/AlertContext';
 import RootNavigator from './src/navigation/RootNavigator';
-import { theme } from './src/theme/theme';
+import { palette, theme } from './src/theme/theme';
 import { StatusBar } from 'expo-status-bar';
 
 export default function App() {
@@ -16,7 +16,7 @@ export default function App() {
         <AlertProvider>
           <AuthProvider>
             <DriveOnDataProvider>
-              <StatusBar style="light" />
+              <StatusBar style="light" backgroundColor={palette.navy800} />
               <RootNavigator />
             </DriveOnDataProvider>
           </AuthProvider>

@@ -6,11 +6,13 @@ import { FAB } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useDriveOnData } from '../../context/DriveOnDataContext';
+import { useAuth } from '../../context/AuthContext';
 import { palette, spacing, borderRadius, shadows, gradients } from '../../theme/theme';
 import dayjs from 'dayjs';
 import CrudDialog, { type CrudField } from '../../components/CrudDialog';
 import ScreenHeader from '../../components/ScreenHeader';
 import EmptyState from '../../components/EmptyState';
+import LoadingState from '../../components/LoadingState';
 import AdvancedFilterModal from '../../components/AdvancedFilterModal';
 
 type StatusKey = 'todos' | 'em_andamento' | 'aguardando' | 'aguardando_pecas' | 'concluido';
@@ -55,7 +57,8 @@ export default function TarefasScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
-  const { ordens: ordensData, clientes, veiculos, refresh } = useDriveOnData();
+  const { ordens: ordensData, clientes, veiculos, refresh, isLoading } = useDriveOnData();
+  const { can } = useAuth();
   const [filtroStatus, setFiltroStatus] = useState<StatusKey>('todos');
   const [filtroData, setFiltroData] = useState<OSDateFilter>('mes');
   const [customStart, setCustomStart] = useState('');
@@ -138,7 +141,7 @@ export default function TarefasScreen() {
     <View style={styles.container}>
       <ScreenHeader 
         title="Ordens de Serviço" 
-        subtitle={`${ordens.length} resultado${ordens.length !== 1 ? 's' : ''}`}
+        subtitle={isLoading ? 'Carregando...' : `${ordens.length} resultado${ordens.length !== 1 ? 's' : ''}`}
         showBack={false} 
       />
 
@@ -185,11 +188,18 @@ export default function TarefasScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[palette.navy800]} />
         }
         ListEmptyComponent={() => (
-          <EmptyState
-            icon="build"
-            message={busca.length > 0 ? 'Nenhuma OS encontrada para esta busca' : 'Nenhuma ordem de serviço'}
-            isFullPage
-          />
+          isLoading ? (
+            <LoadingState message="Carregando ordens de servico..." isFullPage />
+          ) : (
+            <EmptyState
+              icon="build"
+              message={busca.length > 0 ? 'Nenhuma OS encontrada para esta busca' : 'Nenhuma ordem de serviço'}
+              helper={busca.length > 0 ? 'Tente buscar pelo número da OS ou pelo nome do cliente.' : 'Abra uma ordem de serviço para registrar o trabalho da oficina.'}
+              actionLabel={busca.length > 0 || !can('ordens', 'create') ? undefined : 'Nova Ordem'}
+              onAction={busca.length > 0 || !can('ordens', 'create') ? undefined : () => navigation.navigate('OSForm')}
+              isFullPage
+            />
+          )
         )}
         renderItem={({ item: os }) => {
           const cliente = clientes.find(c => c.id === os.clienteId);
@@ -232,7 +242,9 @@ export default function TarefasScreen() {
         }}
       />
 
-      <FAB icon="plus" style={styles.fab} color={palette.white} onPress={() => navigation.navigate('OSForm')} />
+      {can('ordens', 'create') && (
+        <FAB icon="plus" style={styles.fab} color={palette.white} onPress={() => navigation.navigate('OSForm')} />
+      )}
       <AdvancedFilterModal
         visible={filterModalVisible}
         periodValue={filtroData}

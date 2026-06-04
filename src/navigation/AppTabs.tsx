@@ -11,44 +11,48 @@ import { createMaterialTopTabNavigator } from '@react-navigation/material-top-ta
 import { MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { palette, shadows, colors } from '../theme/theme';
+import { useAuth } from '../context/AuthContext';
+import { useDriveOnData } from '../context/DriveOnDataContext';
+import { isModuleResourceEnabled, type AccessModule } from '../permissions/accessProfiles';
 
-// Stacks
 import HomeStack from './stacks/HomeStack';
+import TarefasStack from './stacks/TarefasStack';
+import ClientesStack from './stacks/ClientesStack';
+import AgendaStack from './stacks/AgendaStack';
 import MenuStack from './stacks/MenuStack';
 
 const Tab = createMaterialTopTabNavigator();
 
 type IconName = keyof typeof MaterialIcons.glyphMap;
 
-const TABS: { name: string; label: string; icon: IconName; component: any }[] = [
-  { name: 'Dashboard', label: 'Início', icon: 'home',  component: HomeStack },
-  { name: 'Menu',      label: 'Menu',   icon: 'menu',  component: MenuStack },
+const TABS: { name: string; label: string; icon: IconName; component: any; module?: AccessModule }[] = [
+  { name: 'Dashboard', label: 'Início', icon: 'home', component: HomeStack, module: 'painel' },
+  { name: 'OSTab', label: 'OS', icon: 'build', component: TarefasStack, module: 'ordens' },
+  { name: 'ClientesTab', label: 'Clientes', icon: 'people', component: ClientesStack, module: 'clientes' },
+  { name: 'AgendaTab', label: 'Agenda', icon: 'event', component: AgendaStack, module: 'agenda' },
+  { name: 'Menu', label: 'Menu', icon: 'menu', component: MenuStack },
 ];
 
-const ACTIVE_COLOR   = colors.primary;
+const ACTIVE_COLOR = colors.primary;
 const INACTIVE_COLOR = palette.slate400;
-const FLASH_COLOR    = `${colors.primary}15`;
+const FLASH_COLOR = `${colors.primary}15`;
 
-// ── Botão customizado ─────────────────────────────────────────────────────────
-// Usa EXATAMENTE o `style` que o React Navigation injeta (não mescla com nada)
-// para preservar o layout nativo correto (posição, largura, alinhamento).
-// O flash é um View absoluteFill irmão dos children — sem overflow:hidden.
 function TabButton({
   onPress,
   onLongPress,
   children,
-  style,                // ← layout nativo do RN Navigation (width, flex, position…)
+  style,
   accessibilityRole,
   accessibilityState,
   accessibilityLabel,
 }: any) {
   const flash = useRef(new Animated.Value(0)).current;
 
-  const animIn  = () => Animated.timing(flash, { toValue: 1, duration: 60,  useNativeDriver: false }).start();
+  const animIn = () => Animated.timing(flash, { toValue: 1, duration: 60, useNativeDriver: false }).start();
   const animOut = () => Animated.timing(flash, { toValue: 0, duration: 220, useNativeDriver: false }).start();
 
   const bgColor = flash.interpolate({
-    inputRange:  [0, 1],
+    inputRange: [0, 1],
     outputRange: ['rgba(0,0,0,0)', FLASH_COLOR],
   });
 
@@ -62,14 +66,12 @@ function TabButton({
       accessibilityState={accessibilityState}
       accessibilityLabel={accessibilityLabel}
       android_ripple={{ color: FLASH_COLOR, borderless: false }}
-      // style puro do RN Navigation: preserva flex:1 e largura correta
       style={style}
     >
       <Animated.View
         pointerEvents="none"
         style={[StyleSheet.absoluteFillObject, { backgroundColor: bgColor }]}
       />
-      {/* View interno centraliza sem afetar o layout externo */}
       <View style={styles.tabInner}>
         {children}
       </View>
@@ -77,78 +79,87 @@ function TabButton({
   );
 }
 
-// ── Custom Tab Bar ─────────────────────────────────────────────────────────────
-function CustomTabBar({ state, descriptors, navigation }: any) {
+function CustomTabBar({ state, descriptors, navigation, tabs }: any) {
   const insets = useSafeAreaInsets();
-  const bottomMargin = Platform.OS === 'ios' ? insets.bottom || 16 : 12;
+  const bottomMargin = Platform.OS === 'ios' ? insets.bottom || 16 : Math.max(insets.bottom, 12);
 
   return (
-    <View style={[styles.tabBar, { bottom: bottomMargin, flexDirection: 'row' }]}>
-      {state.routes.map((route: any, index: number) => {
-        const { options } = descriptors[route.key];
-        const isFocused = state.index === index;
+    <View pointerEvents="box-none" style={[styles.tabSafeArea, { height: 68 + bottomMargin + 12 }]}>
+      <View style={[styles.tabBar, { bottom: bottomMargin, flexDirection: 'row' }]}>
+        {state.routes.map((route: any, index: number) => {
+          const { options } = descriptors[route.key];
+          const isFocused = state.index === index;
 
-        const onPress = () => {
-          const event = navigation.emit({
-            type: 'tabPress',
-            target: route.key,
-            canPreventDefault: true,
-          });
+          const onPress = () => {
+            const event = navigation.emit({
+              type: 'tabPress',
+              target: route.key,
+              canPreventDefault: true,
+            });
 
-          if (!isFocused && !event.defaultPrevented) {
-            navigation.navigate(route.name);
-          }
-        };
+            if (!isFocused && !event.defaultPrevented) {
+              navigation.navigate(route.name);
+            }
+          };
 
-        const onLongPress = () => {
-          navigation.emit({
-            type: 'tabLongPress',
-            target: route.key,
-          });
-        };
+          const onLongPress = () => {
+            navigation.emit({
+              type: 'tabLongPress',
+              target: route.key,
+            });
+          };
 
-        const tab = TABS.find(t => t.name === route.name);
-        if (!tab) return null;
+          const tab = tabs.find((t: typeof TABS[number]) => t.name === route.name);
+          if (!tab) return null;
 
-        return (
-          <TabButton
-            key={route.key}
-            onPress={onPress}
-            onLongPress={onLongPress}
-            style={styles.tabBarItem}
-            accessibilityRole="button"
-            accessibilityState={isFocused ? { selected: true } : {}}
-            accessibilityLabel={options.tabBarAccessibilityLabel}
-          >
-            <View style={styles.iconWrapper}>
-              <View style={[styles.activeBar, isFocused && styles.activeBarVisible]} />
-              <MaterialIcons
-                name={tab.icon}
-                size={24}
-                color={isFocused ? ACTIVE_COLOR : INACTIVE_COLOR}
-              />
-              <Text style={[styles.label, isFocused && styles.labelActive]}>
-                {tab.label}
-              </Text>
-            </View>
-          </TabButton>
-        );
-      })}
+          return (
+            <TabButton
+              key={route.key}
+              onPress={onPress}
+              onLongPress={onLongPress}
+              style={styles.tabBarItem}
+              accessibilityRole="button"
+              accessibilityState={isFocused ? { selected: true } : {}}
+              accessibilityLabel={options.tabBarAccessibilityLabel}
+            >
+              <View style={styles.iconWrapper}>
+                <View style={[styles.activeBar, isFocused && styles.activeBarVisible]} />
+                <MaterialIcons
+                  name={tab.icon}
+                  size={23}
+                  color={isFocused ? ACTIVE_COLOR : INACTIVE_COLOR}
+                />
+                <Text style={[styles.label, isFocused && styles.labelActive]}>
+                  {tab.label}
+                </Text>
+              </View>
+            </TabButton>
+          );
+        })}
+      </View>
     </View>
   );
 }
 
-// ── Navigator ─────────────────────────────────────────────────────────────────
 export default function AppTabs() {
+  const { can } = useAuth();
+  const { configuracoes } = useDriveOnData();
+
+  const tabs = TABS.filter(tab => {
+    if (!tab.module) return true;
+    return can(tab.module) && isModuleResourceEnabled(configuracoes.recursosAdicionais, tab.module);
+  });
+
   return (
     <Tab.Navigator
       tabBarPosition="bottom"
-      tabBar={(props) => <CustomTabBar {...props} />}
+      tabBar={(props) => <CustomTabBar {...props} tabs={tabs} />}
       screenOptions={{
+        lazy: true,
         swipeEnabled: true,
       }}
     >
-      {TABS.map(tab => (
+      {tabs.map(tab => (
         <Tab.Screen
           key={tab.name}
           name={tab.name}
@@ -160,13 +171,19 @@ export default function AppTabs() {
   );
 }
 
-// ── Styles ────────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
+  tabSafeArea: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: palette.slate100,
+  },
   tabBar: {
     position: 'absolute',
     left: 12,
     right: 12,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: palette.white,
     borderRadius: 24,
     borderTopWidth: 0,
     height: 68,
@@ -182,7 +199,6 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 68,
   },
-  // View interno: centraliza conteúdo sem afetar layout do Pressable
   tabInner: {
     flex: 1,
     width: '100%',
@@ -205,11 +221,11 @@ const styles = StyleSheet.create({
     backgroundColor: ACTIVE_COLOR,
   },
   label: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '500',
     color: INACTIVE_COLOR,
     textAlign: 'center',
-    letterSpacing: 0.1,
+    letterSpacing: 0,
     marginTop: 2,
   },
   labelActive: {

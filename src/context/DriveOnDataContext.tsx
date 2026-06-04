@@ -26,9 +26,10 @@ type DriveOnDataContextData = DriveOnData & {
 const DriveOnDataContext = createContext<DriveOnDataContextData | null>(null);
 
 export function DriveOnDataProvider({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const [data, setData] = useState<DriveOnData>(emptyDriveOnData);
   const [isLoading, setIsLoading] = useState(false);
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
@@ -41,7 +42,7 @@ export function DriveOnDataProvider({ children }: { children: React.ReactNode })
     setIsLoading(true);
     setError(null);
     try {
-      const nextData = await fetchDriveOnData();
+      const nextData = await fetchDriveOnData(user?.permissoes);
       console.log('[DriveOnDataContext] refresh data fetch completed successfully.');
       setData(nextData);
     } catch (err) {
@@ -49,10 +50,11 @@ export function DriveOnDataProvider({ children }: { children: React.ReactNode })
       const message = err instanceof Error ? err.message : 'Nao foi possivel carregar os dados do DriveOn.';
       setError(message);
     } finally {
+      setHasLoadedOnce(true);
       setIsLoading(false);
       console.log('[DriveOnDataContext] refresh finished, isLoading set to false.');
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, user?.permissoes]);
 
   const createCliente = useCallback(async (payload: ClientePayload) => {
     const cliente = await createClienteRequest(payload);
@@ -126,14 +128,17 @@ export function DriveOnDataProvider({ children }: { children: React.ReactNode })
     } else {
       setData(emptyDriveOnData);
       setReadNotificationIds([]);
+      setHasLoadedOnce(false);
       setError(null);
     }
   }, [isAuthenticated, refresh]);
 
+  const visibleIsLoading = isLoading || (isAuthenticated && !hasLoadedOnce);
+
   const value = useMemo(
     () => ({
       ...data,
-      isLoading,
+      isLoading: visibleIsLoading,
       error,
       refresh,
       createCliente,
@@ -144,7 +149,7 @@ export function DriveOnDataProvider({ children }: { children: React.ReactNode })
       markAsRead,
       markAllAsRead,
     }),
-    [createCliente, createRecord, data, deleteRecord, error, isLoading, refresh, updateRecord, readNotificationIds, markAsRead, markAllAsRead],
+    [createCliente, createRecord, data, deleteRecord, error, visibleIsLoading, refresh, updateRecord, readNotificationIds, markAsRead, markAllAsRead],
   );
 
   return <DriveOnDataContext.Provider value={value}>{children}</DriveOnDataContext.Provider>;

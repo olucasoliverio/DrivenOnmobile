@@ -16,8 +16,10 @@ import { Button, TextInput } from 'react-native-paper';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useDriveOnData } from '../../context/DriveOnDataContext';
+import { useAuth } from '../../context/AuthContext';
 import { palette, spacing, borderRadius, shadows } from '../../theme/theme';
 import ScreenHeader from '../../components/ScreenHeader';
+import { getFriendlyErrorMessage } from '../../utils/errorMessages';
 
 const FUEL_OPTIONS = [
   'Flex',
@@ -32,11 +34,18 @@ const FUEL_OPTIONS = [
 export default function VeiculoFormScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
-  const { veiculoId } = route.params ?? {};
+  const { veiculoId, clienteId: initialClienteId } = route.params ?? {};
   const { veiculos, clientes, createRecord, updateRecord } = useDriveOnData();
+  const { can } = useAuth();
 
   const isEditing = veiculoId != null;
   const veiculo = isEditing ? veiculos.find(v => v.id === Number(veiculoId)) : undefined;
+
+  useEffect(() => {
+    if (!can('veiculos', isEditing ? 'update' : 'create')) {
+      navigation.goBack();
+    }
+  }, [can, isEditing, navigation]);
 
   const [saving, setSaving] = useState(false);
   const [clienteModalVisible, setClienteModalVisible] = useState(false);
@@ -68,8 +77,20 @@ export default function VeiculoFormScreen() {
         combustivel: veiculo.combustivel || '',
         km: String(veiculo.km || ''),
       });
+      return;
     }
-  }, [isEditing, veiculo?.id, clientes]);
+
+    if (!isEditing && initialClienteId) {
+      const cliente = clientes.find(c => c.id === Number(initialClienteId));
+      if (cliente) {
+        setForm(curr => ({
+          ...curr,
+          clienteId: cliente.id,
+          clienteNome: cliente.nome,
+        }));
+      }
+    }
+  }, [isEditing, veiculo?.id, clientes, initialClienteId]);
 
   const filteredClientes = clientes.filter(c =>
     c.nome.toLowerCase().includes(clienteSearch.toLowerCase())
@@ -80,17 +101,32 @@ export default function VeiculoFormScreen() {
       Alert.alert('Campos obrigatórios', 'Informe cliente, marca, modelo e placa.');
       return;
     }
+    const placa = form.placa.trim().toUpperCase();
+    if (!/^[A-Z]{3}-?\d{4}$/.test(placa) && !/^[A-Z]{3}\d[A-Z]\d{2}$/.test(placa)) {
+      Alert.alert('Placa inválida', 'Use o formato AAA-1234 ou AAA1A23.');
+      return;
+    }
+    const ano = form.ano ? Number(form.ano) : null;
+    if (ano != null && (!Number.isInteger(ano) || ano < 1900 || ano > new Date().getFullYear() + 1)) {
+      Alert.alert('Ano inválido', 'Informe um ano válido para o veículo.');
+      return;
+    }
+    const km = form.km ? Number(form.km) : 0;
+    if (!Number.isFinite(km) || km < 0) {
+      Alert.alert('Quilometragem inválida', 'Informe uma quilometragem igual ou maior que zero.');
+      return;
+    }
     setSaving(true);
     try {
       const payload: any = {
         cliente_id: form.clienteId,
         marca: form.marca.trim(),
         modelo: form.modelo.trim(),
-        placa: form.placa.trim().toUpperCase(),
-        ano: form.ano ? Number(form.ano) : null,
+        placa,
+        ano,
         cor: form.cor.trim() || null,
         combustivel: form.combustivel.trim() || null,
-        km: form.km ? Number(form.km) : 0,
+        km,
       };
       if (isEditing) {
         await updateRecord('/veiculos', Number(veiculoId), payload);
@@ -101,7 +137,7 @@ export default function VeiculoFormScreen() {
     } catch (error: any) {
       Alert.alert(
         'Não foi possível salvar',
-        error?.response?.data?.error ?? error?.message ?? 'Tente novamente.',
+        getFriendlyErrorMessage(error),
       );
     } finally {
       setSaving(false);
@@ -116,11 +152,14 @@ export default function VeiculoFormScreen() {
         showBack={true}
       />
       <KeyboardAvoidingView 
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
-        style={{ flex: 1 }}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 80}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.keyboardView}
       >
-        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
 
           {/* Card: Proprietário */}
           <View style={styles.card}>
@@ -394,6 +433,7 @@ export default function VeiculoFormScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: palette.slate100 },
+  keyboardView: { flex: 1, backgroundColor: palette.slate100 },
   scrollContent: { padding: spacing.lg, gap: spacing.md, paddingBottom: spacing.xxl },
   card: {
     backgroundColor: palette.white,

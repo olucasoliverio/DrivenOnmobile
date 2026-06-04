@@ -1,13 +1,15 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, Dimensions, TouchableOpacity, FlatList, RefreshControl, Animated, Pressable } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Dimensions, TouchableOpacity, RefreshControl } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useDriveOnData } from '../../context/DriveOnDataContext';
 import { useAuth } from '../../context/AuthContext';
 import EmptyState from '../../components/EmptyState';
+import LoadingState from '../../components/LoadingState';
 import { palette, spacing, borderRadius, shadows, gradients } from '../../theme/theme';
+import { isModuleResourceEnabled, type AccessAction, type AccessModule } from '../../permissions/accessProfiles';
 import dayjs from 'dayjs';
 import 'dayjs/locale/pt-br';
 dayjs.locale('pt-br');
@@ -24,6 +26,16 @@ const STATUS_MAP: Record<string, { label: string; color: string; bg: string; pro
 
 // ─── KPI Horizontal Card ─────────────────────────────────────────────────────
 type IconName = keyof typeof MaterialIcons.glyphMap;
+type QuickAction = {
+  label: string;
+  description: string;
+  icon: IconName;
+  color: string;
+  module: AccessModule;
+  action: AccessAction;
+  onPress: () => void;
+};
+
 function KpiChip({ icon, label, value }: {
   icon: IconName; label: string; value: string;
 }) {
@@ -57,92 +69,58 @@ export default function HomeScreen() {
     refresh,
     notificacoes,
     readNotificationIds,
+    isLoading,
   } = useDriveOnData();
+  const { user, can } = useAuth();
   const [refreshing, setRefreshing] = React.useState(false);
 
-  const [menuOpen, setMenuOpen] = React.useState(false);
-  const [shouldRenderOptions, setShouldRenderOptions] = React.useState(false);
-  const animationValue = React.useRef(new Animated.Value(0)).current;
-
-  const toggleMenu = () => {
-    if (!menuOpen) {
-      setShouldRenderOptions(true);
-      setMenuOpen(true);
-      Animated.timing(animationValue, {
-        toValue: 1,
-        duration: 220,
-        useNativeDriver: true,
-      }).start();
-    } else {
-      setMenuOpen(false);
-      Animated.timing(animationValue, {
-        toValue: 0,
-        duration: 180,
-        useNativeDriver: true,
-      }).start(() => {
-        setShouldRenderOptions(false);
-      });
-    }
-  };
-
   const handleAction = (screenName: string, params?: any) => {
-    // Fecha de forma síncrona/instantânea para evitar que a animação trave quando a tela vai para background
-    setMenuOpen(false);
-    setShouldRenderOptions(false);
-    animationValue.setValue(0);
     navigation.navigate(screenName, params);
   };
 
-  const rotation = animationValue.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0deg', '135deg'],
-  });
-
-  const menuOpacity = animationValue.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, 1],
-  });
-
-  const translateY = animationValue.interpolate({
-    inputRange: [0, 1],
-    outputRange: [30, 0],
-  });
-
-  const options = [
+  const options: QuickAction[] = [
     {
-      label: 'Scan de Placa',
+      label: 'Ler Placa',
+      description: 'Cadastrar veículo mais rápido',
       icon: 'camera-alt' as IconName,
       color: palette.amber500,
+      module: 'veiculos' as AccessModule,
+      action: 'create' as AccessAction,
       onPress: () => handleAction('PlacaScanner'),
     },
     {
-      label: 'Novo Veículo',
-      icon: 'directions-car' as IconName,
-      color: palette.slate500,
-      onPress: () => handleAction('VeiculoForm'),
-    },
-    {
       label: 'Novo Orçamento',
+      description: 'Enviar proposta ao cliente',
       icon: 'request-quote' as IconName,
       color: palette.violet600,
+      module: 'orcamentos' as AccessModule,
+      action: 'create' as AccessAction,
       onPress: () => handleAction('OrcamentoForm'),
     },
     {
       label: 'Novo Cliente',
+      description: 'Cadastrar contato',
       icon: 'person-add' as IconName,
       color: palette.emerald600,
+      module: 'clientes' as AccessModule,
+      action: 'create' as AccessAction,
       onPress: () => handleAction('ClienteForm'),
     },
     {
-      label: 'Nova OS',
+      label: 'Nova Ordem',
+      description: 'Abrir serviço na oficina',
       icon: 'build' as IconName,
       color: palette.navy800,
+      module: 'ordens' as AccessModule,
+      action: 'create' as AccessAction,
       onPress: () => handleAction('OSForm'),
     },
-  ];
+  ].filter(option =>
+    can(option.module, option.action) &&
+    isModuleResourceEnabled(configuracoes.recursosAdicionais, option.module)
+  );
 
-  const { user } = useAuth();
-  const showAgenda = configuracoes?.recursosAdicionais?.agenda !== false;
+  const showAgenda = can('agenda') && configuracoes?.recursosAdicionais?.agenda !== false;
 
   const initials = React.useMemo(() => {
     if (!user?.nome) return 'AD';
@@ -234,12 +212,12 @@ export default function HomeScreen() {
     : '0.0';
 
   const kpis = [
-    { icon: 'attach-money' as IconName, label: 'Receita', value: `R$ ${(d.receitaMes / 1000).toFixed(1)}k` },
-    { icon: 'build' as IconName, label: 'OS Abertas', value: String(ordensAbertas.length) },
-    { icon: 'event' as IconName, label: 'Agenda Hoje', value: String(agendamentosHoje.length) },
-    { icon: 'people' as IconName, label: 'Clientes', value: String(clientes.length) },
-    { icon: 'directions-car' as IconName, label: 'Veículos', value: String(veiculos.length) },
-  ];
+    can('financeiro') ? { icon: 'attach-money' as IconName, label: 'Receita', value: isLoading ? '...' : `R$ ${(d.receitaMes / 1000).toFixed(1)}k` } : null,
+    can('ordens') ? { icon: 'build' as IconName, label: 'OS Abertas', value: isLoading ? '...' : String(ordensAbertas.length) } : null,
+    showAgenda ? { icon: 'event' as IconName, label: 'Agenda Hoje', value: isLoading ? '...' : String(agendamentosHoje.length) } : null,
+    can('clientes') ? { icon: 'people' as IconName, label: 'Clientes', value: isLoading ? '...' : String(clientes.length) } : null,
+    can('veiculos') ? { icon: 'directions-car' as IconName, label: 'Veículos', value: isLoading ? '...' : String(veiculos.length) } : null,
+  ].filter(Boolean) as { icon: IconName; label: string; value: string }[];
 
   return (
     <View style={styles.container}>
@@ -283,6 +261,31 @@ export default function HomeScreen() {
           </View>
         </LinearGradient>
 
+        {/* ── Ações rápidas ── */}
+        <View style={styles.quickSection}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Ações rápidas</Text>
+          </View>
+          <View style={styles.quickGrid}>
+            {options.map((opt) => (
+              <TouchableOpacity
+                key={opt.label}
+                style={styles.quickActionCard}
+                activeOpacity={0.78}
+                onPress={opt.onPress}
+              >
+                <View style={[styles.quickActionIcon, { backgroundColor: `${opt.color}15` }]}>
+                  <MaterialIcons name={opt.icon} size={22} color={opt.color} />
+                </View>
+                <View style={styles.quickActionTextBlock}>
+                  <Text style={styles.quickActionLabel} numberOfLines={2}>{opt.label}</Text>
+                  <Text style={styles.quickActionDescription} numberOfLines={2}>{opt.description}</Text>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
         {/* ── OS em Andamento ── */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
@@ -293,7 +296,9 @@ export default function HomeScreen() {
               <Text style={[styles.sectionBadgeText, { color: palette.navy800 }]}>{ordensAbertas.length} ativas</Text>
             </View>
           </View>
-          {ordensAbertas.length === 0 ? (
+          {isLoading ? (
+            <LoadingState message="Carregando ordens..." helper="Buscando ordens em andamento." />
+          ) : ordensAbertas.length === 0 ? (
             <EmptyState icon="build" message="Nenhuma OS em andamento" />
           ) : (
             ordensAbertas.slice(0, 5).map((os) => {
@@ -361,7 +366,9 @@ export default function HomeScreen() {
                 </Text>
               </View>
             </View>
-            {agendamentosHoje.length === 0 ? (
+            {isLoading ? (
+              <LoadingState message="Carregando agenda..." helper="Buscando compromissos de hoje." />
+            ) : agendamentosHoje.length === 0 ? (
               <EmptyState icon="event-available" message="Nenhum agendamento para hoje" />
             ) : (
               agendamentosHoje.map((ag) => {
@@ -398,7 +405,9 @@ export default function HomeScreen() {
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Atividade Recente</Text>
           </View>
-          {atividadeRecente.length === 0 ? (
+          {isLoading ? (
+            <LoadingState message="Carregando atividades..." helper="Buscando os ultimos registros." />
+          ) : atividadeRecente.length === 0 ? (
             <EmptyState icon="history" message="Nenhuma atividade recente" />
           ) : (
             <View style={styles.activityCard}>
@@ -428,68 +437,6 @@ export default function HomeScreen() {
         <View style={{ height: insets.bottom + 160 }} />
       </ScrollView>
 
-      {/* Backdrop overlay */}
-      {shouldRenderOptions && (
-        <Pressable
-          style={StyleSheet.absoluteFillObject}
-          onPress={toggleMenu}
-        >
-          <Animated.View
-            style={[
-              StyleSheet.absoluteFillObject,
-              {
-                backgroundColor: 'rgba(15, 23, 42, 0.4)',
-                opacity: menuOpacity,
-              },
-            ]}
-          />
-        </Pressable>
-      )}
-
-      {/* Speed Dial Options Container */}
-      {shouldRenderOptions && (
-        <Animated.View
-          pointerEvents={menuOpen ? 'auto' : 'none'}
-          style={[
-            styles.optionsContainer,
-            {
-              bottom: insets.bottom + 92 + 64,
-              opacity: menuOpacity,
-              transform: [{ translateY }],
-            },
-          ]}
-        >
-          {options.map((opt, idx) => (
-            <View key={idx} style={styles.actionItemRow}>
-              <View style={[styles.actionLabelContainer, !menuOpen && { elevation: 0, shadowOpacity: 0, borderColor: 'transparent' }]}>
-                <Text style={styles.actionLabel}>{opt.label}</Text>
-              </View>
-              <TouchableOpacity
-                style={[
-                  styles.actionIconButton,
-                  { backgroundColor: opt.color },
-                  !menuOpen && { elevation: 0, shadowOpacity: 0 }
-                ]}
-                onPress={opt.onPress}
-                activeOpacity={0.8}
-              >
-                <MaterialIcons name={opt.icon} size={20} color={palette.white} />
-              </TouchableOpacity>
-            </View>
-          ))}
-        </Animated.View>
-      )}
-
-      {/* Main floating action button (FAB) */}
-      <TouchableOpacity
-        style={[styles.fab, { bottom: insets.bottom + 92 }]}
-        onPress={toggleMenu}
-        activeOpacity={0.85}
-      >
-        <Animated.View style={{ transform: [{ rotate: rotation }] }}>
-          <MaterialIcons name="add" size={28} color={palette.white} />
-        </Animated.View>
-      </TouchableOpacity>
     </View>
   );
 }
@@ -574,54 +521,52 @@ const styles = StyleSheet.create({
   kpiChipValue: { fontSize: 18, fontWeight: '900', color: palette.slate900, letterSpacing: -0.3 },
   kpiChipLabel: { fontSize: 10, color: palette.slate400, fontWeight: '700', marginTop: 1 },
 
-  // FAB Speed Dial Styles
-  fab: {
-    position: 'absolute',
-    right: 20,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: palette.navy800,
-    justifyContent: 'center',
-    alignItems: 'center',
-    ...shadows.lg,
-    elevation: 8,
-    zIndex: 100,
+  // Quick actions
+  quickSection: {
+    marginTop: spacing.md,
   },
-  optionsContainer: {
-    position: 'absolute',
-    right: 26,
-    alignItems: 'flex-end',
-    gap: 12,
-    zIndex: 99,
-  },
-  actionItemRow: {
+  quickGrid: {
+    paddingHorizontal: spacing.lg,
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
+    flexWrap: 'wrap',
+    gap: 10,
   },
-  actionLabelContainer: {
+  quickActionCard: {
+    width: (width - spacing.lg * 2 - 10) / 2,
+    minHeight: 82,
     backgroundColor: palette.white,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: borderRadius.sm,
-    ...shadows.sm,
+    borderRadius: borderRadius.md,
     borderWidth: 1,
     borderColor: 'rgba(15, 23, 42, 0.05)',
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    ...shadows.sm,
   },
-  actionLabel: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: palette.slate700,
-  },
-  actionIconButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+  quickActionIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 11,
     justifyContent: 'center',
     alignItems: 'center',
-    ...shadows.md,
-    elevation: 4,
+  },
+  quickActionTextBlock: {
+    flex: 1,
+    gap: 3,
+  },
+  quickActionLabel: {
+    fontSize: 14,
+    lineHeight: 18,
+    fontWeight: '800',
+    color: palette.slate900,
+  },
+  quickActionDescription: {
+    fontSize: 11,
+    lineHeight: 14,
+    color: palette.slate500,
+    fontWeight: '600',
   },
 
   // Sections

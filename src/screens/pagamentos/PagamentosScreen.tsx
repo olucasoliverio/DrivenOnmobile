@@ -4,10 +4,12 @@ import { FAB } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useDriveOnData } from '../../context/DriveOnDataContext';
+import { useAuth } from '../../context/AuthContext';
 import { spacing, borderRadius, palette, shadows } from '../../theme/theme';
 import dayjs from 'dayjs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import EmptyState from '../../components/EmptyState';
+import LoadingState from '../../components/LoadingState';
 import ScreenHeader from '../../components/ScreenHeader';
 import CalendarDatePicker from '../../components/CalendarDatePicker';
 import AdvancedFilterModal from '../../components/AdvancedFilterModal';
@@ -29,7 +31,8 @@ function isWithinCustomRange(value: string, start: string, end: string) {
 export default function PagamentosScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
-  const { pagamentos, deleteRecord, refresh } = useDriveOnData();
+  const { pagamentos, deleteRecord, refresh, isLoading } = useDriveOnData();
+  const { can } = useAuth();
   const [tab, setTab] = useState<Tab>('todos');
   const [dateFilter, setDateFilter] = useState<DateFilter>('mes');
   const [customStart, setCustomStart] = useState('');
@@ -120,7 +123,7 @@ export default function PagamentosScreen() {
           <View style={styles.resumoTexts}>
             <Text style={styles.resumoLabel}>Total a Receber</Text>
             <Text style={[styles.resumoValue, { color: palette.emerald600 }]}>
-              R$ {total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              {isLoading ? 'Carregando...' : `R$ ${total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
             </Text>
           </View>
         </View>
@@ -132,7 +135,7 @@ export default function PagamentosScreen() {
           <View style={styles.resumoTexts}>
             <Text style={styles.resumoLabel}>Em Aberto</Text>
             <Text style={[styles.resumoValue, { color: palette.amber500 }]}>
-              R$ {pendentes.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              {isLoading ? 'Carregando...' : `R$ ${pendentes.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
             </Text>
           </View>
         </View>
@@ -163,17 +166,24 @@ export default function PagamentosScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[palette.navy800]} />
         }
         ListEmptyComponent={() => (
-          <EmptyState
-            icon="payment"
-            message={
-              tab === 'todos'
-                ? 'Nenhuma conta a receber'
-                : tab === 'pendente'
-                ? 'Nenhuma conta pendente'
-                : 'Nenhuma conta recebida'
-            }
-            isFullPage
-          />
+          isLoading ? (
+            <LoadingState message="Carregando contas..." isFullPage />
+          ) : (
+            <EmptyState
+              icon="payment"
+              message={
+                tab === 'todos'
+                  ? 'Nenhuma conta a receber'
+                  : tab === 'pendente'
+                  ? 'Nenhuma conta pendente'
+                  : 'Nenhuma conta recebida'
+              }
+              helper={tab === 'todos' ? 'Cadastre uma conta para acompanhar os recebimentos.' : 'Altere os filtros para consultar outros recebimentos.'}
+              actionLabel={tab === 'todos' && can('financeiro', 'create') ? 'Nova Conta' : undefined}
+              onAction={tab === 'todos' && can('financeiro', 'create') ? () => navigation.navigate('PagamentoForm') : undefined}
+              isFullPage
+            />
+          )
         )}
         renderItem={({ item: p }) => {
           const isPago = p.status === 'pago';
@@ -222,36 +232,44 @@ export default function PagamentosScreen() {
                     </View>
                   </View>
 
-                  <View style={styles.actionButtons}>
-                    <TouchableOpacity 
-                      style={styles.actionBtn}
-                      onPress={(event) => {
-                        event.stopPropagation();
-                        navigation.navigate('PagamentoForm', { pagamentoId: p.id });
-                      }}
-                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                    >
-                      <MaterialIcons name="edit" size={19} color={palette.navy800} />
-                    </TouchableOpacity>
+                  {(can('financeiro', 'update') || can('financeiro', 'delete')) && (
+                    <View style={styles.actionButtons}>
+                      {can('financeiro', 'update') && (
+                        <TouchableOpacity
+                          style={styles.actionBtn}
+                          onPress={(event) => {
+                            event.stopPropagation();
+                            navigation.navigate('PagamentoForm', { pagamentoId: p.id });
+                          }}
+                          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                        >
+                          <MaterialIcons name="edit" size={19} color={palette.navy800} />
+                        </TouchableOpacity>
+                      )}
 
-                    <TouchableOpacity 
-                      style={styles.actionBtn}
-                      onPress={(event) => {
-                        event.stopPropagation();
-                        remove(p.id);
-                      }}
-                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                    >
-                      <MaterialIcons name="delete-outline" size={20} color={palette.slate400} />
-                    </TouchableOpacity>
-                  </View>
+                      {can('financeiro', 'delete') && (
+                        <TouchableOpacity
+                          style={styles.actionBtn}
+                          onPress={(event) => {
+                            event.stopPropagation();
+                            remove(p.id);
+                          }}
+                          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                        >
+                          <MaterialIcons name="delete-outline" size={20} color={palette.slate400} />
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  )}
                 </View>
               </View>
             </TouchableOpacity>
           );
         }}
       />
-      <FAB icon="plus" style={styles.fab} color={palette.white} onPress={() => navigation.navigate('PagamentoForm')} />
+      {can('financeiro', 'create') && (
+        <FAB icon="plus" style={styles.fab} color={palette.white} onPress={() => navigation.navigate('PagamentoForm')} />
+      )}
       <AdvancedFilterModal
         visible={filterModalVisible}
         periodValue={dateFilter}

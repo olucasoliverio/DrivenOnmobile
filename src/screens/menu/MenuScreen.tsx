@@ -7,12 +7,14 @@ import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
 import { useDriveOnData } from '../../context/DriveOnDataContext';
 import { palette, spacing, borderRadius, shadows, gradients } from '../../theme/theme';
+import { isModuleResourceEnabled, type AccessModule } from '../../permissions/accessProfiles';
 
 interface MenuItem {
   icon: keyof typeof MaterialIcons.glyphMap;
   label: string;
   screen: string;
   desc: string;
+  module: AccessModule;
 }
 
 const menuItems: MenuItem[] = [
@@ -20,36 +22,42 @@ const menuItems: MenuItem[] = [
     icon: 'people',          
     label: 'Clientes',      
     screen: 'Clientes',      
+    module: 'clientes',
     desc: 'Visualizar e gerenciar clientes' 
   },
   { 
     icon: 'directions-car',  
     label: 'Veículos',      
     screen: 'Veiculos',      
+    module: 'veiculos',
     desc: 'Visualizar e cadastrar veículos' 
   },
   { 
     icon: 'build',          
     label: 'Ordens de Serviço',      
     screen: 'OS',      
+    module: 'ordens',
     desc: 'Visualizar e gerenciar ordens de serviço (OS)' 
   },
   { 
     icon: 'event',  
     label: 'Agenda',      
     screen: 'Agenda',      
+    module: 'agenda',
     desc: 'Visualizar compromissos e agendamentos' 
   },
   { 
     icon: 'request-quote',  
     label: 'Orçamentos',      
     screen: 'Orcamentos',      
+    module: 'orcamentos',
     desc: 'Gerenciar orçamentos e propostas' 
   },
   { 
     icon: 'attach-money',  
     label: 'Contas a Receber',
     screen: 'Financeiro',      
+    module: 'financeiro',
     desc: 'Controle de contas a receber' 
   },
 ];
@@ -57,7 +65,7 @@ const menuItems: MenuItem[] = [
 export default function MenuScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
-  const { user, signOut } = useAuth();
+  const { user, signOut, can } = useAuth();
   const { configuracoes } = useDriveOnData();
   const initials = React.useMemo(() => {
     if (!user?.nome) return 'AD';
@@ -74,12 +82,9 @@ export default function MenuScreen() {
     setIsLogoutModalVisible(true);
   };
 
-  const filteredMenuItems = menuItems.filter(item => {
-    if (item.screen === 'Agenda') {
-      return configuracoes?.recursosAdicionais?.agenda !== false;
-    }
-    return true;
-  });
+  const filteredMenuItems = menuItems.filter(item =>
+    can(item.module) && isModuleResourceEnabled(configuracoes.recursosAdicionais, item.module)
+  );
 
   return (
     <ScrollView

@@ -6,14 +6,17 @@ import {
   FlatList,
   TouchableOpacity,
   RefreshControl,
+  Alert,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDriveOnData } from '../../context/DriveOnDataContext';
+import { useAuth } from '../../context/AuthContext';
 import { palette, spacing, borderRadius, shadows } from '../../theme/theme';
 import ScreenHeader from '../../components/ScreenHeader';
 import EmptyState from '../../components/EmptyState';
+import LoadingState from '../../components/LoadingState';
 import dayjs from 'dayjs';
 
 type NotificationType = 'agenda' | 'financeiro' | 'estoque' | 'ordens' | 'orcamentos';
@@ -60,7 +63,8 @@ const TYPE_ICONS: Record<NotificationType, keyof typeof MaterialIcons.glyphMap> 
 export default function NotificacoesScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
-  const { notificacoes, readNotificationIds, markAsRead, markAllAsRead, refresh } = useDriveOnData();
+  const { notificacoes, readNotificationIds, markAsRead, markAllAsRead, refresh, configuracoes, isLoading } = useDriveOnData();
+  const { can } = useAuth();
   const [refreshing, setRefreshing] = React.useState(false);
 
   const handleRefresh = React.useCallback(async () => {
@@ -81,12 +85,17 @@ export default function NotificacoesScreen() {
     const { tipo, rota } = item;
 
     if (tipo === 'agenda') {
-      navigation.navigate('Agenda');
+      if (can('agenda') && configuracoes.recursosAdicionais.agenda !== false) {
+        navigation.navigate('Agenda');
+      } else {
+        Alert.alert('Acesso indisponível', 'A Agenda está desativada ou seu perfil não tem acesso a este recurso.');
+      }
     } else if (tipo === 'financeiro') {
-      navigation.navigate('Financeiro');
+      if (can('financeiro')) navigation.navigate('Financeiro');
     } else if (tipo === 'orcamentos') {
-      navigation.navigate('Orcamentos');
+      if (can('orcamentos')) navigation.navigate('Orcamentos');
     } else if (tipo === 'ordens') {
+      if (!can('ordens')) return;
       const match = rota.match(/\/ordens\/(\d+)/);
       if (match && match[1]) {
         navigation.navigate('OSDetalhes', { osId: Number(match[1]) });
@@ -96,7 +105,16 @@ export default function NotificacoesScreen() {
     }
   };
 
-  const hasUnread = notificacoes.some((n) => !readNotificationIds.includes(n.id));
+  const visibleNotifications = notificacoes.filter((n) => {
+    if (n.tipo === 'agenda') return can('agenda') && configuracoes.recursosAdicionais.agenda !== false;
+    if (n.tipo === 'financeiro') return can('financeiro');
+    if (n.tipo === 'estoque') return can('estoque') && configuracoes.recursosAdicionais.estoque !== false;
+    if (n.tipo === 'ordens') return can('ordens');
+    if (n.tipo === 'orcamentos') return can('orcamentos');
+    return false;
+  });
+
+  const hasUnread = visibleNotifications.some((n) => !readNotificationIds.includes(n.id));
 
   return (
     <View style={styles.container}>
@@ -117,7 +135,7 @@ export default function NotificacoesScreen() {
       />
 
       <FlatList
-        data={notificacoes}
+        data={visibleNotifications}
         keyExtractor={(item) => item.id}
         contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + 24 }]}
         showsVerticalScrollIndicator={false}
@@ -129,11 +147,15 @@ export default function NotificacoesScreen() {
           />
         }
         ListEmptyComponent={() => (
-          <EmptyState
-            icon="notifications-none"
-            message="Você não tem nenhuma notificação ativa no momento."
-            isFullPage
-          />
+          isLoading ? (
+            <LoadingState message="Carregando notificacoes..." isFullPage />
+          ) : (
+            <EmptyState
+              icon="notifications-none"
+              message="Você não tem nenhuma notificação ativa no momento."
+              isFullPage
+            />
+          )
         )}
         renderItem={({ item }) => {
           const isRead = readNotificationIds.includes(item.id);

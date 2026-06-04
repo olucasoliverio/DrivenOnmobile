@@ -16,18 +16,28 @@ import { Button, TextInput } from 'react-native-paper';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useDriveOnData } from '../../context/DriveOnDataContext';
+import { useAuth } from '../../context/AuthContext';
 import { palette, spacing, borderRadius, shadows } from '../../theme/theme';
 import ScreenHeader from '../../components/ScreenHeader';
 import CalendarDatePicker from '../../components/CalendarDatePicker';
+import LoadingState from '../../components/LoadingState';
 import dayjs from 'dayjs';
+import { getFriendlyErrorMessage, parseMoneyValue } from '../../utils/errorMessages';
 
 export default function PagamentoFormScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const { pagamentoId } = route.params ?? {};
-  const { pagamentos, clientes, veiculos, ordens, createRecord, updateRecord } = useDriveOnData();
+  const { pagamentos, clientes, veiculos, ordens, createRecord, updateRecord, isLoading } = useDriveOnData();
+  const { can } = useAuth();
 
   const isEditing = pagamentoId != null;
+
+  useEffect(() => {
+    if (!can('financeiro', isEditing ? 'update' : 'create')) {
+      navigation.goBack();
+    }
+  }, [can, isEditing, navigation]);
 
   const [saving, setSaving] = useState(false);
   const [clienteSearch, setClienteSearch] = useState('');
@@ -73,11 +83,16 @@ export default function PagamentoFormScreen() {
       Alert.alert('Campos obrigatórios', 'Informe valor e vencimento.');
       return;
     }
+    const valor = parseMoneyValue(form.valor);
+    if (valor <= 0) {
+      Alert.alert('Valor obrigatório', 'Informe um valor maior que R$ 0,00 para a conta.');
+      return;
+    }
     setSaving(true);
     try {
       const payload = {
         tipo: 'receber',
-        valor: Number(String(form.valor).replace(',', '.')),
+        valor,
         data_vencimento: form.data_vencimento,
         descricao: form.descricao.trim() || null,
         cliente_id: form.clienteId || null,
@@ -92,10 +107,7 @@ export default function PagamentoFormScreen() {
       }
       navigation.goBack();
     } catch (error: any) {
-      Alert.alert(
-        'Não foi possível salvar',
-        error?.response?.data?.error ?? error?.message ?? 'Tente novamente.'
-      );
+      Alert.alert('Não foi possível salvar', getFriendlyErrorMessage(error));
     } finally {
       setSaving(false);
     }
@@ -147,12 +159,13 @@ export default function PagamentoFormScreen() {
       />
 
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.keyboardView}
       >
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
         >
           {/* Card 1: Dados do Recebimento */}
           <View style={styles.card}>
@@ -412,10 +425,14 @@ export default function PagamentoFormScreen() {
               </TouchableOpacity>
             )}
             ListEmptyComponent={() => (
-              <View style={styles.modalEmpty}>
-                <MaterialIcons name="person-search" size={40} color={palette.slate300} />
-                <Text style={styles.modalEmptyText}>Nenhum cliente encontrado</Text>
-              </View>
+              isLoading ? (
+                <LoadingState message="Carregando clientes..." helper="Buscando clientes disponiveis." />
+              ) : (
+                <View style={styles.modalEmpty}>
+                  <MaterialIcons name="person-search" size={40} color={palette.slate300} />
+                  <Text style={styles.modalEmptyText}>Nenhum cliente encontrado</Text>
+                </View>
+              )
             )}
           />
         </View>
@@ -511,10 +528,14 @@ export default function PagamentoFormScreen() {
               );
             }}
             ListEmptyComponent={() => (
-              <View style={styles.modalEmpty}>
-                <MaterialIcons name="engineering" size={40} color={palette.slate300} />
-                <Text style={styles.modalEmptyText}>Nenhuma OS encontrada</Text>
-              </View>
+              isLoading ? (
+                <LoadingState message="Carregando ordens..." helper="Buscando ordens disponiveis." />
+              ) : (
+                <View style={styles.modalEmpty}>
+                  <MaterialIcons name="engineering" size={40} color={palette.slate300} />
+                  <Text style={styles.modalEmptyText}>Nenhuma OS encontrada</Text>
+                </View>
+              )
             )}
           />
         </View>
@@ -525,6 +546,7 @@ export default function PagamentoFormScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: palette.slate100 },
+  keyboardView: { flex: 1, backgroundColor: palette.slate100 },
   scrollContent: { padding: spacing.lg, gap: spacing.md, paddingBottom: spacing.xxl },
 
   // Card

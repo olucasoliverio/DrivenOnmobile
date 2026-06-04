@@ -3,6 +3,7 @@ import { Alert, View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIn
 import { MaterialIcons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useDriveOnData } from '../../context/DriveOnDataContext';
+import { useAuth } from '../../context/AuthContext';
 import { palette, spacing, borderRadius, shadows } from '../../theme/theme';
 import ScreenHeader from '../../components/ScreenHeader';
 import dayjs from 'dayjs';
@@ -14,12 +15,13 @@ export default function AgendaDetalhesScreen() {
   const navigation = useNavigation<any>();
   const { agendamentoId } = route.params ?? { agendamentoId: 1 };
   const { agendamentos, clientes, veiculos, updateRecord, deleteRecord, configuracoes } = useDriveOnData();
+  const { can } = useAuth();
 
   useEffect(() => {
-    if (configuracoes?.recursosAdicionais?.agenda === false) {
+    if (!can('agenda') || configuracoes?.recursosAdicionais?.agenda === false) {
       navigation.goBack();
     }
-  }, [configuracoes, navigation]);
+  }, [can, configuracoes, navigation]);
 
   const [saving, setSaving] = useState(false);
 
@@ -86,7 +88,7 @@ export default function AgendaDetalhesScreen() {
         title="Agendamento"
         subtitle="Visualização do Compromisso"
         showBack={true}
-        rightElement={
+        rightElement={can('agenda', 'update') ? (
           <TouchableOpacity
             style={styles.headerEditBtn}
             onPress={() => navigation.navigate('AgendaForm', { agendamentoId: ag.id })}
@@ -94,7 +96,7 @@ export default function AgendaDetalhesScreen() {
           >
             <MaterialIcons name="edit" size={22} color={palette.slate700} />
           </TouchableOpacity>
-        }
+        ) : undefined}
       />
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
@@ -168,7 +170,7 @@ export default function AgendaDetalhesScreen() {
         </View>
 
         {/* Ação Primária: Confirmar */}
-        {!isConfirmado && (
+        {!isConfirmado && can('agenda', 'update') && (
           <TouchableOpacity 
             style={styles.confirmBtn} 
             activeOpacity={0.7} 
@@ -187,10 +189,12 @@ export default function AgendaDetalhesScreen() {
         )}
 
         {/* Botão de Excluir */}
-        <TouchableOpacity style={styles.deleteBtn} activeOpacity={0.7} onPress={removeAgendamento}>
-          <MaterialIcons name="cancel" size={20} color={palette.rose600} />
-          <Text style={styles.deleteBtnText}>Cancelar Agendamento</Text>
-        </TouchableOpacity>
+        {can('agenda', 'delete') && (
+          <TouchableOpacity style={styles.deleteBtn} activeOpacity={0.7} onPress={removeAgendamento}>
+            <MaterialIcons name="cancel" size={20} color={palette.rose600} />
+            <Text style={styles.deleteBtnText}>Cancelar Agendamento</Text>
+          </TouchableOpacity>
+        )}
       </ScrollView>
 
     </View>

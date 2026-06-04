@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, ViewStyle } from 'react-native';
+import { View, Text, StyleSheet, ViewStyle, TouchableOpacity } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { palette, spacing, borderRadius, shadows } from '../theme/theme';
 
@@ -8,15 +8,32 @@ type IconName = keyof typeof MaterialIcons.glyphMap;
 interface EmptyStateProps {
   icon: IconName;
   message: string;
+  helper?: string;
+  actionLabel?: string;
+  onAction?: () => void;
   isFullPage?: boolean;
   style?: ViewStyle;
 }
 
-export default function EmptyState({ icon, message, isFullPage = false, style }: EmptyStateProps) {
+export default function EmptyState({
+  icon,
+  message,
+  helper,
+  actionLabel,
+  onAction,
+  isFullPage = false,
+  style,
+}: EmptyStateProps) {
   const card = (
     <View style={[styles.emptyCard, style]}>
       <MaterialIcons name={icon} size={48} color={palette.slate300} />
       <Text style={styles.emptyText}>{message}</Text>
+      {helper ? <Text style={styles.helperText}>{helper}</Text> : null}
+      {actionLabel && onAction ? (
+        <TouchableOpacity style={styles.actionButton} onPress={onAction} activeOpacity={0.8}>
+          <Text style={styles.actionButtonText}>{actionLabel}</Text>
+        </TouchableOpacity>
+      ) : null}
     </View>
   );
 
@@ -50,10 +67,32 @@ const styles = StyleSheet.create({
     ...shadows.sm,
   },
   emptyText: {
-    fontSize: 16,
-    color: palette.slate400,
+    fontSize: 17,
+    color: palette.slate700,
+    fontWeight: '800',
+    textAlign: 'center',
+    lineHeight: 23,
+  },
+  helperText: {
+    fontSize: 14,
+    color: palette.slate500,
     fontWeight: '500',
     textAlign: 'center',
-    lineHeight: 22,
+    lineHeight: 20,
+    marginTop: -4,
+  },
+  actionButton: {
+    minHeight: 48,
+    borderRadius: borderRadius.md,
+    paddingHorizontal: spacing.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: palette.navy800,
+    marginTop: spacing.sm,
+  },
+  actionButtonText: {
+    color: palette.white,
+    fontSize: 15,
+    fontWeight: '800',
   },
 });

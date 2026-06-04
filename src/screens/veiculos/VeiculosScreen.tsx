@@ -5,15 +5,18 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDriveOnData } from '../../context/DriveOnDataContext';
+import { useAuth } from '../../context/AuthContext';
 import { colors, spacing, borderRadius, palette, shadows } from '../../theme/theme';
 import ScreenHeader from '../../components/ScreenHeader';
 import EmptyState from '../../components/EmptyState';
+import LoadingState from '../../components/LoadingState';
 
 export default function VeiculosScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
-  const { veiculos: veiculosData, clientes, deleteRecord, refresh } = useDriveOnData();
+  const { veiculos: veiculosData, clientes, deleteRecord, refresh, isLoading } = useDriveOnData();
+  const { can } = useAuth();
   const [busca, setBusca] = useState('');
   const [refreshing, setRefreshing] = useState(false);
 
@@ -69,11 +72,18 @@ export default function VeiculosScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[palette.navy800]} />
         }
         ListEmptyComponent={() => (
-          <EmptyState
-            icon="directions-car"
-            message={busca.length > 0 ? 'Nenhum veículo encontrado para esta busca' : 'Nenhum veículo cadastrado'}
-            isFullPage
-          />
+          isLoading ? (
+            <LoadingState message="Carregando veiculos..." isFullPage />
+          ) : (
+            <EmptyState
+              icon="directions-car"
+              message={busca.length > 0 ? 'Nenhum veículo encontrado para esta busca' : 'Nenhum veículo cadastrado'}
+              helper={busca.length > 0 ? 'Tente buscar por placa, modelo ou nome do cliente.' : 'Cadastre um veículo para abrir ordens de serviço e orçamentos.'}
+              actionLabel={busca.length > 0 || !can('veiculos', 'create') ? undefined : 'Novo Veículo'}
+              onAction={busca.length > 0 || !can('veiculos', 'create') ? undefined : () => navigation.navigate('VeiculoForm')}
+              isFullPage
+            />
+          )
         )}
         renderItem={({ item: v, index }) => {
           const cliente = clientes.find(c => c.id === v.clienteId);
@@ -106,34 +116,44 @@ export default function VeiculosScreen() {
                       <Text style={styles.kmText}>{v.km.toLocaleString('pt-BR')} km</Text>
                     </View>
                   </View>
-                  <View style={styles.actionButtons}>
-                    <IconButton
-                      icon="pencil-outline"
-                      size={20}
-                      iconColor={palette.navy800}
-                      onPress={(event) => {
-                        event.stopPropagation();
-                        navigation.navigate('VeiculoForm', { veiculoId: v.id });
-                      }}
-                    />
-                    <IconButton
-                      icon="delete-outline"
-                      size={20}
-                      iconColor={palette.rose600}
-                      onPress={(event) => {
-                        event.stopPropagation();
-                        remove(v.id);
-                      }}
-                    />
-                  </View>
+                  {(can('veiculos', 'update') || can('veiculos', 'delete')) && (
+                    <View style={styles.actionButtons}>
+                      {can('veiculos', 'update') && (
+                        <IconButton
+                          icon="pencil-outline"
+                          size={20}
+                          iconColor={palette.navy800}
+                          onPress={(event) => {
+                            event.stopPropagation();
+                            navigation.navigate('VeiculoForm', { veiculoId: v.id });
+                          }}
+                        />
+                      )}
+                      {can('veiculos', 'delete') && (
+                        <IconButton
+                          icon="delete-outline"
+                          size={20}
+                          iconColor={palette.rose600}
+                          onPress={(event) => {
+                            event.stopPropagation();
+                            remove(v.id);
+                          }}
+                        />
+                      )}
+                    </View>
+                  )}
                 </View>
               </View>
             </TouchableOpacity>
           );
         }}
       />
-      <FAB icon="camera" style={styles.cameraFab} color="#FFF" onPress={() => navigation.navigate('PlacaScanner')} />
-      <FAB icon="plus" style={styles.fab} color="#FFF" onPress={() => navigation.navigate('VeiculoForm')} />
+      {can('veiculos', 'create') && (
+        <>
+          <FAB icon="camera" style={styles.cameraFab} color="#FFF" onPress={() => navigation.navigate('PlacaScanner')} />
+          <FAB icon="plus" style={styles.fab} color="#FFF" onPress={() => navigation.navigate('VeiculoForm')} />
+        </>
+      )}
     </View>
   );
 }

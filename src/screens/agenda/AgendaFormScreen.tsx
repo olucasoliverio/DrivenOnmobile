@@ -16,24 +16,29 @@ import { Button, TextInput } from 'react-native-paper';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useDriveOnData } from '../../context/DriveOnDataContext';
+import { useAuth } from '../../context/AuthContext';
 import { palette, spacing, borderRadius, shadows } from '../../theme/theme';
 import ScreenHeader from '../../components/ScreenHeader';
 import CalendarDatePicker from '../../components/CalendarDatePicker';
+import LoadingState from '../../components/LoadingState';
 import dayjs from 'dayjs';
+import { getFriendlyErrorMessage, isValidTime } from '../../utils/errorMessages';
 
 export default function AgendaFormScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const { agendamentoId } = route.params ?? {};
-  const { agendamentos, clientes, veiculos, createRecord, updateRecord, configuracoes } = useDriveOnData();
+  const { agendamentos, clientes, veiculos, createRecord, updateRecord, configuracoes, isLoading } = useDriveOnData();
+  const { can } = useAuth();
 
   const isEditing = agendamentoId != null;
 
   useEffect(() => {
-    if (configuracoes?.recursosAdicionais?.agenda === false) {
+    const action = isEditing ? 'update' : 'create';
+    if (!can('agenda', action) || configuracoes?.recursosAdicionais?.agenda === false) {
       navigation.goBack();
     }
-  }, [configuracoes, navigation]);
+  }, [can, configuracoes, isEditing, navigation]);
 
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
@@ -83,12 +88,28 @@ export default function AgendaFormScreen() {
       Alert.alert('Campos obrigatórios', 'Informe serviço, data, horário, cliente e veículo.');
       return;
     }
+    if (!isValidTime(form.horaInicio) || (form.horaFim && !isValidTime(form.horaFim))) {
+      Alert.alert('Horário inválido', 'Informe o horário no formato HH:mm, por exemplo 09:30.');
+      return;
+    }
+
+    const start = dayjs(`${form.data} ${form.horaInicio}`);
+    const end = form.horaFim
+      ? dayjs(`${form.data} ${form.horaFim}`)
+      : start.add(1, 'hour');
+
+    if (!start.isValid() || !end.isValid()) {
+      Alert.alert('Data inválida', 'Verifique a data e o horário do agendamento.');
+      return;
+    }
+    if (!end.isAfter(start)) {
+      Alert.alert('Horário inválido', 'O horário de término precisa ser depois do horário de início.');
+      return;
+    }
     setSaving(true);
     try {
-      const dataInicio = dayjs(`${form.data} ${form.horaInicio}`).toISOString();
-      const dataFim = form.horaFim
-        ? dayjs(`${form.data} ${form.horaFim}`).toISOString()
-        : dayjs(`${form.data} ${form.horaInicio}`).add(1, 'hour').toISOString();
+      const dataInicio = start.toISOString();
+      const dataFim = end.toISOString();
 
       if (isEditing) {
         const payload = {
@@ -114,7 +135,7 @@ export default function AgendaFormScreen() {
       }
       navigation.goBack();
     } catch (error: any) {
-      Alert.alert('Não foi possível salvar', error?.response?.data?.error ?? error?.message ?? 'Tente novamente.');
+      Alert.alert('Não foi possível salvar', getFriendlyErrorMessage(error));
     } finally {
       setSaving(false);
     }
@@ -127,10 +148,39 @@ export default function AgendaFormScreen() {
 
   const filteredVeiculos = form.clienteId
     ? veiculos.filter(v =>
-        v.clienteId === form.clienteId &&
+        String(v.clienteId) === String(form.clienteId) &&
         (`${v.marca} ${v.modelo} ${v.placa}`).toLowerCase().includes(veiculoSearch.toLowerCase())
       )
     : [];
+  const selectedClienteVeiculos = form.clienteId
+    ? veiculos.filter(v => String(v.clienteId) === String(form.clienteId))
+    : [];
+  const canCreateVehicle = can('veiculos', 'create');
+  const selectedClientHasNoVehicles = !!form.clienteId && selectedClienteVeiculos.length === 0;
+
+  const handleCreateVehicleForSelectedClient = () => {
+    if (!form.clienteId) return;
+    setVeiculoModalVisible(false);
+    setVeiculoSearch('');
+    navigation.navigate('VeiculoForm', { clienteId: form.clienteId });
+  };
+
+  useEffect(() => {
+    if (!form.clienteId) return;
+    if (form.veiculoId && selectedClienteVeiculos.some(v => v.id === form.veiculoId)) return;
+    if (selectedClienteVeiculos.length !== 1) return;
+
+    const [onlyVehicle] = selectedClienteVeiculos;
+    setForm(curr => (
+      curr.veiculoId === onlyVehicle.id
+        ? curr
+        : {
+            ...curr,
+            veiculoId: onlyVehicle.id,
+            veiculoLabel: `${onlyVehicle.marca} ${onlyVehicle.modelo} · ${onlyVehicle.placa}`,
+          }
+    ));
+  }, [form.clienteId, form.veiculoId, selectedClienteVeiculos]);
 
   return (
     <View style={styles.container}>
@@ -140,8 +190,12 @@ export default function AgendaFormScreen() {
         showBack={true}
       />
 
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
-        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.keyboardView}>
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
 
           {/* Card 1: Serviço */}
           <View style={styles.card}>
@@ -285,10 +339,10 @@ export default function AgendaFormScreen() {
                 styles.pickerField,
                 { marginTop: spacing.md },
                 form.veiculoId != null && styles.pickerFieldFilled,
-                !form.clienteId && { opacity: 0.5 },
+                (!form.clienteId || selectedClientHasNoVehicles) && { opacity: 0.5 },
               ]}
               activeOpacity={0.7}
-              disabled={!form.clienteId}
+              disabled={!form.clienteId || selectedClientHasNoVehicles}
               onPress={() => setVeiculoModalVisible(true)}
             >
               <View style={styles.pickerIcon}>
@@ -297,11 +351,43 @@ export default function AgendaFormScreen() {
               <View style={{ flex: 1 }}>
                 <Text style={styles.pickerLabel}>Veículo *</Text>
                 <Text style={[styles.pickerValue, form.veiculoId == null && styles.pickerPlaceholder]}>
-                  {form.veiculoLabel || (form.clienteId ? 'Toque para selecionar um veículo' : 'Selecione primeiro um cliente')}
+                  {form.veiculoLabel || (
+                    selectedClientHasNoVehicles
+                      ? 'Nenhum veículo cadastrado'
+                      : form.clienteId ? 'Toque para selecionar um veículo' : 'Selecione primeiro um cliente'
+                  )}
                 </Text>
               </View>
               <MaterialIcons name="arrow-drop-down" size={24} color={palette.slate400} />
             </TouchableOpacity>
+
+            {selectedClientHasNoVehicles && (
+              <View style={styles.vehicleInlineEmpty}>
+                <View style={styles.vehicleInlineIcon}>
+                  <MaterialIcons name="directions-car" size={20} color={palette.navy800} />
+                </View>
+                <View style={styles.vehicleInlineContent}>
+                  <Text style={styles.vehicleInlineTitle}>Este cliente ainda não tem veículo</Text>
+                  <Text style={styles.vehicleInlineText}>
+                    Cadastre o veículo agora para continuar preenchendo o agendamento.
+                  </Text>
+                  {canCreateVehicle ? (
+                    <TouchableOpacity
+                      style={styles.vehicleInlineButton}
+                      activeOpacity={0.8}
+                      onPress={handleCreateVehicleForSelectedClient}
+                    >
+                      <MaterialIcons name="add" size={17} color={palette.white} />
+                      <Text style={styles.vehicleInlineButtonText}>Cadastrar Veículo</Text>
+                    </TouchableOpacity>
+                  ) : (
+                    <Text style={styles.vehicleInlinePermissionText}>
+                      Seu perfil não permite cadastrar veículos.
+                    </Text>
+                  )}
+                </View>
+              </View>
+            )}
           </View>
 
           {/* Card 5: Observações */}
@@ -425,13 +511,35 @@ export default function AgendaFormScreen() {
             data={filteredVeiculos}
             keyExtractor={item => String(item.id)}
             contentContainerStyle={{ padding: spacing.lg, gap: spacing.sm, paddingBottom: 40 }}
+            ListHeaderComponent={() => (
+              form.clienteId && selectedClienteVeiculos.length > 0 && canCreateVehicle ? (
+                <TouchableOpacity
+                  style={styles.modalCreateVehicleButton}
+                  activeOpacity={0.8}
+                  onPress={handleCreateVehicleForSelectedClient}
+                >
+                  <View style={styles.modalCreateVehicleIcon}>
+                    <MaterialIcons name="add" size={20} color={palette.navy800} />
+                  </View>
+                  <View style={styles.modalCreateVehicleTextBlock}>
+                    <Text style={styles.modalCreateVehicleTitle}>Cadastrar novo veículo</Text>
+                    <Text style={styles.modalCreateVehicleSubtitle}>Já vinculado a {form.clienteNome || 'este cliente'}</Text>
+                  </View>
+                  <MaterialIcons name="chevron-right" size={20} color={palette.slate400} />
+                </TouchableOpacity>
+              ) : null
+            )}
             ListEmptyComponent={() => (
-              <View style={{ alignItems: 'center', marginTop: 40 }}>
-                <MaterialIcons name="directions-car" size={40} color={palette.slate300} />
-                <Text style={{ color: palette.slate400, marginTop: spacing.sm, fontWeight: '600' }}>
-                  Nenhum veículo encontrado para este cliente
-                </Text>
-              </View>
+              isLoading ? (
+                <LoadingState message="Carregando veiculos..." helper="Buscando os veiculos do cliente." />
+              ) : (
+                <View style={{ alignItems: 'center', marginTop: 40 }}>
+                  <MaterialIcons name="directions-car" size={40} color={palette.slate300} />
+                  <Text style={{ color: palette.slate400, marginTop: spacing.sm, fontWeight: '600' }}>
+                    Nenhum veículo encontrado para este cliente
+                  </Text>
+                </View>
+              )
             )}
             renderItem={({ item }) => {
               const label = `${item.marca} ${item.modelo} · ${item.placa}`;
@@ -487,6 +595,7 @@ export default function AgendaFormScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: palette.slate100 },
+  keyboardView: { flex: 1, backgroundColor: palette.slate100 },
   scrollContent: { padding: spacing.lg, gap: spacing.md, paddingBottom: 60 },
 
   // Card
@@ -588,6 +697,61 @@ const styles = StyleSheet.create({
     color: palette.slate400,
     fontWeight: '500',
   },
+  vehicleInlineEmpty: {
+    flexDirection: 'row',
+    gap: spacing.md,
+    marginTop: spacing.md,
+    padding: spacing.md,
+    borderRadius: borderRadius.md,
+    backgroundColor: palette.navy50,
+    borderWidth: 1,
+    borderColor: 'rgba(15, 23, 42, 0.08)',
+  },
+  vehicleInlineIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: palette.white,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  vehicleInlineContent: {
+    flex: 1,
+  },
+  vehicleInlineTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: palette.slate900,
+  },
+  vehicleInlineText: {
+    fontSize: 12,
+    color: palette.slate500,
+    fontWeight: '500',
+    lineHeight: 17,
+    marginTop: 3,
+  },
+  vehicleInlineButton: {
+    minHeight: 40,
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    marginTop: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: borderRadius.md,
+    backgroundColor: palette.navy800,
+  },
+  vehicleInlineButtonText: {
+    color: palette.white,
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  vehicleInlinePermissionText: {
+    marginTop: spacing.sm,
+    fontSize: 12,
+    color: palette.slate500,
+    fontWeight: '700',
+  },
 
   // Modal
   modalContainer: { flex: 1, backgroundColor: palette.slate100 },
@@ -609,6 +773,39 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: palette.slate900,
     fontWeight: '500',
+  },
+  modalCreateVehicleButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: palette.navy50,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: 'rgba(15, 23, 42, 0.08)',
+    padding: spacing.md,
+    marginBottom: spacing.sm,
+  },
+  modalCreateVehicleIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: palette.white,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalCreateVehicleTextBlock: {
+    flex: 1,
+  },
+  modalCreateVehicleTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: palette.slate900,
+  },
+  modalCreateVehicleSubtitle: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: palette.slate500,
+    marginTop: 2,
   },
   listItem: {
     flexDirection: 'row',

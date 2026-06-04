@@ -6,8 +6,10 @@ import { FAB, IconButton } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useDriveOnData } from '../../context/DriveOnDataContext';
+import { useAuth } from '../../context/AuthContext';
 import { palette, spacing, borderRadius, shadows, gradients } from '../../theme/theme';
 import EmptyState from '../../components/EmptyState';
+import LoadingState from '../../components/LoadingState';
 import dayjs from 'dayjs';
 import 'dayjs/locale/pt-br';
 import ScreenHeader from '../../components/ScreenHeader';
@@ -29,17 +31,18 @@ function getDaysOfWeek(baseDate: dayjs.Dayjs) {
 export default function AgendaScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
-  const { agendamentos, clientes, veiculos, deleteRecord, refresh, configuracoes } = useDriveOnData();
+  const { agendamentos, clientes, veiculos, deleteRecord, refresh, configuracoes, isLoading } = useDriveOnData();
+  const { can } = useAuth();
   const [selectedDate, setSelectedDate] = useState(dayjs());
   const [dateFilter, setDateFilter] = useState<AgendaDateFilter>('hoje');
   const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
-    if (configuracoes?.recursosAdicionais?.agenda === false) {
+    if (!can('agenda') || configuracoes?.recursosAdicionais?.agenda === false) {
       Alert.alert('Recurso Indisponível', 'O recurso de Agenda foi desativado para esta oficina.');
       navigation.goBack();
     }
-  }, [configuracoes, navigation]);
+  }, [can, configuracoes, navigation]);
 
   const handleRefresh = React.useCallback(async () => {
     setRefreshing(true);
@@ -73,7 +76,7 @@ export default function AgendaScreen() {
 
   return (
     <View style={styles.container}>
-      <ScreenHeader title="Agenda" showBack={true} />
+      <ScreenHeader title="Agenda" showBack={navigation.canGoBack()} />
 
 
       {/* ── Week Header com fundo claro ── */}
@@ -142,7 +145,18 @@ export default function AgendaScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[palette.navy800]} />
         }
         ListEmptyComponent={() => (
-          <EmptyState icon="event-available" message="Nenhum agendamento no período" isFullPage />
+          isLoading ? (
+            <LoadingState message="Carregando agenda..." isFullPage />
+          ) : (
+            <EmptyState
+              icon="event-available"
+              message="Nenhum agendamento no período"
+              helper="Escolha outra data ou cadastre um novo compromisso."
+              actionLabel={can('agenda', 'create') ? 'Novo Agendamento' : undefined}
+              onAction={can('agenda', 'create') ? () => navigation.navigate('AgendaForm') : undefined}
+              isFullPage
+            />
+          )
         )}
         renderItem={({ item }) => {
           const cliente = clientes.find(c => c.id === item.clienteId);
@@ -193,38 +207,46 @@ export default function AgendaScreen() {
                   </View>
                 )}
               </View>
-              <View style={styles.actionButtons}>
-                <IconButton
-                  icon="pencil-outline"
-                  size={20}
-                  iconColor={palette.navy800}
-                  onPress={(event) => {
-                    event.stopPropagation();
-                    navigation.navigate('AgendaForm', { agendamentoId: item.id });
-                  }}
-                />
-                <IconButton
-                  icon="delete-outline"
-                  size={20}
-                  iconColor="#D32F2F"
-                  onPress={(event) => {
-                    event.stopPropagation();
-                    remove(item.id);
-                  }}
-                />
-              </View>
+              {(can('agenda', 'update') || can('agenda', 'delete')) && (
+                <View style={styles.actionButtons}>
+                  {can('agenda', 'update') && (
+                    <IconButton
+                      icon="pencil-outline"
+                      size={20}
+                      iconColor={palette.navy800}
+                      onPress={(event) => {
+                        event.stopPropagation();
+                        navigation.navigate('AgendaForm', { agendamentoId: item.id });
+                      }}
+                    />
+                  )}
+                  {can('agenda', 'delete') && (
+                    <IconButton
+                      icon="delete-outline"
+                      size={20}
+                      iconColor="#D32F2F"
+                      onPress={(event) => {
+                        event.stopPropagation();
+                        remove(item.id);
+                      }}
+                    />
+                  )}
+                </View>
+              )}
             </View>
             </TouchableOpacity>
           );
         }}
       />
 
-      <FAB
-        icon="plus"
-        style={styles.fab}
-        color={palette.white}
-        onPress={() => navigation.navigate('AgendaForm')}
-      />
+      {can('agenda', 'create') && (
+        <FAB
+          icon="plus"
+          style={styles.fab}
+          color={palette.white}
+          onPress={() => navigation.navigate('AgendaForm')}
+        />
+      )}
     </View>
   );
 }
@@ -284,7 +306,7 @@ const styles = StyleSheet.create({
   // FAB
   fab: { 
     position: 'absolute', 
-    bottom: 24, 
+    bottom: 96, 
     right: 20, 
     backgroundColor: palette.navy800,
     borderRadius: borderRadius.lg,

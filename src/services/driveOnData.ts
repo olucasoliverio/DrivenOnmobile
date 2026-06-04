@@ -1,5 +1,14 @@
 import dayjs from 'dayjs';
 import api from '../api/api';
+import {
+  defaultAdditionalResources,
+  hasPermission,
+  isModuleResourceEnabled,
+  normalizeAdditionalResources,
+  type AccessModule,
+  type AdditionalResourcesMap,
+  type PermissionsMap,
+} from '../permissions/accessProfiles';
 
 export type Cliente = {
   id: number;
@@ -155,11 +164,7 @@ export type Configuracoes = {
   estado: string;
   cep: string;
   logo: string | null;
-  recursosAdicionais: {
-    agenda: boolean;
-    estoque: boolean;
-    fornecedores: boolean;
-  };
+  recursosAdicionais: AdditionalResourcesMap;
 };
 export type Dashboard = {
   osAbertas: number;
@@ -239,11 +244,7 @@ export const emptyDriveOnData: DriveOnData = {
     estado: '',
     cep: '',
     logo: null,
-    recursosAdicionais: {
-      agenda: true,
-      estoque: true,
-      fornecedores: true,
-    },
+    recursosAdicionais: defaultAdditionalResources,
   },
   dashboard: {
     osAbertas: 0,
@@ -484,7 +485,7 @@ export function adaptItemOS(i: any): ItemOS {
   };
 }
 
-export function adaptConfiguracoes(item: any): Configuracoes {
+export function adaptConfiguracoes(item: any, recursosOverride?: AdditionalResourcesMap): Configuracoes {
   const recursos = item?.recursos_adicionais ?? {};
   return {
     nomeOficina: textValue(item?.nome, 'DriveOn'),
@@ -496,11 +497,7 @@ export function adaptConfiguracoes(item: any): Configuracoes {
     estado: textValue(item?.cidade?.uf, ''),
     cep: textValue(item?.cep, ''),
     logo: item?.logo_url ? textValue(item.logo_url) : null,
-    recursosAdicionais: {
-      agenda: typeof recursos.agenda === 'boolean' ? recursos.agenda : true,
-      estoque: typeof recursos.estoque === 'boolean' ? recursos.estoque : true,
-      fornecedores: typeof recursos.fornecedores === 'boolean' ? recursos.fornecedores : true,
-    },
+    recursosAdicionais: recursosOverride ?? normalizeAdditionalResources(recursos),
   };
 }
 
@@ -577,7 +574,23 @@ async function getList<T>(path: string, adapter: (item: any) => T): Promise<T[]>
   return list.map(adapter);
 }
 
-export async function fetchDriveOnData(): Promise<DriveOnData> {
+const emptyList = async <T,>(): Promise<T[]> => [];
+
+export async function fetchDriveOnData(permissions?: PermissionsMap): Promise<DriveOnData> {
+  const [oficinaResult, recursosResult] = await Promise.allSettled([
+    api.get('/oficinas/minha'),
+    api.get('/recursos-adicionais'),
+  ]);
+
+  const recursosAdicionais = recursosResult.status === 'fulfilled'
+    ? normalizeAdditionalResources(recursosResult.value.data)
+    : oficinaResult.status === 'fulfilled'
+      ? normalizeAdditionalResources(oficinaResult.value.data?.recursos_adicionais)
+      : defaultAdditionalResources;
+
+  const canRead = (module: AccessModule) =>
+    hasPermission(permissions, module, 'read') && isModuleResourceEnabled(recursosAdicionais, module);
+
   const [
     clientesResult,
     veiculosResult,
@@ -591,22 +604,20 @@ export async function fetchDriveOnData(): Promise<DriveOnData> {
     servicosResult,
     usuariosResult,
     funcionariosResult,
-    oficinaResult,
     notificacoesResult,
   ] = await Promise.allSettled([
-    getList('/clientes', adaptCliente),
-    getList('/veiculos', adaptVeiculo),
-    getList('/ordens', adaptOrdem),
-    getList('/agendamentos', adaptAgendamento),
-    getList('/orcamentos', adaptOrcamento),
-    getList('/pagamentos', adaptPagamento),
-    getList('/estoque', adaptEstoque),
-    getList('/pecas', adaptPeca),
-    getList('/fornecedores', adaptFornecedor),
-    getList('/servicos', adaptServico),
-    getList('/usuario', adaptUsuario),
-    getList('/funcionarios', adaptFuncionario),
-    api.get('/oficinas/minha'),
+    canRead('clientes') ? getList('/clientes', adaptCliente) : emptyList<Cliente>(),
+    canRead('veiculos') ? getList('/veiculos', adaptVeiculo) : emptyList<Veiculo>(),
+    canRead('ordens') ? getList('/ordens', adaptOrdem) : emptyList<Ordem>(),
+    canRead('agenda') ? getList('/agendamentos', adaptAgendamento) : emptyList<Agendamento>(),
+    canRead('orcamentos') ? getList('/orcamentos', adaptOrcamento) : emptyList<Orcamento>(),
+    canRead('financeiro') ? getList('/pagamentos', adaptPagamento) : emptyList<Pagamento>(),
+    canRead('estoque') ? getList('/estoque', adaptEstoque) : emptyList<EstoqueItem>(),
+    canRead('estoque') ? getList('/pecas', adaptPeca) : emptyList<Peca>(),
+    canRead('fornecedores') ? getList('/fornecedores', adaptFornecedor) : emptyList<Fornecedor>(),
+    canRead('servicos') ? getList('/servicos', adaptServico) : emptyList<Servico>(),
+    canRead('funcionarios') ? getList('/usuario', adaptUsuario) : emptyList<Usuario>(),
+    canRead('funcionarios') ? getList('/funcionarios', adaptFuncionario) : emptyList<Funcionario>(),
     getList('/notificacoes', item => item as AppNotification),
   ]);
 
@@ -628,8 +639,8 @@ export async function fetchDriveOnData(): Promise<DriveOnData> {
   const notificacoes = valueOrFallback(notificacoesResult, []);
 
   const configuracoes = oficinaResult.status === 'fulfilled'
-    ? adaptConfiguracoes(oficinaResult.value.data)
-    : emptyDriveOnData.configuracoes;
+    ? adaptConfiguracoes(oficinaResult.value.data, recursosAdicionais)
+    : { ...emptyDriveOnData.configuracoes, recursosAdicionais };
 
   const baseData = {
     clientes,

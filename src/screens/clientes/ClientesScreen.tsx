@@ -5,15 +5,18 @@ import { FAB } from 'react-native-paper';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useDriveOnData } from '../../context/DriveOnDataContext';
+import { useAuth } from '../../context/AuthContext';
 import { palette, spacing, borderRadius, shadows, gradients } from '../../theme/theme';
 import ScreenHeader from '../../components/ScreenHeader';
 import EmptyState from '../../components/EmptyState';
+import LoadingState from '../../components/LoadingState';
 import { sendWelcomeMessage } from '../../services/whatsappService';
 
 export default function ClientesScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
-  const { clientes: clientesData, veiculos, ordens, refresh } = useDriveOnData();
+  const { clientes: clientesData, veiculos, ordens, refresh, isLoading } = useDriveOnData();
+  const { can } = useAuth();
   const [busca, setBusca] = useState('');
   const [isWelcomeModalVisible, setIsWelcomeModalVisible] = useState(false);
   const [registeredCliente, setRegisteredCliente] = useState<{ nome: string; telefone: string } | null>(null);
@@ -57,8 +60,8 @@ export default function ClientesScreen() {
       {/* ── Header padrão ─── */}
       <ScreenHeader
         title="Clientes"
-        subtitle={`${clientesData.length} cadastrado${clientesData.length !== 1 ? 's' : ''}`}
-        showBack
+        subtitle={isLoading ? 'Carregando...' : `${clientesData.length} cadastrado${clientesData.length !== 1 ? 's' : ''}`}
+        showBack={navigation.canGoBack()}
       />
 
       {/* ── Search (overlapping com borda suave) ── */}
@@ -90,11 +93,18 @@ export default function ClientesScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[palette.navy800]} />
         }
         ListEmptyComponent={() => (
-          <EmptyState
-            icon="people"
-            message={busca.length > 0 ? 'Nenhum cliente encontrado para esta busca' : 'Nenhum cliente cadastrado'}
-            isFullPage
-          />
+          isLoading ? (
+            <LoadingState message="Carregando clientes..." isFullPage />
+          ) : (
+            <EmptyState
+              icon="people"
+              message={busca.length > 0 ? 'Nenhum cliente encontrado para esta busca' : 'Nenhum cliente cadastrado'}
+              helper={busca.length > 0 ? 'Revise o nome, CPF ou telefone informado.' : 'Cadastre o primeiro cliente para começar a vincular veículos e serviços.'}
+              actionLabel={busca.length > 0 || !can('clientes', 'create') ? undefined : 'Novo Cliente'}
+              onAction={busca.length > 0 || !can('clientes', 'create') ? undefined : () => navigation.navigate('ClienteForm')}
+              isFullPage
+            />
+          )
         )}
         renderItem={({ item: cliente, index }) => {
           const veiculosCount = veiculos.filter(v => v.clienteId === cliente.id).length;
@@ -152,12 +162,14 @@ export default function ClientesScreen() {
       />
 
       {/* FAB ajustado para ficar acima do Tab Bar flutuante */}
-      <FAB 
-        icon="plus" 
-        style={styles.fab} 
-        color={palette.white} 
-        onPress={() => navigation.navigate('ClienteForm')} 
-      />
+      {can('clientes', 'create') && (
+        <FAB
+          icon="plus"
+          style={styles.fab}
+          color={palette.white}
+          onPress={() => navigation.navigate('ClienteForm')}
+        />
+      )}
 
       {/* ── Welcome Message Confirm Modal ── */}
       <Modal
@@ -297,7 +309,7 @@ const styles = StyleSheet.create({
 
   fab: { 
     position: 'absolute', 
-    bottom: 24, 
+    bottom: 96, 
     right: 20, 
     backgroundColor: palette.navy800,
     borderRadius: borderRadius.lg,

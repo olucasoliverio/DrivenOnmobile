@@ -4,9 +4,11 @@ import { Button, TextInput, ActivityIndicator } from 'react-native-paper';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useDriveOnData } from '../../context/DriveOnDataContext';
+import { useAuth } from '../../context/AuthContext';
 import { palette, spacing, borderRadius, shadows } from '../../theme/theme';
 import ScreenHeader from '../../components/ScreenHeader';
 import api from '../../api/api';
+import { getFriendlyErrorMessage } from '../../utils/errorMessages';
 
 function formatTelefone(val: string): string {
   const clean = val.replace(/\D/g, '');
@@ -33,9 +35,16 @@ export default function ClienteFormScreen() {
   const route = useRoute<any>();
   const { clienteId } = route.params ?? {};
   const { clientes, createCliente, updateRecord } = useDriveOnData();
+  const { can } = useAuth();
 
   const isEditing = clienteId != null;
   const cliente = isEditing ? clientes.find(c => c.id === Number(clienteId)) : undefined;
+
+  useEffect(() => {
+    if (!can('clientes', isEditing ? 'update' : 'create')) {
+      navigation.goBack();
+    }
+  }, [can, isEditing, navigation]);
 
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
@@ -108,6 +117,11 @@ export default function ClienteFormScreen() {
       Alert.alert('Nome obrigatório', 'Informe o nome do cliente.');
       return;
     }
+    const telefoneDigits = form.telefone.replace(/\D/g, '');
+    if (form.telefone.trim() && telefoneDigits.length < 10) {
+      Alert.alert('Telefone inválido', 'Informe o telefone com DDD.');
+      return;
+    }
 
     setSaving(true);
     try {
@@ -156,7 +170,7 @@ export default function ClienteFormScreen() {
     } catch (error: any) {
       Alert.alert(
         'Não foi possível salvar',
-        error?.response?.data?.error ?? error?.response?.data?.message ?? error?.message ?? 'Tente novamente.'
+        getFriendlyErrorMessage(error)
       );
     } finally {
       setSaving(false);
@@ -172,10 +186,14 @@ export default function ClienteFormScreen() {
       />
 
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.keyboardView}
       >
-        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
           {/* Card 1: Dados Pessoais */}
           <View style={styles.card}>
             <View style={styles.cardHeader}>
@@ -386,6 +404,7 @@ export default function ClienteFormScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: palette.slate100 },
+  keyboardView: { flex: 1, backgroundColor: palette.slate100 },
   scrollContent: { padding: spacing.lg, gap: spacing.md, paddingBottom: spacing.xxl },
   card: {
     backgroundColor: palette.white,

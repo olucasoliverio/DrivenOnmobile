@@ -1,6 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api, { setAuthToken, registerOnUnauthorized } from '../api/api';
+import { hasPermission, type AccessAction, type AccessModule, type PermissionsMap } from '../permissions/accessProfiles';
 
 interface User {
   id: number;
@@ -9,7 +10,7 @@ interface User {
   perfil: string;
   oficinaId?: number;
   perfilAcessoNome?: string | null;
-  permissoes?: Record<string, unknown>;
+  permissoes?: PermissionsMap;
 }
 
 interface AuthContextData {
@@ -18,6 +19,7 @@ interface AuthContextData {
   isLoading: boolean;
   signIn: (email: string, senha: string) => Promise<void>;
   signOut: () => Promise<void>;
+  can: (module: AccessModule, action?: AccessAction) => boolean;
 }
 
 const AuthContext = createContext<AuthContextData>({} as AuthContextData);
@@ -143,8 +145,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
   }, [signOut]);
 
+  const can = useCallback(
+    (module: AccessModule, action: AccessAction = 'read') => hasPermission(user?.permissoes, module, action),
+    [user?.permissoes],
+  );
+
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated: !!user, isLoading, signIn, signOut }}>
+    <AuthContext.Provider value={{ user, isAuthenticated: !!user, isLoading, signIn, signOut, can }}>
       {children}
     </AuthContext.Provider>
   );
