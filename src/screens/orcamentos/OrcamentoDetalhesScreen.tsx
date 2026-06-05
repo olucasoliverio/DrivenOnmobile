@@ -2,10 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { Alert, Linking, Share, View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal } from 'react-native';
 import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDriveOnData } from '../../context/DriveOnDataContext';
 import { palette, spacing, borderRadius, shadows, gradients } from '../../theme/theme';
 import ScreenHeader from '../../components/ScreenHeader';
 import CrudDialog, { type CrudField } from '../../components/CrudDialog';
+import ProcessingOverlay from '../../components/ProcessingOverlay';
+import WhatsAppMessagePreview from '../../components/WhatsAppMessagePreview';
 import { sendWhatsAppMessage } from '../../services/whatsappService';
 import dayjs from 'dayjs';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -28,6 +31,7 @@ const STATUS_MAP: Record<string, { label: string; color: string; bg: string; ico
 };
 
 export default function OrcamentoDetalhesScreen() {
+  const insets = useSafeAreaInsets();
   const route = useRoute<any>();
   const navigation = useNavigation<any>();
   const { orcamentoId } = route.params ?? { orcamentoId: 1 };
@@ -37,6 +41,10 @@ export default function OrcamentoDetalhesScreen() {
   const [isWhatsAppModalVisible, setIsWhatsAppModalVisible] = useState(false);
   const [isWhatsAppPromptVisible, setIsWhatsAppPromptVisible] = useState(false);
   const [isSuccessModalVisible, setIsSuccessModalVisible] = useState(false);
+  const [isMoreOptionsVisible, setIsMoreOptionsVisible] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [isPreparingLink, setIsPreparingLink] = useState(false);
+  const [optimisticStatus, setOptimisticStatus] = useState<string | null>(null);
 
   const orcamento = orcamentos.find(o => o.id === orcamentoId);
   const cliente = orcamento ? clientes.find(c => c.id === orcamento.clienteId) : undefined;
@@ -64,6 +72,12 @@ export default function OrcamentoDetalhesScreen() {
       return () => clearTimeout(timer);
     }
   }, [isSuccessModalVisible]);
+
+  useEffect(() => {
+    if (optimisticStatus && orcamento?.status === optimisticStatus) {
+      setOptimisticStatus(null);
+    }
+  }, [optimisticStatus, orcamento?.status]);
   
   if (!orcamento) {
     return (
@@ -76,8 +90,9 @@ export default function OrcamentoDetalhesScreen() {
     );
   }
 
-  const isVencido = dayjs(orcamento.validade).isBefore(dayjs()) && orcamento.status === 'analise';
-  const st = STATUS_MAP[orcamento.status] ?? { label: orcamento.status, color: palette.slate500, bg: palette.slate100, icon: 'info' as any };
+  const effectiveStatus = optimisticStatus ?? orcamento.status;
+  const isVencido = dayjs(orcamento.validade).isBefore(dayjs()) && effectiveStatus === 'analise';
+  const st = STATUS_MAP[effectiveStatus] ?? { label: effectiveStatus, color: palette.slate500, bg: palette.slate100, icon: 'info' as any };
 
   const openEditForm = () => {
     navigation.navigate('OrcamentoForm', { orcamentoId: orcamento.id });
@@ -103,7 +118,7 @@ export default function OrcamentoDetalhesScreen() {
 
   const trackingLink = resolveTrackingLink('orcamentos', orcamento.id, shortUrl);
 
-  const getWhatsAppMessageText = () => {
+  const getWhatsAppMessageText = (link = trackingLink || 'Link sendo gerado...') => {
     if (!cliente) return '';
     const veiculoNome = veiculo ? `${veiculo.marca} ${veiculo.modelo}` : 'Veiculo';
     const placa = veiculo?.placa ?? '-';
@@ -118,10 +133,10 @@ export default function OrcamentoDetalhesScreen() {
       veiculoNome,
       placa,
       orcamentoId: orcamento.id,
-      status: orcamento.status,
+      status: effectiveStatus,
       total: orcamento.total,
       itens,
-      link: trackingLink,
+      link,
     });
   };
 
@@ -149,21 +164,63 @@ export default function OrcamentoDetalhesScreen() {
     );
   };
 
+  const atualizarStatusOrcamento = async (status: 'aprovado' | 'recusado' | 'analise') => {
+    setIsProcessing(true);
+    try {
+      await api.patch(`/orcamentos/${orcamento.id}/status`, { status });
+      setOptimisticStatus(status);
+      setIsStatusModalVisible(false);
+      setIsProcessing(false);
+
+      if (status === 'aprovado') {
+        sugerirConversaoOS();
+      } else {
+        sugerirNotificacaoWhatsApp();
+      }
+
+      void refresh();
+      return true;
+    } catch (error: any) {
+      setIsProcessing(false);
+      Alert.alert('Erro', error?.response?.data?.error ?? error?.message ?? 'Tente novamente.');
+      return false;
+    }
+  };
+
   const handleWhatsAppPress = () => {
     setIsWhatsAppModalVisible(true);
   };
 
+  const garantirLinkAcompanhamento = async () => {
+    if (shortUrl) return shortUrl;
+    setIsPreparingLink(true);
+    try {
+      const link = await createTrackingLink('orcamentos', orcamento.id);
+      setShortUrl(link);
+      return link;
+    } catch (error: any) {
+      Alert.alert('Link indisponível', error?.message ?? 'Não foi possível gerar o link de acompanhamento.');
+      return '';
+    } finally {
+      setIsPreparingLink(false);
+    }
+  };
+
   const abrirAcompanhamento = async () => {
-    const supported = await Linking.canOpenURL(trackingLink);
-    if (supported) await Linking.openURL(trackingLink);
-    else Alert.alert('Link indisponível', trackingLink);
+    const link = await garantirLinkAcompanhamento();
+    if (!link) return;
+    const supported = await Linking.canOpenURL(link);
+    if (supported) await Linking.openURL(link);
+    else Alert.alert('Link indisponível', link);
   };
 
   const compartilharPeloCelular = async () => {
     try {
+      const link = await garantirLinkAcompanhamento();
+      if (!link) return;
       await Share.share({
         title: `Orçamento #${String(orcamento.id).padStart(3, '0')}`,
-        message: whatsappPreview || trackingLink,
+        message: getWhatsAppMessageText(link),
       });
     } catch (error: any) {
       Alert.alert('Não foi possível compartilhar', error?.message ?? 'Tente novamente.');
@@ -195,15 +252,10 @@ export default function OrcamentoDetalhesScreen() {
               <Text style={styles.orcTitle}>ORC #{String(orcamento.id).padStart(3, '0')}</Text>
               <Text style={styles.orcTotal}>R$ {orcamento.total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</Text>
             </View>
-            <TouchableOpacity 
-              activeOpacity={0.7} 
-              onPress={() => setIsStatusModalVisible(true)}
-              style={[styles.statusBadge, { backgroundColor: st.bg, flexDirection: 'row', alignItems: 'center', gap: 4 }]}
-            >
+            <View style={[styles.statusBadge, { backgroundColor: st.bg, flexDirection: 'row', alignItems: 'center', gap: 4 }]}>
               <MaterialIcons name={st.icon} size={12} color={st.color} />
               <Text style={[styles.statusText, { color: st.color }]}>{st.label.toUpperCase()}</Text>
-              <MaterialIcons name="arrow-drop-down" size={16} color={st.color} />
-            </TouchableOpacity>
+            </View>
           </View>
           <View style={styles.cardDivider} />
           <View style={styles.datesRow}>
@@ -287,18 +339,26 @@ export default function OrcamentoDetalhesScreen() {
           </View>
         </View>
 
-        {/* Compartilhar acompanhamento */}
+      </ScrollView>
+
+      <View style={[styles.fixedActionBar, { paddingBottom: insets.bottom + spacing.sm }]}>
         <TouchableOpacity style={styles.whatsappBtn} activeOpacity={0.7} onPress={handleWhatsAppPress}>
-          <MaterialIcons name="ios-share" size={20} color={palette.white} />
-          <Text style={styles.whatsappBtnText}>Compartilhar acompanhamento</Text>
+          <MaterialCommunityIcons name="whatsapp" size={20} color={palette.white} />
+          <Text style={styles.whatsappBtnText}>Enviar para o cliente no WhatsApp</Text>
         </TouchableOpacity>
 
-        {/* Botão de Excluir */}
-        <TouchableOpacity style={styles.deleteBtn} activeOpacity={0.7} onPress={removeOrcamento}>
-          <MaterialIcons name="delete" size={20} color={palette.rose600} />
-          <Text style={styles.deleteBtnText}>Excluir Orçamento</Text>
-        </TouchableOpacity>
-      </ScrollView>
+        <View style={styles.secondaryActionsRow}>
+          <TouchableOpacity style={styles.secondaryActionButton} activeOpacity={0.7} onPress={() => setIsStatusModalVisible(true)}>
+            <MaterialIcons name="swap-vert" size={18} color={palette.navy800} />
+            <Text style={styles.secondaryActionText}>Alterar situação</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.secondaryActionButton} activeOpacity={0.7} onPress={() => setIsMoreOptionsVisible(true)}>
+            <MaterialIcons name="more-horiz" size={18} color={palette.navy800} />
+            <Text style={styles.secondaryActionText}>Mais opções</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
 
       {/* ── WhatsApp Bottom Sheet Modal ── */}
       <Modal
@@ -316,9 +376,9 @@ export default function OrcamentoDetalhesScreen() {
           />
           <View style={styles.modalContent}>
             <View style={styles.modalDragIndicator} />
-            <Text style={styles.modalTitle}>Compartilhar acompanhamento</Text>
+            <Text style={styles.modalTitle}>Enviar atualização ao cliente</Text>
             <Text style={styles.modalSubtitle}>
-              Envie para {cliente?.nome ?? 'o cliente'} acompanhar o orçamento pelo link.
+              Vamos abrir o WhatsApp com uma mensagem pronta para {cliente?.nome ?? 'o cliente'}. Ela inclui o link de acompanhamento.
             </Text>
 
             {/* Situação do Orçamento */}
@@ -331,32 +391,20 @@ export default function OrcamentoDetalhesScreen() {
             </View>
 
             {/* Prévia da Mensagem */}
-            <Text style={styles.dialogLabel}>Prévia da Mensagem</Text>
+            <Text style={styles.dialogLabel}>Mensagem que será enviada</Text>
             <View style={styles.previewBox}>
               <ScrollView 
                 style={{ flex: 1 }} 
                 nestedScrollEnabled={true}
                 showsVerticalScrollIndicator={true}
               >
-                <Text style={styles.previewText}>{whatsappPreview}</Text>
+                <WhatsAppMessagePreview message={whatsappPreview} textStyle={styles.previewText} />
               </ScrollView>
             </View>
 
             <View style={styles.trackingLinkBox}>
               <MaterialIcons name="link" size={16} color={palette.navy700} />
-              <Text style={styles.trackingLinkText} numberOfLines={1}>{trackingLink}</Text>
-            </View>
-
-            <View style={styles.shareQuickActions}>
-              <TouchableOpacity style={styles.shareOptionButton} activeOpacity={0.8} onPress={abrirAcompanhamento}>
-                <MaterialIcons name="open-in-new" size={18} color={palette.navy800} />
-                <Text style={styles.shareOptionText}>Abrir link</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity style={styles.shareOptionButton} activeOpacity={0.8} onPress={compartilharPeloCelular}>
-                <MaterialIcons name="ios-share" size={18} color={palette.navy800} />
-                <Text style={styles.shareOptionText}>Compartilhar pelo celular</Text>
-              </TouchableOpacity>
+              <Text style={styles.trackingLinkText} numberOfLines={1}>A mensagem inclui o link para o cliente acompanhar online.</Text>
             </View>
 
             {/* Botões de Ação */}
@@ -366,7 +414,7 @@ export default function OrcamentoDetalhesScreen() {
                 activeOpacity={0.8}
                 onPress={() => setIsWhatsAppModalVisible(false)}
               >
-                <Text style={styles.dialogCancelBtnText}>Cancelar</Text>
+                <Text style={styles.dialogCancelBtnText}>Agora não</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -377,8 +425,10 @@ export default function OrcamentoDetalhesScreen() {
                     Alert.alert('Telefone indisponível', 'Este cliente não possui telefone cadastrado.');
                     return;
                   }
+                  const link = await garantirLinkAcompanhamento();
+                  if (!link) return;
                   setIsWhatsAppModalVisible(false);
-                  const success = await sendWhatsAppMessage(cliente.telefone, whatsappPreview);
+                  const success = await sendWhatsAppMessage(cliente.telefone, getWhatsAppMessageText(link));
                   if (success) {
                     setIsSuccessModalVisible(true);
                   }
@@ -386,10 +436,93 @@ export default function OrcamentoDetalhesScreen() {
               >
                 <LinearGradient colors={gradients.navyPrimary} style={styles.dialogSendBtnGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
                   <MaterialCommunityIcons name="whatsapp" size={18} color={palette.white} />
-                  <Text style={styles.dialogSendBtnText}>Confirmar Envio</Text>
+                  <Text style={styles.dialogSendBtnText}>Enviar no WhatsApp</Text>
                 </LinearGradient>
               </TouchableOpacity>
             </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Mais opções */}
+      <Modal
+        visible={isMoreOptionsVisible}
+        transparent={true}
+        animationType="slide"
+        statusBarTranslucent={true}
+        onRequestClose={() => setIsMoreOptionsVisible(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <TouchableOpacity
+            style={styles.modalBackdropCloseArea}
+            activeOpacity={1}
+            onPress={() => setIsMoreOptionsVisible(false)}
+          />
+          <View style={styles.modalContent}>
+            <View style={styles.modalDragIndicator} />
+            <Text style={styles.modalTitle}>Mais opções</Text>
+            <Text style={styles.modalSubtitle}>
+              Ações menos usadas do orçamento #{String(orcamento.id).padStart(3, '0')}.
+            </Text>
+
+            <TouchableOpacity
+              style={styles.modalOption}
+              activeOpacity={0.7}
+              onPress={() => {
+                setIsMoreOptionsVisible(false);
+                abrirAcompanhamento();
+              }}
+            >
+              <View style={[styles.modalOptionIcon, { backgroundColor: palette.navy50 }]}>
+                <MaterialIcons name="visibility" size={22} color={palette.navy700} />
+              </View>
+              <View style={styles.modalOptionTextContainer}>
+                <Text style={styles.modalOptionText}>Ver página do cliente</Text>
+                <Text style={styles.modalOptionSubtext}>Abre a página que o cliente recebe pelo link.</Text>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.modalOption}
+              activeOpacity={0.7}
+              onPress={() => {
+                setIsMoreOptionsVisible(false);
+                compartilharPeloCelular();
+              }}
+            >
+              <View style={[styles.modalOptionIcon, { backgroundColor: palette.navy50 }]}>
+                <MaterialIcons name="ios-share" size={22} color={palette.navy700} />
+              </View>
+              <View style={styles.modalOptionTextContainer}>
+                <Text style={styles.modalOptionText}>Enviar por outro aplicativo</Text>
+                <Text style={styles.modalOptionSubtext}>Usa o compartilhamento do celular fora do WhatsApp.</Text>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.modalOption}
+              activeOpacity={0.7}
+              onPress={() => {
+                setIsMoreOptionsVisible(false);
+                removeOrcamento();
+              }}
+            >
+              <View style={[styles.modalOptionIcon, { backgroundColor: 'rgba(239, 68, 68, 0.05)' }]}>
+                <MaterialIcons name="delete" size={22} color={palette.rose600} />
+              </View>
+              <View style={styles.modalOptionTextContainer}>
+                <Text style={[styles.modalOptionText, { color: palette.rose600 }]}>Excluir orçamento</Text>
+                <Text style={styles.modalOptionSubtext}>Remove o orçamento após confirmação.</Text>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.modalCancelButton}
+              activeOpacity={0.8}
+              onPress={() => setIsMoreOptionsVisible(false)}
+            >
+              <Text style={styles.modalCancelButtonText}>Voltar</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>
@@ -418,16 +551,8 @@ export default function OrcamentoDetalhesScreen() {
             <TouchableOpacity
               style={styles.modalOption}
               activeOpacity={0.7}
-              onPress={async () => {
-                setIsStatusModalVisible(false);
-                try {
-                  await api.patch(`/orcamentos/${orcamento.id}/status`, { status: 'aprovado' });
-                  await refresh();
-                  sugerirConversaoOS();
-                } catch (error: any) {
-                  Alert.alert('Erro', error?.response?.data?.error ?? error?.message);
-                }
-              }}
+              disabled={isProcessing}
+              onPress={() => atualizarStatusOrcamento('aprovado')}
             >
               <View style={[styles.modalOptionIcon, { backgroundColor: 'rgba(16, 185, 129, 0.05)' }]}>
                 <MaterialIcons name="check-circle" size={22} color={palette.emerald600} />
@@ -441,16 +566,8 @@ export default function OrcamentoDetalhesScreen() {
             <TouchableOpacity
               style={styles.modalOption}
               activeOpacity={0.7}
-              onPress={async () => {
-                setIsStatusModalVisible(false);
-                try {
-                  await api.patch(`/orcamentos/${orcamento.id}/status`, { status: 'recusado' });
-                  await refresh();
-                  sugerirNotificacaoWhatsApp();
-                } catch (error: any) {
-                  Alert.alert('Erro', error?.response?.data?.error ?? error?.message);
-                }
-              }}
+              disabled={isProcessing}
+              onPress={() => atualizarStatusOrcamento('recusado')}
             >
               <View style={[styles.modalOptionIcon, { backgroundColor: 'rgba(239, 68, 68, 0.05)' }]}>
                 <MaterialIcons name="cancel" size={22} color={palette.rose600} />
@@ -464,16 +581,8 @@ export default function OrcamentoDetalhesScreen() {
             <TouchableOpacity
               style={styles.modalOption}
               activeOpacity={0.7}
-              onPress={async () => {
-                setIsStatusModalVisible(false);
-                try {
-                  await api.patch(`/orcamentos/${orcamento.id}/status`, { status: 'analise' });
-                  await refresh();
-                  sugerirNotificacaoWhatsApp();
-                } catch (error: any) {
-                  Alert.alert('Erro', error?.response?.data?.error ?? error?.message);
-                }
-              }}
+              disabled={isProcessing}
+              onPress={() => atualizarStatusOrcamento('analise')}
             >
               <View style={[styles.modalOptionIcon, { backgroundColor: 'rgba(245, 158, 11, 0.05)' }]}>
                 <MaterialIcons name="schedule" size={22} color={palette.amber500} />
@@ -597,6 +706,10 @@ export default function OrcamentoDetalhesScreen() {
           </TouchableOpacity>
         </TouchableOpacity>
       </Modal>
+      <ProcessingOverlay
+        visible={isProcessing || isPreparingLink}
+        message={isPreparingLink ? 'Preparando link...' : 'Atualizando status...'}
+      />
     </View>
   );
 }
@@ -613,7 +726,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  scrollContent: { padding: spacing.lg, paddingBottom: spacing.xxl },
+  scrollContent: { padding: spacing.lg, paddingBottom: 150 },
+  fixedActionBar: {
+    backgroundColor: palette.white,
+    borderTopWidth: 1,
+    borderTopColor: palette.slate200,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.sm,
+    ...shadows.lg,
+  },
 
   // Card Principal
   mainCard: {
@@ -691,6 +812,25 @@ const styles = StyleSheet.create({
     ...shadows.sm,
   },
   whatsappBtnText: { fontSize: 14, color: palette.white, fontWeight: '700' },
+  secondaryActionsRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginBottom: spacing.sm,
+  },
+  secondaryActionButton: {
+    flex: 1,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: palette.white,
+    borderRadius: borderRadius.md,
+    borderWidth: 1.5,
+    borderColor: palette.slate200,
+    paddingVertical: 12,
+    gap: spacing.xs,
+    ...shadows.sm,
+  },
+  secondaryActionText: { fontSize: 13, color: palette.navy800, fontWeight: '700' },
   deleteBtn: {
     flexDirection: 'row',
     justifyContent: 'center',

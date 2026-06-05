@@ -15,7 +15,7 @@ export function getFallbackDocumentLink(target: ShareTarget, id: number): string
 }
 
 export function resolveTrackingLink(target: ShareTarget, id: number, shortUrl?: string): string {
-  return shortUrl || getFallbackDocumentLink(target, id);
+  return shortUrl || '';
 }
 
 export function formatCurrency(value: number): string {
