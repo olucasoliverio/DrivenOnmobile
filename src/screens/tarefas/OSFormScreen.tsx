@@ -556,7 +556,14 @@ export default function OSFormScreen() {
       </KeyboardAvoidingView>
 
       {/* ── MODAL SELEÇÃO CLIENTE ── */}
-      <Modal visible={clientModalVisible} animationType="slide">
+      <Modal
+        visible={clientModalVisible}
+        animationType="slide"
+        onRequestClose={() => {
+          setClientModalVisible(false);
+          setClientSearch('');
+        }}
+      >
         <View style={styles.modalContainer}>
           <ScreenHeader title="Selecionar Cliente" showBack={false} />
           <Searchbar
@@ -590,7 +597,14 @@ export default function OSFormScreen() {
       </Modal>
 
       {/* ── MODAL SELEÇÃO VEÍCULO ── */}
-      <Modal visible={vehicleModalVisible} animationType="slide">
+      <Modal
+        visible={vehicleModalVisible}
+        animationType="slide"
+        onRequestClose={() => {
+          setVehicleModalVisible(false);
+          setVehicleSearch('');
+        }}
+      >
         <View style={styles.modalContainer}>
           <ScreenHeader title={`Veículos de ${selectedCliente?.nome ?? 'Cliente'}`} showBack={false} />
           <Searchbar
@@ -677,7 +691,14 @@ export default function OSFormScreen() {
       </Modal>
 
       {/* ── MODAL SELEÇÃO FUNCIONÁRIO ── */}
-      <Modal visible={employeeModalVisible} animationType="slide">
+      <Modal
+        visible={employeeModalVisible}
+        animationType="slide"
+        onRequestClose={() => {
+          setEmployeeModalVisible(false);
+          setEmployeeSearch('');
+        }}
+      >
         <View style={styles.modalContainer}>
           <ScreenHeader title="Selecionar Mecânico" showBack={false} />
           <Searchbar

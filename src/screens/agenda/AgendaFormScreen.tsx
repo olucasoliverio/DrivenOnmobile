@@ -429,7 +429,14 @@ export default function AgendaFormScreen() {
       </KeyboardAvoidingView>
 
       {/* ── MODAL SELEÇÃO CLIENTE ── */}
-      <Modal visible={clienteModalVisible} animationType="slide">
+      <Modal
+        visible={clienteModalVisible}
+        animationType="slide"
+        onRequestClose={() => {
+          setClienteModalVisible(false);
+          setClienteSearch('');
+        }}
+      >
         <View style={styles.modalContainer}>
           <ScreenHeader title="Selecionar Cliente" showBack={false} />
           <View style={styles.searchBox}>
@@ -490,7 +497,14 @@ export default function AgendaFormScreen() {
       </Modal>
 
       {/* ── MODAL SELEÇÃO VEÍCULO ── */}
-      <Modal visible={veiculoModalVisible} animationType="slide">
+      <Modal
+        visible={veiculoModalVisible}
+        animationType="slide"
+        onRequestClose={() => {
+          setVeiculoModalVisible(false);
+          setVeiculoSearch('');
+        }}
+      >
         <View style={styles.modalContainer}>
           <ScreenHeader
             title={`Veículos de ${form.clienteNome || 'Cliente'}`}
