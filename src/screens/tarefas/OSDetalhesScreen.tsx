@@ -107,7 +107,6 @@ export default function OSDetalhesScreen() {
   const [isConfirmCancelModalVisible, setIsConfirmCancelModalVisible] = useState(false);
   const [isWhatsAppPromptVisible, setIsWhatsAppPromptVisible] = useState(false);
   const [isSuccessModalVisible, setIsSuccessModalVisible] = useState(false);
-  const [isMoreOptionsVisible, setIsMoreOptionsVisible] = useState(false);
   const [isPaymentModalVisible, setIsPaymentModalVisible] = useState(false);
   const [selectedMetodo, setSelectedMetodo] = useState<'pix' | 'dinheiro' | 'cartao' | 'boleto'>('pix');
   const [selectedStatus, setSelectedStatus] = useState<'pendente' | 'pago'>('pago');
@@ -211,34 +210,27 @@ export default function OSDetalhesScreen() {
         title="Detalhes da OS"
         showBack={true}
         rightElement={
-          <TouchableOpacity
-            style={styles.headerEditBtn}
-            onPress={() => navigation.navigate('OSForm', { osId: os.id })}
-            activeOpacity={0.7}
-          >
-            <MaterialIcons name="edit" size={22} color={palette.slate700} />
-          </TouchableOpacity>
+          <View style={styles.headerActions}>
+            {(effectiveStatus === 'aguardando' || effectiveStatus === 'em_andamento') && (
+              <TouchableOpacity
+                style={[styles.headerEditBtn, styles.headerDangerBtn]}
+                onPress={() => setIsConfirmCancelModalVisible(true)}
+                activeOpacity={0.7}
+              >
+                <MaterialIcons name="cancel" size={22} color={palette.rose600} />
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity
+              style={styles.headerEditBtn}
+              onPress={() => navigation.navigate('OSForm', { osId: os.id })}
+              activeOpacity={0.7}
+            >
+              <MaterialIcons name="edit" size={22} color={palette.slate700} />
+            </TouchableOpacity>
+          </View>
         }
       />
-      <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: insets.bottom + 150 }} showsVerticalScrollIndicator={false}>
-
-      {/* ── Hero Card ── */}
-      <View style={styles.heroCard}>
-        <View style={styles.heroTop}>
-          <View style={styles.osNumBox}>
-            <Text style={styles.osNumText}>OS #{String(os.id).padStart(3, '0')}</Text>
-          </View>
-          <View style={[styles.statusBadge, { backgroundColor: st.bg }]}>
-            <MaterialIcons name={st.icon} size={12} color={st.color} />
-            <Text style={[styles.statusText, { color: st.color }]}>{st.label}</Text>
-          </View>
-        </View>
-        <Text style={styles.descricao}>{os.descricao}</Text>
-        <View style={styles.valorRow}>
-          <Text style={styles.valorLabel}>Total</Text>
-          <Text style={styles.valor}>R$ {os.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</Text>
-        </View>
-      </View>
+      <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: insets.bottom + 86 }} showsVerticalScrollIndicator={false}>
 
       {/* ── Cliente ── */}
       <View style={styles.section}>
@@ -269,6 +261,14 @@ export default function OSDetalhesScreen() {
           <MaterialIcons name="info-outline" size={16} color={palette.navy800} />
           <Text style={styles.sectionTitle}>Informações</Text>
         </View>
+        <View style={styles.statusInfoRow}>
+          <Text style={styles.statusInfoLabel}>Situação</Text>
+          <View style={[styles.statusBadge, { backgroundColor: st.bg }]}>
+            <MaterialIcons name={st.icon} size={12} color={st.color} />
+            <Text style={[styles.statusText, { color: st.color }]}>{st.label}</Text>
+          </View>
+        </View>
+        <InfoRow icon="description" label="Descrição" value={os.descricao} />
         <InfoRow icon="login" label="Entrada" value={dayjs(os.dataEntrada).format('DD/MM/YYYY HH:mm')} />
         <InfoRow icon="event" label="Previsão" value={dayjs(os.dataPrevista).format('DD/MM/YYYY')} />
         <InfoRow icon="engineering" label="Mecânico" value={os.mecanico} />
@@ -383,46 +383,27 @@ export default function OSDetalhesScreen() {
     </ScrollView>
 
       <View style={[styles.fixedActionBar, { paddingBottom: insets.bottom + spacing.sm }]}>
-        {effectiveStatus === 'aguardando' && (
+        <View style={styles.footerHandle} />
+
+        <View style={styles.footerActionsRow}>
+          {(effectiveStatus === 'aguardando' || effectiveStatus === 'em_andamento') && (
+            <TouchableOpacity style={styles.footerPrimaryAction} activeOpacity={0.82} onPress={() => setIsStatusModalVisible(true)}>
+              <LinearGradient colors={gradients.navyPrimary} style={styles.footerGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
+                <MaterialIcons name="swap-vert" size={18} color={palette.white} />
+                <Text style={styles.footerPrimaryText}>Alterar situação</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          )}
+
           <TouchableOpacity
-            style={styles.btnPrimary}
+            style={[styles.footerSecondaryAction, effectiveStatus !== 'aguardando' && effectiveStatus !== 'em_andamento' && styles.footerActionWide]}
             activeOpacity={0.8}
-            disabled={isProcessing}
-            onPress={async () => {
-              await atualizarStatusOS('em_andamento');
-            }}
+            onPress={handleWhatsAppPress}
           >
-            <LinearGradient colors={gradients.navyPrimary} style={styles.btnGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
-              {isProcessing ? (
-                <ActivityIndicator size="small" color={palette.white} />
-              ) : (
-                <>
-                  <MaterialIcons name="play-arrow" size={18} color={palette.white} />
-                  <Text style={styles.btnPrimaryText}>Iniciar Serviço</Text>
-                </>
-              )}
-            </LinearGradient>
+            <MaterialIcons name="ios-share" size={18} color={palette.navy800} />
+            <Text style={styles.footerSecondaryText}>Compartilhar</Text>
           </TouchableOpacity>
-        )}
-
-        {effectiveStatus === 'em_andamento' && (
-          <TouchableOpacity style={styles.btnPrimary} activeOpacity={0.8} onPress={concluirOS}>
-            <LinearGradient colors={gradients.navyPrimary} style={styles.btnGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
-              <MaterialIcons name="check-circle" size={18} color={palette.white} />
-              <Text style={styles.btnPrimaryText}>Marcar como Concluído</Text>
-            </LinearGradient>
-          </TouchableOpacity>
-        )}
-
-        <TouchableOpacity style={styles.btnWhatsApp} activeOpacity={0.8} onPress={handleWhatsAppPress}>
-          <MaterialCommunityIcons name="whatsapp" size={18} color={palette.white} />
-          <Text style={styles.btnWhatsAppText}>Enviar atualização ao cliente</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.btnOutline} activeOpacity={0.7} onPress={() => setIsMoreOptionsVisible(true)}>
-          <MaterialIcons name="more-horiz" size={18} color={palette.navy800} />
-          <Text style={styles.btnOutlineText}>Mais opções</Text>
-        </TouchableOpacity>
+        </View>
       </View>
 
       {/* ── WhatsApp Bottom Sheet Modal ── */}
@@ -441,9 +422,9 @@ export default function OSDetalhesScreen() {
           />
           <View style={styles.modalContent}>
             <View style={styles.modalDragIndicator} />
-            <Text style={styles.modalTitle}>Enviar atualização ao cliente</Text>
+            <Text style={styles.modalTitle}>Compartilhar</Text>
             <Text style={styles.modalSubtitle}>
-              Vamos abrir o WhatsApp com uma mensagem pronta para {cliente?.nome ?? 'o cliente'}. Ela inclui o link de acompanhamento da OS.
+              Escolha como enviar o acompanhamento para {cliente?.nome ?? 'o cliente'}.
             </Text>
 
             {/* Situação da OS */}
@@ -470,6 +451,32 @@ export default function OSDetalhesScreen() {
             <View style={styles.trackingLinkBox}>
               <MaterialIcons name="link" size={16} color={palette.navy700} />
               <Text style={styles.trackingLinkText} numberOfLines={1}>A mensagem inclui o link para o cliente acompanhar online.</Text>
+            </View>
+
+            <View style={styles.shareQuickActions}>
+              <TouchableOpacity
+                style={styles.shareOptionButton}
+                activeOpacity={0.8}
+                onPress={() => {
+                  setIsWhatsAppModalVisible(false);
+                  void abrirAcompanhamento();
+                }}
+              >
+                <MaterialIcons name="open-in-new" size={18} color={palette.navy800} />
+                <Text style={styles.shareOptionText}>Abrir link</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.shareOptionButton}
+                activeOpacity={0.8}
+                onPress={() => {
+                  setIsWhatsAppModalVisible(false);
+                  void compartilharPeloCelular();
+                }}
+              >
+                <MaterialIcons name="ios-share" size={18} color={palette.navy800} />
+                <Text style={styles.shareOptionText}>Compartilhar</Text>
+              </TouchableOpacity>
             </View>
 
             {/* Botões de Ação */}
@@ -505,110 +512,6 @@ export default function OSDetalhesScreen() {
                 </LinearGradient>
               </TouchableOpacity>
             </View>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Mais opções */}
-      <Modal
-        visible={isMoreOptionsVisible}
-        transparent={true}
-        animationType="slide"
-        statusBarTranslucent={true}
-        onRequestClose={() => setIsMoreOptionsVisible(false)}
-      >
-        <View style={styles.modalBackdrop}>
-          <TouchableOpacity
-            style={styles.modalBackdropCloseArea}
-            activeOpacity={1}
-            onPress={() => setIsMoreOptionsVisible(false)}
-          />
-          <View style={styles.modalContent}>
-            <View style={styles.modalDragIndicator} />
-            <Text style={styles.modalTitle}>Mais opções</Text>
-            <Text style={styles.modalSubtitle}>
-              Ações menos usadas da OS #{String(os.id).padStart(3, '0')}.
-            </Text>
-
-            {(effectiveStatus === 'aguardando' || effectiveStatus === 'em_andamento') && (
-              <TouchableOpacity
-                style={styles.modalOption}
-                activeOpacity={0.7}
-                onPress={() => {
-                  setIsMoreOptionsVisible(false);
-                  setIsStatusModalVisible(true);
-                }}
-              >
-                <View style={[styles.modalOptionIcon, { backgroundColor: palette.navy50 }]}>
-                  <MaterialIcons name="swap-vert" size={22} color={palette.navy700} />
-                </View>
-                <View style={styles.modalOptionTextContainer}>
-                  <Text style={styles.modalOptionText}>Alterar situação</Text>
-                  <Text style={styles.modalOptionSubtext}>Troca a etapa atual da OS.</Text>
-                </View>
-              </TouchableOpacity>
-            )}
-
-            <TouchableOpacity
-              style={styles.modalOption}
-              activeOpacity={0.7}
-              onPress={() => {
-                setIsMoreOptionsVisible(false);
-                abrirAcompanhamento();
-              }}
-            >
-              <View style={[styles.modalOptionIcon, { backgroundColor: palette.navy50 }]}>
-                <MaterialIcons name="visibility" size={22} color={palette.navy700} />
-              </View>
-              <View style={styles.modalOptionTextContainer}>
-                <Text style={styles.modalOptionText}>Ver página do cliente</Text>
-                <Text style={styles.modalOptionSubtext}>Abre a página que o cliente recebe pelo link.</Text>
-              </View>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.modalOption}
-              activeOpacity={0.7}
-              onPress={() => {
-                setIsMoreOptionsVisible(false);
-                compartilharPeloCelular();
-              }}
-            >
-              <View style={[styles.modalOptionIcon, { backgroundColor: palette.navy50 }]}>
-                <MaterialIcons name="ios-share" size={22} color={palette.navy700} />
-              </View>
-              <View style={styles.modalOptionTextContainer}>
-                <Text style={styles.modalOptionText}>Enviar por outro aplicativo</Text>
-                <Text style={styles.modalOptionSubtext}>Usa o compartilhamento do celular fora do WhatsApp.</Text>
-              </View>
-            </TouchableOpacity>
-
-            {(effectiveStatus === 'aguardando' || effectiveStatus === 'em_andamento') && (
-              <TouchableOpacity
-                style={styles.modalOption}
-                activeOpacity={0.7}
-                onPress={() => {
-                  setIsMoreOptionsVisible(false);
-                  setIsConfirmCancelModalVisible(true);
-                }}
-              >
-                <View style={[styles.modalOptionIcon, { backgroundColor: 'rgba(239, 68, 68, 0.05)' }]}>
-                  <MaterialIcons name="cancel" size={22} color={palette.rose600} />
-                </View>
-                <View style={styles.modalOptionTextContainer}>
-                  <Text style={[styles.modalOptionText, { color: palette.rose600 }]}>Cancelar OS</Text>
-                  <Text style={styles.modalOptionSubtext}>Cancela a OS após confirmação.</Text>
-                </View>
-              </TouchableOpacity>
-            )}
-
-            <TouchableOpacity
-              style={styles.modalCancelButton}
-              activeOpacity={0.8}
-              onPress={() => setIsMoreOptionsVisible(false)}
-            >
-              <Text style={styles.modalCancelButtonText}>Voltar</Text>
-            </TouchableOpacity>
           </View>
         </View>
       </Modal>
@@ -758,23 +661,6 @@ export default function OSDetalhesScreen() {
                     <Text style={styles.modalOptionSubtext}>Altera o status da OS para "Em Andamento".</Text>
                   </View>
                 </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.modalOption}
-                  activeOpacity={0.7}
-                  onPress={() => {
-                    setIsStatusModalVisible(false);
-                    setIsConfirmCancelModalVisible(true);
-                  }}
-                >
-                  <View style={[styles.modalOptionIcon, { backgroundColor: 'rgba(239, 68, 68, 0.05)' }]}>
-                    <MaterialIcons name="cancel" size={22} color={palette.rose600} />
-                  </View>
-                  <View style={styles.modalOptionTextContainer}>
-                    <Text style={styles.modalOptionText}>Cancelar OS</Text>
-                    <Text style={styles.modalOptionSubtext}>Altera o status da OS para "Cancelada".</Text>
-                  </View>
-                </TouchableOpacity>
               </>
             )}
 
@@ -794,23 +680,6 @@ export default function OSDetalhesScreen() {
                   <View style={styles.modalOptionTextContainer}>
                     <Text style={styles.modalOptionText}>Concluir OS</Text>
                     <Text style={styles.modalOptionSubtext}>Altera o status da OS para "Concluída".</Text>
-                  </View>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.modalOption}
-                  activeOpacity={0.7}
-                  onPress={() => {
-                    setIsStatusModalVisible(false);
-                    setIsConfirmCancelModalVisible(true);
-                  }}
-                >
-                  <View style={[styles.modalOptionIcon, { backgroundColor: 'rgba(239, 68, 68, 0.05)' }]}>
-                    <MaterialIcons name="cancel" size={22} color={palette.rose600} />
-                  </View>
-                  <View style={styles.modalOptionTextContainer}>
-                    <Text style={styles.modalOptionText}>Cancelar OS</Text>
-                    <Text style={styles.modalOptionSubtext}>Altera o status da OS para "Cancelada".</Text>
                   </View>
                 </TouchableOpacity>
               </>
@@ -1064,22 +933,36 @@ export default function OSDetalhesScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: palette.slate100 },
 
-  // Hero card
-  heroCard: { margin: spacing.lg, backgroundColor: palette.white, borderRadius: borderRadius.lg, padding: spacing.lg, ...shadows.md },
-  heroTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.md },
-  osNumBox: { backgroundColor: palette.navy50, borderRadius: borderRadius.sm, paddingHorizontal: 12, paddingVertical: 6 },
-  osNumText: { fontSize: 15, fontWeight: '800', color: palette.navy800 },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  headerDangerBtn: {
+    backgroundColor: 'rgba(239, 68, 68, 0.08)',
+  },
   statusBadge: { flexDirection: 'row', alignItems: 'center', gap: 5, borderRadius: borderRadius.full, paddingHorizontal: 12, paddingVertical: 6 },
   statusText: { fontSize: 12, fontWeight: '700' },
-  descricao: { fontSize: 15, color: palette.slate500, marginBottom: spacing.md, lineHeight: 22 },
-  valorRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: spacing.md, borderTopWidth: 1, borderTopColor: palette.slate100 },
-  valorLabel: { fontSize: 13, color: palette.slate500, fontWeight: '600' },
-  valor: { fontSize: 24, fontWeight: '800', color: palette.navy800 },
 
   // Sections
   section: { marginHorizontal: spacing.lg, marginBottom: spacing.sm, backgroundColor: palette.white, borderRadius: borderRadius.lg, padding: spacing.md, ...shadows.sm },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.md, paddingBottom: spacing.sm, borderBottomWidth: 1, borderBottomColor: palette.slate100 },
   sectionTitle: { fontSize: 14, fontWeight: '700', color: palette.slate900 },
+  statusInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderBottomWidth: 1,
+    borderBottomColor: palette.slate100,
+    paddingBottom: spacing.sm,
+    marginBottom: spacing.sm,
+  },
+  statusInfoLabel: {
+    fontSize: 11,
+    color: palette.slate400,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+  },
 
   // Info rows
   infoRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: spacing.sm, gap: spacing.sm },
@@ -1102,11 +985,105 @@ const styles = StyleSheet.create({
   fixedActionBar: {
     backgroundColor: palette.white,
     borderTopWidth: 1,
-    borderTopColor: palette.slate200,
+    borderTopColor: 'rgba(148, 163, 184, 0.22)',
+    borderTopLeftRadius: 18,
+    borderTopRightRadius: 18,
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.sm,
-    gap: spacing.sm,
+    paddingTop: 8,
+    gap: 8,
     ...shadows.lg,
+  },
+  footerHandle: {
+    width: 34,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: palette.slate200,
+    alignSelf: 'center',
+    marginBottom: spacing.xs,
+  },
+  footerPrimaryButton: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    ...shadows.sm,
+  },
+  footerActionsRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  footerPrimaryAction: {
+    flex: 1.2,
+    borderRadius: 16,
+    overflow: 'hidden',
+    ...shadows.sm,
+  },
+  footerGradient: {
+    minHeight: 50,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+    paddingHorizontal: spacing.sm,
+  },
+  footerPrimaryText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: palette.white,
+  },
+  footerSecondaryAction: {
+    flex: 1,
+    minHeight: 50,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(148, 163, 184, 0.22)',
+    backgroundColor: palette.slate50,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+    paddingHorizontal: spacing.sm,
+  },
+  footerActionWide: {
+    flex: 1,
+  },
+  footerSecondaryText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: palette.navy800,
+  },
+  footerQuickRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  footerQuickButton: {
+    flex: 1,
+    minHeight: 44,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(148, 163, 184, 0.22)',
+    backgroundColor: palette.slate50,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+    paddingHorizontal: spacing.sm,
+  },
+  footerQuickButtonWide: {
+    flex: 1.7,
+  },
+  footerWhatsappButton: {
+    flex: 1.45,
+    backgroundColor: '#ECFDF5',
+    borderColor: 'rgba(18, 140, 126, 0.18)',
+  },
+  footerQuickText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: palette.navy800,
+  },
+  footerWhatsappText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#128C7E',
   },
   btnPrimary: { borderRadius: borderRadius.md, overflow: 'hidden', ...shadows.sm },
   btnGradient: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, paddingVertical: 14 },
@@ -1220,10 +1197,12 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   shareQuickActions: {
+    flexDirection: 'row',
     gap: spacing.sm,
     marginBottom: spacing.lg,
   },
   shareOptionButton: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',

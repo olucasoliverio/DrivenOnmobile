@@ -10,7 +10,6 @@ import CrudDialog, { type CrudField } from '../../components/CrudDialog';
 import ProcessingOverlay from '../../components/ProcessingOverlay';
 import WhatsAppMessagePreview from '../../components/WhatsAppMessagePreview';
 import { sendWhatsAppMessage } from '../../services/whatsappService';
-import dayjs from 'dayjs';
 import { LinearGradient } from 'expo-linear-gradient';
 import api from '../../api/api';
 import { buildOrcamentoTrackingMessage, createTrackingLink, resolveTrackingLink } from '../../services/trackingShareService';
@@ -41,7 +40,6 @@ export default function OrcamentoDetalhesScreen() {
   const [isWhatsAppModalVisible, setIsWhatsAppModalVisible] = useState(false);
   const [isWhatsAppPromptVisible, setIsWhatsAppPromptVisible] = useState(false);
   const [isSuccessModalVisible, setIsSuccessModalVisible] = useState(false);
-  const [isMoreOptionsVisible, setIsMoreOptionsVisible] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isPreparingLink, setIsPreparingLink] = useState(false);
   const [optimisticStatus, setOptimisticStatus] = useState<string | null>(null);
@@ -91,7 +89,6 @@ export default function OrcamentoDetalhesScreen() {
   }
 
   const effectiveStatus = optimisticStatus ?? orcamento.status;
-  const isVencido = dayjs(orcamento.validade).isBefore(dayjs()) && effectiveStatus === 'analise';
   const st = STATUS_MAP[effectiveStatus] ?? { label: effectiveStatus, color: palette.slate500, bg: palette.slate100, icon: 'info' as any };
 
   const openEditForm = () => {
@@ -234,49 +231,43 @@ export default function OrcamentoDetalhesScreen() {
         subtitle="Visualização Geral"
         showBack={true}
         rightElement={
-          <TouchableOpacity
-            style={styles.headerEditBtn}
-            onPress={openEditForm}
-            activeOpacity={0.7}
-          >
-            <MaterialIcons name="edit" size={22} color={palette.slate700} />
-          </TouchableOpacity>
+          <View style={styles.headerActions}>
+            <TouchableOpacity
+              style={styles.headerEditBtn}
+              onPress={() => setIsStatusModalVisible(true)}
+              activeOpacity={0.7}
+            >
+              <MaterialIcons name="swap-vert" size={22} color={palette.slate700} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.headerEditBtn, styles.headerDeleteBtn]}
+              onPress={removeOrcamento}
+              activeOpacity={0.7}
+            >
+              <MaterialIcons name="delete" size={22} color={palette.rose600} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.headerEditBtn}
+              onPress={openEditForm}
+              activeOpacity={0.7}
+            >
+              <MaterialIcons name="edit" size={22} color={palette.slate700} />
+            </TouchableOpacity>
+          </View>
         }
       />
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        {/* Card Principal */}
-        <View style={styles.mainCard}>
-          <View style={styles.cardHeaderRow}>
-            <View style={styles.titleColumn}>
-              <Text style={styles.orcTitle}>ORC #{String(orcamento.id).padStart(3, '0')}</Text>
-              <Text style={styles.orcTotal}>R$ {orcamento.total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</Text>
-            </View>
+        {/* Ficha Clientes / Veículos */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Associação</Text>
+          <View style={styles.statusInfoRow}>
+            <Text style={styles.statusInfoLabel}>Situação</Text>
             <View style={[styles.statusBadge, { backgroundColor: st.bg, flexDirection: 'row', alignItems: 'center', gap: 4 }]}>
               <MaterialIcons name={st.icon} size={12} color={st.color} />
               <Text style={[styles.statusText, { color: st.color }]}>{st.label.toUpperCase()}</Text>
             </View>
           </View>
-          <View style={styles.cardDivider} />
-          <View style={styles.datesRow}>
-            <View>
-              <Text style={styles.dateLabel}>Criado em</Text>
-              <Text style={styles.dateValue}>{dayjs(orcamento.dataCriacao).format('DD/MM/YYYY')}</Text>
-            </View>
-            <View style={{ alignItems: 'flex-end' }}>
-              <Text style={[styles.dateLabel, isVencido && { color: palette.rose600 }]}>
-                {isVencido ? '⚠ Vencido' : 'Válido até'}
-              </Text>
-              <Text style={[styles.dateValue, isVencido && { color: palette.rose600, fontWeight: '700' }]}>
-                {dayjs(orcamento.validade).format('DD/MM/YYYY')}
-              </Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Ficha Clientes / Veículos */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Associação</Text>
           
           {cliente && (
             <TouchableOpacity
@@ -342,20 +333,30 @@ export default function OrcamentoDetalhesScreen() {
       </ScrollView>
 
       <View style={[styles.fixedActionBar, { paddingBottom: insets.bottom + spacing.sm }]}>
-        <TouchableOpacity style={styles.whatsappBtn} activeOpacity={0.7} onPress={handleWhatsAppPress}>
-          <MaterialCommunityIcons name="whatsapp" size={20} color={palette.white} />
-          <Text style={styles.whatsappBtnText}>Enviar para o cliente no WhatsApp</Text>
-        </TouchableOpacity>
+        <View style={styles.footerHandle} />
 
-        <View style={styles.secondaryActionsRow}>
-          <TouchableOpacity style={styles.secondaryActionButton} activeOpacity={0.7} onPress={() => setIsStatusModalVisible(true)}>
-            <MaterialIcons name="swap-vert" size={18} color={palette.navy800} />
-            <Text style={styles.secondaryActionText}>Alterar situação</Text>
-          </TouchableOpacity>
+        <View style={styles.footerActionsRow}>
+          {effectiveStatus === 'analise' && (
+            <TouchableOpacity
+              style={styles.footerPrimaryAction}
+              activeOpacity={0.82}
+              disabled={isProcessing}
+              onPress={() => atualizarStatusOrcamento('aprovado')}
+            >
+              <LinearGradient colors={gradients.navyPrimary} style={styles.footerGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
+                <MaterialIcons name="check-circle" size={18} color={palette.white} />
+                <Text style={styles.footerPrimaryText}>Aprovar orçamento</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          )}
 
-          <TouchableOpacity style={styles.secondaryActionButton} activeOpacity={0.7} onPress={() => setIsMoreOptionsVisible(true)}>
-            <MaterialIcons name="more-horiz" size={18} color={palette.navy800} />
-            <Text style={styles.secondaryActionText}>Mais opções</Text>
+          <TouchableOpacity
+            style={[styles.footerSecondaryAction, effectiveStatus !== 'analise' && styles.footerActionWide]}
+            activeOpacity={0.75}
+            onPress={handleWhatsAppPress}
+          >
+            <MaterialIcons name="ios-share" size={18} color={palette.navy800} />
+            <Text style={styles.footerSecondaryText}>Compartilhar</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -376,9 +377,9 @@ export default function OrcamentoDetalhesScreen() {
           />
           <View style={styles.modalContent}>
             <View style={styles.modalDragIndicator} />
-            <Text style={styles.modalTitle}>Enviar atualização ao cliente</Text>
+            <Text style={styles.modalTitle}>Compartilhar</Text>
             <Text style={styles.modalSubtitle}>
-              Vamos abrir o WhatsApp com uma mensagem pronta para {cliente?.nome ?? 'o cliente'}. Ela inclui o link de acompanhamento.
+              Escolha como enviar o acompanhamento para {cliente?.nome ?? 'o cliente'}.
             </Text>
 
             {/* Situação do Orçamento */}
@@ -405,6 +406,32 @@ export default function OrcamentoDetalhesScreen() {
             <View style={styles.trackingLinkBox}>
               <MaterialIcons name="link" size={16} color={palette.navy700} />
               <Text style={styles.trackingLinkText} numberOfLines={1}>A mensagem inclui o link para o cliente acompanhar online.</Text>
+            </View>
+
+            <View style={styles.shareQuickActions}>
+              <TouchableOpacity
+                style={styles.shareOptionButton}
+                activeOpacity={0.8}
+                onPress={() => {
+                  setIsWhatsAppModalVisible(false);
+                  void abrirAcompanhamento();
+                }}
+              >
+                <MaterialIcons name="open-in-new" size={18} color={palette.navy800} />
+                <Text style={styles.shareOptionText}>Abrir link</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.shareOptionButton}
+                activeOpacity={0.8}
+                onPress={() => {
+                  setIsWhatsAppModalVisible(false);
+                  void compartilharPeloCelular();
+                }}
+              >
+                <MaterialIcons name="ios-share" size={18} color={palette.navy800} />
+                <Text style={styles.shareOptionText}>Compartilhar</Text>
+              </TouchableOpacity>
             </View>
 
             {/* Botões de Ação */}
@@ -440,89 +467,6 @@ export default function OrcamentoDetalhesScreen() {
                 </LinearGradient>
               </TouchableOpacity>
             </View>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Mais opções */}
-      <Modal
-        visible={isMoreOptionsVisible}
-        transparent={true}
-        animationType="slide"
-        statusBarTranslucent={true}
-        onRequestClose={() => setIsMoreOptionsVisible(false)}
-      >
-        <View style={styles.modalBackdrop}>
-          <TouchableOpacity
-            style={styles.modalBackdropCloseArea}
-            activeOpacity={1}
-            onPress={() => setIsMoreOptionsVisible(false)}
-          />
-          <View style={styles.modalContent}>
-            <View style={styles.modalDragIndicator} />
-            <Text style={styles.modalTitle}>Mais opções</Text>
-            <Text style={styles.modalSubtitle}>
-              Ações menos usadas do orçamento #{String(orcamento.id).padStart(3, '0')}.
-            </Text>
-
-            <TouchableOpacity
-              style={styles.modalOption}
-              activeOpacity={0.7}
-              onPress={() => {
-                setIsMoreOptionsVisible(false);
-                abrirAcompanhamento();
-              }}
-            >
-              <View style={[styles.modalOptionIcon, { backgroundColor: palette.navy50 }]}>
-                <MaterialIcons name="visibility" size={22} color={palette.navy700} />
-              </View>
-              <View style={styles.modalOptionTextContainer}>
-                <Text style={styles.modalOptionText}>Ver página do cliente</Text>
-                <Text style={styles.modalOptionSubtext}>Abre a página que o cliente recebe pelo link.</Text>
-              </View>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.modalOption}
-              activeOpacity={0.7}
-              onPress={() => {
-                setIsMoreOptionsVisible(false);
-                compartilharPeloCelular();
-              }}
-            >
-              <View style={[styles.modalOptionIcon, { backgroundColor: palette.navy50 }]}>
-                <MaterialIcons name="ios-share" size={22} color={palette.navy700} />
-              </View>
-              <View style={styles.modalOptionTextContainer}>
-                <Text style={styles.modalOptionText}>Enviar por outro aplicativo</Text>
-                <Text style={styles.modalOptionSubtext}>Usa o compartilhamento do celular fora do WhatsApp.</Text>
-              </View>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.modalOption}
-              activeOpacity={0.7}
-              onPress={() => {
-                setIsMoreOptionsVisible(false);
-                removeOrcamento();
-              }}
-            >
-              <View style={[styles.modalOptionIcon, { backgroundColor: 'rgba(239, 68, 68, 0.05)' }]}>
-                <MaterialIcons name="delete" size={22} color={palette.rose600} />
-              </View>
-              <View style={styles.modalOptionTextContainer}>
-                <Text style={[styles.modalOptionText, { color: palette.rose600 }]}>Excluir orçamento</Text>
-                <Text style={styles.modalOptionSubtext}>Remove o orçamento após confirmação.</Text>
-              </View>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.modalCancelButton}
-              activeOpacity={0.8}
-              onPress={() => setIsMoreOptionsVisible(false)}
-            >
-              <Text style={styles.modalCancelButtonText}>Voltar</Text>
-            </TouchableOpacity>
           </View>
         </View>
       </Modal>
@@ -726,40 +670,102 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  scrollContent: { padding: spacing.lg, paddingBottom: 150 },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  headerDeleteBtn: {
+    backgroundColor: 'rgba(239, 68, 68, 0.08)',
+  },
+  scrollContent: { padding: spacing.lg, paddingBottom: 90 },
   fixedActionBar: {
     backgroundColor: palette.white,
     borderTopWidth: 1,
-    borderTopColor: palette.slate200,
+    borderTopColor: 'rgba(148, 163, 184, 0.22)',
+    borderTopLeftRadius: 18,
+    borderTopRightRadius: 18,
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.sm,
+    paddingTop: 8,
     ...shadows.lg,
   },
-
-  // Card Principal
-  mainCard: {
-    backgroundColor: palette.white,
-    borderRadius: borderRadius.md,
-    padding: spacing.md,
-    borderWidth: 1,
-    borderColor: 'rgba(15, 23, 42, 0.04)',
-    ...shadows.sm,
-    marginBottom: spacing.lg,
+  footerHandle: {
+    width: 34,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: palette.slate200,
+    alignSelf: 'center',
+    marginBottom: spacing.sm,
   },
-  cardHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
-  titleColumn: { gap: 4 },
-  orcTitle: { fontSize: 13, fontWeight: '700', color: palette.slate400, textTransform: 'uppercase' },
-  orcTotal: { fontSize: 24, fontWeight: '900', color: palette.navy800, letterSpacing: -0.5 },
+  footerActionsRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  footerPrimaryAction: {
+    flex: 1.25,
+    borderRadius: 16,
+    overflow: 'hidden',
+    ...shadows.sm,
+  },
+  footerGradient: {
+    minHeight: 50,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+    paddingHorizontal: spacing.sm,
+  },
+  footerPrimaryText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: palette.white,
+  },
+  footerSecondaryAction: {
+    flex: 1,
+    minHeight: 50,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(148, 163, 184, 0.22)',
+    backgroundColor: palette.slate50,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+    paddingHorizontal: spacing.sm,
+  },
+  footerActionWide: {
+    flex: 1,
+  },
+  footerSecondaryText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: palette.navy800,
+  },
+
   statusBadge: { borderRadius: borderRadius.full, paddingHorizontal: 10, paddingVertical: 4 },
   statusText: { fontSize: 9, fontWeight: '800' },
-  cardDivider: { height: 1, backgroundColor: palette.slate100, marginVertical: spacing.md },
-  datesRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  dateLabel: { fontSize: 10, color: palette.slate400, fontWeight: '600' },
-  dateValue: { fontSize: 13, color: palette.slate900, fontWeight: '700', marginTop: 1 },
 
   // Seções
   section: { marginBottom: spacing.lg },
   sectionTitle: { fontSize: 14, fontWeight: '800', color: palette.slate500, textTransform: 'uppercase', marginBottom: spacing.sm, letterSpacing: 0.3 },
+  statusInfoRow: {
+    backgroundColor: palette.white,
+    borderRadius: borderRadius.md,
+    padding: spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: 'rgba(15, 23, 42, 0.04)',
+    marginBottom: spacing.sm,
+    ...shadows.sm,
+  },
+  statusInfoLabel: {
+    fontSize: 12,
+    color: palette.slate500,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+  },
 
   // Cartões de Associação
   associationCard: {
@@ -805,32 +811,32 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#25D366',
-    borderRadius: borderRadius.md,
-    paddingVertical: 14,
+    borderRadius: 16,
+    minHeight: 50,
+    paddingHorizontal: spacing.md,
     gap: spacing.sm,
-    marginBottom: spacing.sm,
+    marginBottom: 8,
     ...shadows.sm,
   },
-  whatsappBtnText: { fontSize: 14, color: palette.white, fontWeight: '700' },
+  whatsappBtnText: { fontSize: 15, color: palette.white, fontWeight: '800' },
   secondaryActionsRow: {
     flexDirection: 'row',
-    gap: spacing.sm,
-    marginBottom: spacing.sm,
+    gap: 8,
   },
   secondaryActionButton: {
     flex: 1,
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: palette.white,
-    borderRadius: borderRadius.md,
-    borderWidth: 1.5,
-    borderColor: palette.slate200,
-    paddingVertical: 12,
+    backgroundColor: palette.slate50,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(148, 163, 184, 0.22)',
+    minHeight: 42,
+    paddingHorizontal: spacing.sm,
     gap: spacing.xs,
-    ...shadows.sm,
   },
-  secondaryActionText: { fontSize: 13, color: palette.navy800, fontWeight: '700' },
+  secondaryActionText: { fontSize: 12, color: palette.navy800, fontWeight: '800' },
   deleteBtn: {
     flexDirection: 'row',
     justifyContent: 'center',
@@ -935,10 +941,12 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   shareQuickActions: {
+    flexDirection: 'row',
     gap: spacing.sm,
     marginBottom: spacing.lg,
   },
   shareOptionButton: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
