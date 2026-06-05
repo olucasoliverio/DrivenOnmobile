@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Alert, View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal } from 'react-native';
+import { Alert, Linking, Share, View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal } from 'react-native';
 import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useDriveOnData } from '../../context/DriveOnDataContext';
@@ -9,7 +9,8 @@ import CrudDialog, { type CrudField } from '../../components/CrudDialog';
 import { sendWhatsAppMessage } from '../../services/whatsappService';
 import dayjs from 'dayjs';
 import { LinearGradient } from 'expo-linear-gradient';
-import api, { API_BASE_URL, getAuthToken } from '../../api/api';
+import api from '../../api/api';
+import { buildOrcamentoTrackingMessage, createTrackingLink, resolveTrackingLink } from '../../services/trackingShareService';
 
 const editFields: CrudField[] = [
   { key: 'cliente_id', label: 'Cliente', keyboardType: 'number-pad' },
@@ -47,12 +48,7 @@ export default function OrcamentoDetalhesScreen() {
     async function loadShortUrl() {
       if (!orcamento?.id) return;
       try {
-        const { default: api } = await import('../../api/api');
-        const response = await api.post(`/orcamentos/${orcamento.id}/share`);
-        const code = response.data?.code;
-        if (code) {
-          setShortUrl(`${API_BASE_URL}/s/${code}`);
-        }
+        setShortUrl(await createTrackingLink('orcamentos', orcamento.id));
       } catch (error: any) {
         console.log('Erro ao gerar link curto (esperado se backend ainda nao atualizou no cloud):', error?.message ?? error);
       }
@@ -105,29 +101,28 @@ export default function OrcamentoDetalhesScreen() {
     ]);
   };
 
+  const trackingLink = resolveTrackingLink('orcamentos', orcamento.id, shortUrl);
+
   const getWhatsAppMessageText = () => {
     if (!cliente) return '';
-    const veiculoNome = veiculo ? `${veiculo.marca} ${veiculo.modelo}` : 'Veículo';
-    const placa = veiculo?.placa ?? '—';
-    const formattedValor = orcamento.total.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
-    const orcNum = String(orcamento.id).padStart(3, '0');
-    const token = getAuthToken();
-    const pdfUrl = shortUrl || `${API_BASE_URL}/orcamentos/${orcamento.id}/pdf${token ? `?token=${token}` : ''}`;
+    const veiculoNome = veiculo ? `${veiculo.marca} ${veiculo.modelo}` : 'Veiculo';
+    const placa = veiculo?.placa ?? '-';
+    const itens = orcamento.itens?.map((item) => ({
+      nome: item.nome,
+      quantidade: item.quantidade,
+      precoUnitario: item.precoUnitario,
+    })) ?? [];
 
-    switch (orcamento.status) {
-      case 'aprovado':
-        return `Olá, *${cliente.nome}*! Confirmamos a aprovação do orçamento *ORC #${orcNum}* para o seu veículo *${veiculoNome}* (placa *${placa}*). 🛠️🚗\n\n*Valor Total:* R$ ${formattedValor}\n\nPara ver o detalhamento, acesse:\n🔗 ${pdfUrl}\n\nLogo daremos início aos serviços e te manteremos informado. Obrigado pela preferência!`;
-      case 'recusado':
-        return `Olá, *${cliente.nome}*! Registramos a sua resposta para o orçamento *ORC #${orcNum}* do veículo *${veiculoNome}* (placa *${placa}*) como *Recusado*.\n\nVisualizar orçamento:\n🔗 ${pdfUrl}\n\nAgradecemos a atenção e nos colocamos à disposição para futuras necessidades!`;
-      case 'analise':
-      default:
-        const itemsList = orcamento.itens?.map(item => {
-          const qty = item.quantidade;
-          const price = item.precoUnitario;
-          return `- ${item.nome} (Qtd: ${qty} · R$ ${(qty * price).toLocaleString('pt-BR', { minimumFractionDigits: 2 })})`;
-        }).join('\n') || 'Sem itens informados';
-        return `Olá, *${cliente.nome}*! Segue o orçamento *ORC #${orcNum}* para o seu veículo *${veiculoNome}* (placa *${placa}*):\n\n*Itens:*\n${itemsList}\n\n*Total:* R$ ${formattedValor}\n\nPara ver o orçamento completo, acesse:\n🔗 ${pdfUrl}\n\n📋 Aguardamos a sua aprovação para iniciarmos os serviços!`;
-    }
+    return buildOrcamentoTrackingMessage({
+      clienteNome: cliente.nome,
+      veiculoNome,
+      placa,
+      orcamentoId: orcamento.id,
+      status: orcamento.status,
+      total: orcamento.total,
+      itens,
+      link: trackingLink,
+    });
   };
 
   const whatsappPreview = getWhatsAppMessageText();
@@ -155,11 +150,24 @@ export default function OrcamentoDetalhesScreen() {
   };
 
   const handleWhatsAppPress = () => {
-    if (!cliente?.telefone) {
-      Alert.alert('Telefone indisponível', 'Este cliente não possui telefone cadastrado.');
-      return;
-    }
     setIsWhatsAppModalVisible(true);
+  };
+
+  const abrirAcompanhamento = async () => {
+    const supported = await Linking.canOpenURL(trackingLink);
+    if (supported) await Linking.openURL(trackingLink);
+    else Alert.alert('Link indisponível', trackingLink);
+  };
+
+  const compartilharPeloCelular = async () => {
+    try {
+      await Share.share({
+        title: `Orçamento #${String(orcamento.id).padStart(3, '0')}`,
+        message: whatsappPreview || trackingLink,
+      });
+    } catch (error: any) {
+      Alert.alert('Não foi possível compartilhar', error?.message ?? 'Tente novamente.');
+    }
   };
 
   return (
@@ -279,13 +287,11 @@ export default function OrcamentoDetalhesScreen() {
           </View>
         </View>
 
-        {/* WhatsApp Compartilhar */}
-        {cliente?.telefone && (
-          <TouchableOpacity style={styles.whatsappBtn} activeOpacity={0.7} onPress={handleWhatsAppPress}>
-            <MaterialCommunityIcons name="whatsapp" size={20} color={palette.white} />
-            <Text style={styles.whatsappBtnText}>Notificar no WhatsApp</Text>
-          </TouchableOpacity>
-        )}
+        {/* Compartilhar acompanhamento */}
+        <TouchableOpacity style={styles.whatsappBtn} activeOpacity={0.7} onPress={handleWhatsAppPress}>
+          <MaterialIcons name="ios-share" size={20} color={palette.white} />
+          <Text style={styles.whatsappBtnText}>Compartilhar acompanhamento</Text>
+        </TouchableOpacity>
 
         {/* Botão de Excluir */}
         <TouchableOpacity style={styles.deleteBtn} activeOpacity={0.7} onPress={removeOrcamento}>
@@ -310,9 +316,9 @@ export default function OrcamentoDetalhesScreen() {
           />
           <View style={styles.modalContent}>
             <View style={styles.modalDragIndicator} />
-            <Text style={styles.modalTitle}>Enviar WhatsApp</Text>
+            <Text style={styles.modalTitle}>Compartilhar acompanhamento</Text>
             <Text style={styles.modalSubtitle}>
-              Envio de notificação de orçamento para o cliente {cliente?.nome}
+              Envie para {cliente?.nome ?? 'o cliente'} acompanhar o orçamento pelo link.
             </Text>
 
             {/* Situação do Orçamento */}
@@ -336,6 +342,23 @@ export default function OrcamentoDetalhesScreen() {
               </ScrollView>
             </View>
 
+            <View style={styles.trackingLinkBox}>
+              <MaterialIcons name="link" size={16} color={palette.navy700} />
+              <Text style={styles.trackingLinkText} numberOfLines={1}>{trackingLink}</Text>
+            </View>
+
+            <View style={styles.shareQuickActions}>
+              <TouchableOpacity style={styles.shareOptionButton} activeOpacity={0.8} onPress={abrirAcompanhamento}>
+                <MaterialIcons name="open-in-new" size={18} color={palette.navy800} />
+                <Text style={styles.shareOptionText}>Abrir link</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.shareOptionButton} activeOpacity={0.8} onPress={compartilharPeloCelular}>
+                <MaterialIcons name="ios-share" size={18} color={palette.navy800} />
+                <Text style={styles.shareOptionText}>Compartilhar pelo celular</Text>
+              </TouchableOpacity>
+            </View>
+
             {/* Botões de Ação */}
             <View style={styles.dialogActions}>
               <TouchableOpacity
@@ -350,12 +373,14 @@ export default function OrcamentoDetalhesScreen() {
                 style={styles.dialogSendBtn}
                 activeOpacity={0.8}
                 onPress={async () => {
+                  if (!cliente?.telefone) {
+                    Alert.alert('Telefone indisponível', 'Este cliente não possui telefone cadastrado.');
+                    return;
+                  }
                   setIsWhatsAppModalVisible(false);
-                  if (cliente?.telefone) {
-                    const success = await sendWhatsAppMessage(cliente.telefone, whatsappPreview);
-                    if (success) {
-                      setIsSuccessModalVisible(true);
-                    }
+                  const success = await sendWhatsAppMessage(cliente.telefone, whatsappPreview);
+                  if (success) {
+                    setIsSuccessModalVisible(true);
                   }
                 }}
               >
@@ -752,6 +777,42 @@ const styles = StyleSheet.create({
     color: palette.slate700,
     lineHeight: 20,
     fontWeight: '500',
+  },
+  trackingLinkBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    backgroundColor: palette.navy50,
+    borderRadius: borderRadius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 10,
+    marginBottom: spacing.sm,
+  },
+  trackingLinkText: {
+    flex: 1,
+    fontSize: 12,
+    color: palette.navy800,
+    fontWeight: '700',
+  },
+  shareQuickActions: {
+    gap: spacing.sm,
+    marginBottom: spacing.lg,
+  },
+  shareOptionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    paddingVertical: 12,
+    borderRadius: borderRadius.md,
+    borderWidth: 1.5,
+    borderColor: palette.slate200,
+    backgroundColor: palette.white,
+  },
+  shareOptionText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: palette.navy800,
   },
   dialogActions: {
     flexDirection: 'row',

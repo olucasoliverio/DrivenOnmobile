@@ -1,15 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { Alert, Linking, View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal, ActivityIndicator } from 'react-native';
+import { Alert, Linking, Share, View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal, ActivityIndicator } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { useDriveOnData } from '../../context/DriveOnDataContext';
 import { palette, spacing, borderRadius, shadows, gradients } from '../../theme/theme';
 import dayjs from 'dayjs';
-import { API_BASE_URL, getAuthToken } from '../../api/api';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import ScreenHeader from '../../components/ScreenHeader';
-import { sendWelcomeMessage, sendOSCompletedMessage, sendEstimateMessage, sendWhatsAppMessage } from '../../services/whatsappService';
+import { sendWhatsAppMessage } from '../../services/whatsappService';
+import { buildOSTrackingMessage, createTrackingLink, resolveTrackingLink } from '../../services/trackingShareService';
 
 const STATUS_MAP: Record<string, { label: string; color: string; bg: string; icon: keyof typeof MaterialIcons.glyphMap }> = {
   em_andamento:    { label: 'Em Andamento',  color: palette.navy700,    bg: palette.navy50,     icon: 'autorenew' },
@@ -50,12 +50,7 @@ export default function OSDetalhesScreen() {
     async function loadShortUrl() {
       if (!os?.id) return;
       try {
-        const { default: api } = await import('../../api/api');
-        const response = await api.post(`/ordens/${os.id}/share`);
-        const code = response.data?.code;
-        if (code) {
-          setShortUrl(`${API_BASE_URL}/s/${code}`);
-        }
+        setShortUrl(await createTrackingLink('ordens', os.id));
       } catch (error) {
         console.error('Erro ao gerar link curto:', error);
       }
@@ -78,28 +73,26 @@ export default function OSDetalhesScreen() {
     { nome: 'Mão de Obra', qtd: 1, valor: os.valor - 150 },
   ];
 
+  const trackingLink = resolveTrackingLink('ordens', os.id, shortUrl);
+
   const getWhatsAppMessageText = () => {
     if (!cliente) return '';
     const nomeOficina = configuracoes?.nomeOficina || 'nossa oficina';
-    const veiculoNome = veiculo ? `${veiculo.marca} ${veiculo.modelo}` : 'Veículo';
-    const placa = veiculo?.placa ?? '—';
-    const formattedValor = os.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
-    const osNum = String(os.id).padStart(3, '0');
-    const token = getAuthToken();
-    const pdfUrl = shortUrl || `${API_BASE_URL}/ordens/${os.id}/pdf${token ? `?token=${token}` : ''}`;
+    const veiculoNome = veiculo ? `${veiculo.marca} ${veiculo.modelo}` : 'Veiculo';
+    const placa = veiculo?.placa ?? '-';
 
-    switch (os.status) {
-      case 'em_andamento':
-        return `Olá, *${cliente.nome}*! A manutenção do seu veículo *${veiculoNome}* (placa *${placa}*) já foi iniciada e está *Em Andamento* na *${nomeOficina}*. 🛠️\n\nQualquer novidade sobre o andamento do serviço, entraremos em contato!\n\nLink da OS:\n🔗 ${pdfUrl}`;
-      case 'aguardando':
-        return `Olá, *${cliente.nome}*! O seu veículo *${veiculoNome}* (placa *${placa}*) está na *${nomeOficina}* e encontra-se *Aguardando* aprovação da *OS #${osNum}*:\n\n*Descrição:* ${os.descricao}\n\n*Valor Estimado:* R$ ${formattedValor}\n\nPara ver o orçamento completo, acesse:\n🔗 ${pdfUrl}\n\n📋 Aguardamos a sua aprovação para iniciarmos a manutenção!`;
-      case 'aguardando_pecas':
-        return `Olá, *${cliente.nome}*! Passando para informar que a manutenção do seu veículo *${veiculoNome}* (placa *${placa}*) está com o status *Aguardando Peças* na *${nomeOficina}*. 📦⚙️\n\nAssim que as peças necessárias chegarem, daremos continuidade imediata ao serviço.\n\nLink da OS:\n🔗 ${pdfUrl}`;
-      case 'concluido':
-        return `Olá, *${cliente.nome}*! Passando para avisar que a manutenção do seu veículo *${veiculoNome}* (placa *${placa}*) na *${nomeOficina}* ficou pronta! 🛠️🚗\n\nO valor total do serviço ficou em *R$ ${formattedValor}*.\n\nPara ver o detalhamento completo dos serviços realizados, acesse:\n🔗 ${pdfUrl}\n\nVocê já pode vir retirá-lo. Qualquer dúvida estamos à disposição!`;
-      default:
-        return `Olá, *${cliente.nome}*! Passando para atualizar sobre a *OS #${osNum}* do seu veículo *${veiculoNome}* (placa *${placa}*) na *${nomeOficina}*.\n\nO status atual da sua ordem de serviço é: *${st.label}*.\n\nVisualizar OS:\n🔗 ${pdfUrl}\n\nQualquer dúvida, estamos à disposição!`;
-    }
+    return buildOSTrackingMessage({
+      clienteNome: cliente.nome,
+      oficinaNome: nomeOficina,
+      veiculoNome,
+      placa,
+      osId: os.id,
+      status: os.status,
+      statusLabel: st.label,
+      descricao: os.descricao,
+      valor: os.valor,
+      link: trackingLink,
+    });
   };
 
   const whatsappPreview = getWhatsAppMessageText();
@@ -134,20 +127,25 @@ export default function OSDetalhesScreen() {
     setIsConfirmModalVisible(true);
   };
 
-  const abrirPdf = async () => {
-    const token = getAuthToken();
-    const url = `${API_BASE_URL}/ordens/${os.id}/pdf${token ? `?token=${token}` : ''}`;
-    const supported = await Linking.canOpenURL(url);
-    if (supported) await Linking.openURL(url);
-    else Alert.alert('PDF indisponivel', url);
+  const abrirAcompanhamento = async () => {
+    const supported = await Linking.canOpenURL(trackingLink);
+    if (supported) await Linking.openURL(trackingLink);
+    else Alert.alert('Link indisponível', trackingLink);
   };
 
   const handleWhatsAppPress = () => {
-    if (!cliente?.telefone) {
-      Alert.alert('Telefone indisponível', 'Este cliente não possui telefone cadastrado.');
-      return;
-    }
     setIsWhatsAppModalVisible(true);
+  };
+
+  const compartilharPeloCelular = async () => {
+    try {
+      await Share.share({
+        title: `OS #${String(os.id).padStart(3, '0')}`,
+        message: whatsappPreview || trackingLink,
+      });
+    } catch (error: any) {
+      Alert.alert('Não foi possível compartilhar', error?.message ?? 'Tente novamente.');
+    }
   };
 
   return (
@@ -401,16 +399,14 @@ export default function OSDetalhesScreen() {
           </View>
         )}
 
-        <TouchableOpacity style={styles.btnOutline} activeOpacity={0.7} onPress={abrirPdf}>
-          <MaterialIcons name="picture-as-pdf" size={18} color={palette.navy800} />
-          <Text style={styles.btnOutlineText}>Gerar PDF</Text>
+        <TouchableOpacity style={styles.btnOutline} activeOpacity={0.7} onPress={abrirAcompanhamento}>
+          <MaterialIcons name="open-in-new" size={18} color={palette.navy800} />
+          <Text style={styles.btnOutlineText}>Abrir acompanhamento</Text>
         </TouchableOpacity>
-        {cliente?.telefone ? (
-          <TouchableOpacity style={styles.btnWhatsApp} activeOpacity={0.8} onPress={handleWhatsAppPress}>
-            <MaterialCommunityIcons name="whatsapp" size={18} color={palette.white} />
-            <Text style={styles.btnWhatsAppText}>Notificar no WhatsApp</Text>
-          </TouchableOpacity>
-        ) : null}
+        <TouchableOpacity style={styles.btnWhatsApp} activeOpacity={0.8} onPress={handleWhatsAppPress}>
+          <MaterialIcons name="ios-share" size={18} color={palette.white} />
+          <Text style={styles.btnWhatsAppText}>Compartilhar acompanhamento</Text>
+        </TouchableOpacity>
       </View>
     </ScrollView>
 
@@ -430,9 +426,9 @@ export default function OSDetalhesScreen() {
           />
           <View style={styles.modalContent}>
             <View style={styles.modalDragIndicator} />
-            <Text style={styles.modalTitle}>Enviar WhatsApp</Text>
+            <Text style={styles.modalTitle}>Compartilhar acompanhamento</Text>
             <Text style={styles.modalSubtitle}>
-              Envio de notificação para o cliente {cliente?.nome}
+              Envie para {cliente?.nome ?? 'o cliente'} acompanhar a OS pelo link.
             </Text>
 
             {/* Situação da OS */}
@@ -456,6 +452,23 @@ export default function OSDetalhesScreen() {
               </ScrollView>
             </View>
 
+            <View style={styles.trackingLinkBox}>
+              <MaterialIcons name="link" size={16} color={palette.navy700} />
+              <Text style={styles.trackingLinkText} numberOfLines={1}>{trackingLink}</Text>
+            </View>
+
+            <View style={styles.shareQuickActions}>
+              <TouchableOpacity style={styles.shareOptionButton} activeOpacity={0.8} onPress={abrirAcompanhamento}>
+                <MaterialIcons name="open-in-new" size={18} color={palette.navy800} />
+                <Text style={styles.shareOptionText}>Abrir link</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.shareOptionButton} activeOpacity={0.8} onPress={compartilharPeloCelular}>
+                <MaterialIcons name="ios-share" size={18} color={palette.navy800} />
+                <Text style={styles.shareOptionText}>Compartilhar pelo celular</Text>
+              </TouchableOpacity>
+            </View>
+
             {/* Botões de Ação */}
             <View style={styles.dialogActions}>
               <TouchableOpacity
@@ -470,12 +483,14 @@ export default function OSDetalhesScreen() {
                 style={styles.dialogSendBtn}
                 activeOpacity={0.8}
                 onPress={async () => {
+                  if (!cliente?.telefone) {
+                    Alert.alert('Telefone indisponível', 'Este cliente não possui telefone cadastrado.');
+                    return;
+                  }
                   setIsWhatsAppModalVisible(false);
-                  if (cliente?.telefone) {
-                    const success = await sendWhatsAppMessage(cliente.telefone, whatsappPreview);
-                    if (success) {
-                      setIsSuccessModalVisible(true);
-                    }
+                  const success = await sendWhatsAppMessage(cliente.telefone, whatsappPreview);
+                  if (success) {
+                    setIsSuccessModalVisible(true);
                   }
                 }}
               >
@@ -1090,6 +1105,42 @@ const styles = StyleSheet.create({
     color: palette.slate700,
     lineHeight: 20,
     fontWeight: '500',
+  },
+  trackingLinkBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    backgroundColor: palette.navy50,
+    borderRadius: borderRadius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 10,
+    marginBottom: spacing.sm,
+  },
+  trackingLinkText: {
+    flex: 1,
+    fontSize: 12,
+    color: palette.navy800,
+    fontWeight: '700',
+  },
+  shareQuickActions: {
+    gap: spacing.sm,
+    marginBottom: spacing.lg,
+  },
+  shareOptionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    paddingVertical: 12,
+    borderRadius: borderRadius.md,
+    borderWidth: 1.5,
+    borderColor: palette.slate200,
+    backgroundColor: palette.white,
+  },
+  shareOptionText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: palette.navy800,
   },
   dialogActions: {
     flexDirection: 'row',
