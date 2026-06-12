@@ -19,25 +19,11 @@ interface MenuItem {
 
 const menuItems: MenuItem[] = [
   { 
-    icon: 'people',          
-    label: 'Clientes',      
-    screen: 'Clientes',      
-    module: 'clientes',
-    desc: 'Visualizar e gerenciar clientes' 
-  },
-  { 
     icon: 'directions-car',  
     label: 'Veículos',      
     screen: 'Veiculos',      
     module: 'veiculos',
     desc: 'Visualizar e cadastrar veículos' 
-  },
-  { 
-    icon: 'build',          
-    label: 'Ordens de Serviço',      
-    screen: 'OS',      
-    module: 'ordens',
-    desc: 'Visualizar e gerenciar ordens de serviço (OS)' 
   },
   { 
     icon: 'event',  
@@ -129,7 +115,6 @@ export default function MenuScreen() {
                   <Text style={styles.itemLabel}>{item.label}</Text>
                   <Text style={styles.itemDesc}>{item.desc}</Text>
                 </View>
-                <MaterialIcons name="chevron-right" size={20} color={palette.slate400} />
               </TouchableOpacity>
             );
           })}
@@ -146,7 +131,6 @@ export default function MenuScreen() {
             <Text style={styles.logoutText}>Sair da conta</Text>
             <Text style={styles.logoutDesc}>Encerrar a sessão ativa</Text>
           </View>
-          <MaterialIcons name="chevron-right" size={20} color={palette.rose600} />
         </TouchableOpacity>
       </View>
 

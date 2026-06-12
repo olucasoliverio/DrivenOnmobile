@@ -61,7 +61,7 @@ export default function LoginScreen() {
 
   return (
     <LinearGradient colors={gradients.navyDark} style={styles.root}>
-      <StatusBar barStyle="light-content" backgroundColor={palette.navy900} />
+      <StatusBar barStyle="light-content" backgroundColor="#000000" translucent={false} />
 
       {/* Círculos decorativos em degradê suave */}
       <View style={styles.circle1} />

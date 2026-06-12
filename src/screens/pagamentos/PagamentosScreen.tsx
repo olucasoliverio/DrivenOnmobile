@@ -13,6 +13,7 @@ import LoadingState from '../../components/LoadingState';
 import ScreenHeader from '../../components/ScreenHeader';
 import CalendarDatePicker from '../../components/CalendarDatePicker';
 import AdvancedFilterModal from '../../components/AdvancedFilterModal';
+import ActionOverflowMenu from '../../components/ActionOverflowMenu';
 
 
 type Tab = 'todos' | 'pendente' | 'recebido';
@@ -200,12 +201,17 @@ export default function PagamentosScreen() {
                     />
                   </View>
 
-                  {/* Details */}
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.desc} numberOfLines={1}>
-                      {p.descricao || 'Recebimento'}
-                    </Text>
-                    <View style={styles.metaRow}>
+                  <View style={styles.cardBody}>
+                    <View style={styles.cardHeaderRow}>
+                      <Text style={styles.desc} numberOfLines={1}>
+                        {p.descricao || 'Recebimento'}
+                      </Text>
+                      <Text style={[styles.valorText, { color: palette.emerald600 }]} numberOfLines={1}>
+                        + R$ {p.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      </Text>
+                    </View>
+
+                    <View style={styles.metaStack}>
                       <View style={styles.metaItem}>
                         <MaterialIcons name="event" size={12} color={palette.slate400} />
                         <Text style={styles.metaText}>{dayjs(p.data).format('DD/MM/YYYY')}</Text>
@@ -217,49 +223,33 @@ export default function PagamentosScreen() {
                         </View>
                       ) : null}
                     </View>
-                  </View>
 
-                  {/* Value and Status */}
-                  <View style={{ alignItems: 'flex-end', marginRight: spacing.xs }}>
-                    <Text style={[styles.valorText, { color: palette.emerald600 }]}>
-                      + R$ {p.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                    </Text>
-                    <View style={[styles.statusBadge, { backgroundColor: isPago ? 'rgba(16, 185, 129, 0.08)' : 'rgba(245, 158, 11, 0.08)' }]}>
-                      <View style={[styles.statusDot, { backgroundColor: isPago ? palette.emerald600 : palette.amber500 }]} />
-                      <Text style={[styles.statusText, { color: isPago ? palette.emerald600 : palette.amber500 }]}>
-                        {isPago ? 'PAGO' : 'PENDENTE'}
-                      </Text>
+                    <View style={styles.statusRow}>
+                      <View style={[styles.statusBadge, { backgroundColor: isPago ? 'rgba(16, 185, 129, 0.08)' : 'rgba(245, 158, 11, 0.08)' }]}>
+                        <View style={[styles.statusDot, { backgroundColor: isPago ? palette.emerald600 : palette.amber500 }]} />
+                        <Text style={[styles.statusText, { color: isPago ? palette.emerald600 : palette.amber500 }]}>
+                          {isPago ? 'PAGO' : 'PENDENTE'}
+                        </Text>
+                      </View>
                     </View>
                   </View>
 
                   {(can('financeiro', 'update') || can('financeiro', 'delete')) && (
-                    <View style={styles.actionButtons}>
-                      {can('financeiro', 'update') && (
-                        <TouchableOpacity
-                          style={styles.actionBtn}
-                          onPress={(event) => {
-                            event.stopPropagation();
-                            navigation.navigate('PagamentoForm', { pagamentoId: p.id });
-                          }}
-                          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                        >
-                          <MaterialIcons name="edit" size={19} color={palette.navy800} />
-                        </TouchableOpacity>
-                      )}
-
-                      {can('financeiro', 'delete') && (
-                        <TouchableOpacity
-                          style={styles.actionBtn}
-                          onPress={(event) => {
-                            event.stopPropagation();
-                            remove(p.id);
-                          }}
-                          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                        >
-                          <MaterialIcons name="delete-outline" size={20} color={palette.slate400} />
-                        </TouchableOpacity>
-                      )}
-                    </View>
+                    <ActionOverflowMenu
+                      options={[
+                        ...(can('financeiro', 'update') ? [{
+                          label: 'Editar conta',
+                          icon: 'edit',
+                          onPress: () => navigation.navigate('PagamentoForm', { pagamentoId: p.id }),
+                        } as const] : []),
+                        ...(can('financeiro', 'delete') ? [{
+                          label: 'Remover conta',
+                          icon: 'delete-outline',
+                          destructive: true,
+                          onPress: () => remove(p.id),
+                        } as const] : []),
+                      ]}
+                    />
                   )}
                 </View>
               </View>
@@ -407,18 +397,19 @@ const styles = StyleSheet.create({
     overflow: 'hidden', 
     ...shadows.sm 
   },
-  cardRow: { flexDirection: 'row', alignItems: 'center', padding: spacing.md, gap: spacing.md },
+  cardRow: { flexDirection: 'row', alignItems: 'flex-start', padding: spacing.md, gap: spacing.md },
   iconBox: { width: 42, height: 42, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
-  desc: { fontSize: 14, fontWeight: '700', color: palette.slate900, letterSpacing: -0.1 },
-  metaRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: 4 },
+  cardBody: { flex: 1, minWidth: 0 },
+  cardHeaderRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: spacing.sm },
+  desc: { flex: 1, minWidth: 0, fontSize: 14, fontWeight: '700', color: palette.slate900, letterSpacing: -0.1 },
+  metaStack: { gap: 3, marginTop: 6 },
   metaItem: { flexDirection: 'row', alignItems: 'center', gap: 3 },
-  metaText: { fontSize: 11, color: palette.slate400, fontWeight: '600' },
-  valorText: { fontSize: 14, fontWeight: '900', letterSpacing: -0.2 },
-  statusBadge: { flexDirection: 'row', alignItems: 'center', borderRadius: borderRadius.full, paddingHorizontal: 8, paddingVertical: 3, gap: 4, marginTop: 4 },
+  metaText: { flexShrink: 1, fontSize: 11, color: palette.slate400, fontWeight: '600' },
+  valorText: { flexShrink: 0, fontSize: 14, fontWeight: '900', letterSpacing: -0.2 },
+  statusRow: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: 8 },
+  statusBadge: { flexDirection: 'row', alignItems: 'center', borderRadius: borderRadius.full, paddingHorizontal: 8, paddingVertical: 3, gap: 4 },
   statusDot: { width: 5, height: 5, borderRadius: 2.5 },
   statusText: { fontSize: 9, fontWeight: '800' },
-  actionButtons: { flexDirection: 'row', alignItems: 'center', gap: 2 },
-  actionBtn: { padding: 4, justifyContent: 'center', alignItems: 'center' },
   fab: { 
     position: 'absolute', 
     bottom: 24, 

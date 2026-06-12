@@ -222,7 +222,6 @@ export default function VeiculoFormScreen() {
                   {form.clienteNome || 'Selecionar cliente...'}
                 </Text>
               </View>
-              <MaterialIcons name="chevron-right" size={20} color={palette.slate400} />
             </TouchableOpacity>
           </View>
 

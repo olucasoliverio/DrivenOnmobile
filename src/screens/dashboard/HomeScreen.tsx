@@ -27,8 +27,8 @@ const STATUS_MAP: Record<string, { label: string; color: string; bg: string; pro
 // ─── KPI Horizontal Card ─────────────────────────────────────────────────────
 type IconName = keyof typeof MaterialIcons.glyphMap;
 type QuickAction = {
-  label: string;
-  description: string;
+  labelTop: string;
+  labelBottom: string;
   icon: IconName;
   color: string;
   module: AccessModule;
@@ -80,17 +80,17 @@ export default function HomeScreen() {
 
   const options: QuickAction[] = [
     {
-      label: 'Ler Placa',
-      description: 'Cadastrar veículo mais rápido',
-      icon: 'camera-alt' as IconName,
-      color: palette.amber500,
-      module: 'veiculos' as AccessModule,
+      labelTop: 'Nova',
+      labelBottom: 'OS',
+      icon: 'build' as IconName,
+      color: palette.navy800,
+      module: 'ordens' as AccessModule,
       action: 'create' as AccessAction,
-      onPress: () => handleAction('PlacaScanner'),
+      onPress: () => handleAction('OSForm'),
     },
     {
-      label: 'Novo Orçamento',
-      description: 'Enviar proposta ao cliente',
+      labelTop: 'Novo',
+      labelBottom: 'Orçamento',
       icon: 'request-quote' as IconName,
       color: palette.violet600,
       module: 'orcamentos' as AccessModule,
@@ -98,8 +98,8 @@ export default function HomeScreen() {
       onPress: () => handleAction('OrcamentoForm'),
     },
     {
-      label: 'Novo Cliente',
-      description: 'Cadastrar contato',
+      labelTop: 'Novo',
+      labelBottom: 'Cliente',
       icon: 'person-add' as IconName,
       color: palette.emerald600,
       module: 'clientes' as AccessModule,
@@ -107,13 +107,13 @@ export default function HomeScreen() {
       onPress: () => handleAction('ClienteForm'),
     },
     {
-      label: 'Nova Ordem',
-      description: 'Abrir serviço na oficina',
-      icon: 'build' as IconName,
-      color: palette.navy800,
-      module: 'ordens' as AccessModule,
+      labelTop: 'Novo',
+      labelBottom: 'Veículo',
+      icon: 'directions-car' as IconName,
+      color: palette.amber500,
+      module: 'veiculos' as AccessModule,
       action: 'create' as AccessAction,
-      onPress: () => handleAction('OSForm'),
+      onPress: () => handleAction('VeiculoForm'),
     },
   ].filter(option =>
     can(option.module, option.action) &&
@@ -269,7 +269,7 @@ export default function HomeScreen() {
           <View style={styles.quickGrid}>
             {options.map((opt) => (
               <TouchableOpacity
-                key={opt.label}
+                key={`${opt.labelTop}-${opt.labelBottom}`}
                 style={styles.quickActionCard}
                 activeOpacity={0.78}
                 onPress={opt.onPress}
@@ -278,8 +278,8 @@ export default function HomeScreen() {
                   <MaterialIcons name={opt.icon} size={22} color={opt.color} />
                 </View>
                 <View style={styles.quickActionTextBlock}>
-                  <Text style={styles.quickActionLabel} numberOfLines={2}>{opt.label}</Text>
-                  <Text style={styles.quickActionDescription} numberOfLines={2}>{opt.description}</Text>
+                  <Text style={styles.quickActionLabelTop} numberOfLines={1}>{opt.labelTop}</Text>
+                  <Text style={styles.quickActionLabelBottom} numberOfLines={1}>{opt.labelBottom}</Text>
                 </View>
               </TouchableOpacity>
             ))}
@@ -345,9 +345,6 @@ export default function HomeScreen() {
                         R$ {os.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                       </Text>
                     </View>
-                  </View>
-                  <View style={styles.osChevron}>
-                    <MaterialIcons name="chevron-right" size={20} color={palette.slate300} />
                   </View>
                 </TouchableOpacity>
               );
@@ -425,7 +422,6 @@ export default function HomeScreen() {
                     <Text style={styles.activityTitle} numberOfLines={1}>{item.title}</Text>
                     <Text style={styles.activitySub} numberOfLines={1}>{item.sub}</Text>
                   </View>
-                  <MaterialIcons name="chevron-right" size={16} color={palette.slate300} />
                   <Text style={styles.activityDate}>{dayjs(item.date).format('DD/MM')}</Text>
                 </TouchableOpacity>
               ))}
@@ -433,8 +429,8 @@ export default function HomeScreen() {
           )}
         </View>
 
-        {/* Bottom spacing for tab bar and FAB */}
-        <View style={{ height: insets.bottom + 160 }} />
+        {/* Bottom spacing for tab bar */}
+        <View style={{ height: insets.bottom + 96 }} />
       </ScrollView>
 
     </View>
@@ -533,7 +529,7 @@ const styles = StyleSheet.create({
   },
   quickActionCard: {
     width: (width - spacing.lg * 2 - 10) / 2,
-    minHeight: 82,
+    minHeight: 74,
     backgroundColor: palette.white,
     borderRadius: borderRadius.md,
     borderWidth: 1,
@@ -554,19 +550,19 @@ const styles = StyleSheet.create({
   },
   quickActionTextBlock: {
     flex: 1,
-    gap: 3,
+    justifyContent: 'center',
   },
-  quickActionLabel: {
-    fontSize: 14,
-    lineHeight: 18,
+  quickActionLabelTop: {
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: '700',
+    color: palette.slate500,
+  },
+  quickActionLabelBottom: {
+    fontSize: 13,
+    lineHeight: 17,
     fontWeight: '800',
     color: palette.slate900,
-  },
-  quickActionDescription: {
-    fontSize: 11,
-    lineHeight: 14,
-    color: palette.slate500,
-    fontWeight: '600',
   },
 
   // Sections
@@ -610,8 +606,6 @@ const styles = StyleSheet.create({
   osFooterLeft: { flexDirection: 'row', alignItems: 'center', gap: 3 },
   osFooterText: { fontSize: 11, color: palette.slate400, fontWeight: '500' },
   osValor: { fontSize: 14, fontWeight: '900', color: palette.navy900 },
-  osChevron: { justifyContent: 'center', alignItems: 'center', paddingRight: spacing.sm },
-
   // Agenda
   agCard: {
     marginHorizontal: spacing.lg,

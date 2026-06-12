@@ -225,9 +225,7 @@ export default function NotificacoesScreen() {
                 >
                   <MaterialIcons name="check" size={20} color={palette.slate400} />
                 </TouchableOpacity>
-              ) : (
-                <MaterialIcons name="chevron-right" size={20} color={palette.slate300} />
-              )}
+              ) : null}
             </TouchableOpacity>
           );
         }}

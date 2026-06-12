@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Alert, View, Text, StyleSheet, TouchableOpacity, FlatList, Dimensions, RefreshControl } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialIcons } from '@expo/vector-icons';
-import { FAB, IconButton } from 'react-native-paper';
+import { FAB } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useDriveOnData } from '../../context/DriveOnDataContext';
@@ -13,6 +13,7 @@ import LoadingState from '../../components/LoadingState';
 import dayjs from 'dayjs';
 import 'dayjs/locale/pt-br';
 import ScreenHeader from '../../components/ScreenHeader';
+import ActionOverflowMenu from '../../components/ActionOverflowMenu';
 dayjs.locale('pt-br');
 
 const { width } = Dimensions.get('window');
@@ -208,30 +209,21 @@ export default function AgendaScreen() {
                 )}
               </View>
               {(can('agenda', 'update') || can('agenda', 'delete')) && (
-                <View style={styles.actionButtons}>
-                  {can('agenda', 'update') && (
-                    <IconButton
-                      icon="pencil-outline"
-                      size={20}
-                      iconColor={palette.navy800}
-                      onPress={(event) => {
-                        event.stopPropagation();
-                        navigation.navigate('AgendaForm', { agendamentoId: item.id });
-                      }}
-                    />
-                  )}
-                  {can('agenda', 'delete') && (
-                    <IconButton
-                      icon="delete-outline"
-                      size={20}
-                      iconColor="#D32F2F"
-                      onPress={(event) => {
-                        event.stopPropagation();
-                        remove(item.id);
-                      }}
-                    />
-                  )}
-                </View>
+                <ActionOverflowMenu
+                  options={[
+                    ...(can('agenda', 'update') ? [{
+                      label: 'Editar agendamento',
+                      icon: 'edit',
+                      onPress: () => navigation.navigate('AgendaForm', { agendamentoId: item.id }),
+                    } as const] : []),
+                    ...(can('agenda', 'delete') ? [{
+                      label: 'Remover agendamento',
+                      icon: 'delete-outline',
+                      destructive: true,
+                      onPress: () => remove(item.id),
+                    } as const] : []),
+                  ]}
+                />
               )}
             </View>
             </TouchableOpacity>
@@ -286,7 +278,6 @@ const styles = StyleSheet.create({
   card: { backgroundColor: palette.white, borderRadius: borderRadius.lg, flexDirection: 'row', overflow: 'hidden', ...shadows.sm },
   colorBar: { width: 5 },
   cardBody: { flex: 1, padding: spacing.md },
-  actionButtons: { justifyContent: 'center', marginRight: -4 },
   cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm },
   horaBox: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   hora: { fontSize: 16, fontWeight: '800', color: palette.slate900 },

@@ -9,6 +9,7 @@ import ScreenHeader from '../../components/ScreenHeader';
 import CrudDialog, { type CrudField } from '../../components/CrudDialog';
 import ProcessingOverlay from '../../components/ProcessingOverlay';
 import WhatsAppMessagePreview from '../../components/WhatsAppMessagePreview';
+import ActionOverflowMenu from '../../components/ActionOverflowMenu';
 import { sendWhatsAppMessage } from '../../services/whatsappService';
 import { LinearGradient } from 'expo-linear-gradient';
 import api from '../../api/api';
@@ -231,29 +232,26 @@ export default function OrcamentoDetalhesScreen() {
         subtitle="Visualização Geral"
         showBack={true}
         rightElement={
-          <View style={styles.headerActions}>
-            <TouchableOpacity
-              style={styles.headerEditBtn}
-              onPress={() => setIsStatusModalVisible(true)}
-              activeOpacity={0.7}
-            >
-              <MaterialIcons name="swap-vert" size={22} color={palette.slate700} />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.headerEditBtn, styles.headerDeleteBtn]}
-              onPress={removeOrcamento}
-              activeOpacity={0.7}
-            >
-              <MaterialIcons name="delete" size={22} color={palette.rose600} />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.headerEditBtn}
-              onPress={openEditForm}
-              activeOpacity={0.7}
-            >
-              <MaterialIcons name="edit" size={22} color={palette.slate700} />
-            </TouchableOpacity>
-          </View>
+          <ActionOverflowMenu
+            options={[
+              {
+                label: 'Alterar situação',
+                icon: 'swap-vert',
+                onPress: () => setIsStatusModalVisible(true),
+              },
+              {
+                label: 'Editar orçamento',
+                icon: 'edit',
+                onPress: openEditForm,
+              },
+              {
+                label: 'Excluir orçamento',
+                icon: 'delete',
+                destructive: true,
+                onPress: removeOrcamento,
+              },
+            ]}
+          />
         }
       />
 
@@ -282,7 +280,6 @@ export default function OrcamentoDetalhesScreen() {
                 <Text style={styles.associationLabel}>Cliente</Text>
                 <Text style={styles.associationValue}>{cliente.nome}</Text>
               </View>
-              <MaterialIcons name="chevron-right" size={20} color={palette.slate400} />
             </TouchableOpacity>
           )}
 
@@ -299,7 +296,6 @@ export default function OrcamentoDetalhesScreen() {
                 <Text style={styles.associationLabel}>Veículo</Text>
                 <Text style={styles.associationValue}>{veiculo.marca} {veiculo.modelo} ({veiculo.placa})</Text>
               </View>
-              <MaterialIcons name="chevron-right" size={20} color={palette.slate400} />
             </TouchableOpacity>
           )}
         </View>
@@ -662,22 +658,6 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: palette.slate100 },
   errorContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: spacing.lg },
   errorText: { fontSize: 14, color: palette.slate500, fontWeight: '500' },
-  headerEditBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: palette.slate100,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  headerActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  headerDeleteBtn: {
-    backgroundColor: 'rgba(239, 68, 68, 0.08)',
-  },
   scrollContent: { padding: spacing.lg, paddingBottom: 90 },
   fixedActionBar: {
     backgroundColor: palette.white,
@@ -837,20 +817,6 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
   },
   secondaryActionText: { fontSize: 12, color: palette.navy800, fontWeight: '800' },
-  deleteBtn: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: palette.white,
-    borderRadius: borderRadius.md,
-    borderWidth: 1.5,
-    borderColor: palette.rose100,
-    paddingVertical: 14,
-    gap: spacing.sm,
-    ...shadows.sm,
-  },
-  deleteBtnText: { fontSize: 14, color: palette.rose600, fontWeight: '700' },
-
   // Custom Modal (Bottom Sheet style for WhatsApp/Status)
   modalBackdrop: {
     flex: 1,

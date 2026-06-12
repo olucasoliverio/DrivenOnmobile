@@ -1,219 +1,200 @@
-# 🔧 DriveOn Mobile
+# DriveOn Mobile
 
-> **Sistema de Gestão para Oficinas Mecânicas** — App React Native (Expo)
+App mobile do DriveOn para operação de oficinas mecânicas. O projeto é feito com Expo, React Native e TypeScript.
 
-<div align="center">
-  <img src="https://img.shields.io/badge/Expo-54.0-000020?style=for-the-badge&logo=expo&logoColor=white" />
-  <img src="https://img.shields.io/badge/React_Native-0.76-61DAFB?style=for-the-badge&logo=react&logoColor=black" />
-  <img src="https://img.shields.io/badge/TypeScript-5.8-3178C6?style=for-the-badge&logo=typescript&logoColor=white" />
-  <img src="https://img.shields.io/badge/Status-Em%20Desenvolvimento-orange?style=for-the-badge" />
-</div>
+## Visão Geral
 
----
+O app concentra as rotinas principais da oficina no celular:
 
-## 📋 Sobre o Projeto
+| Módulo | O que faz |
+| --- | --- |
+| Dashboard | Atalhos, KPIs, OS em andamento, agenda do dia e atividade recente |
+| Ordens de Serviço | Lista, filtros, criação, edição, acompanhamento e cobrança |
+| Clientes | Cadastro, detalhes, veículos, histórico e WhatsApp |
+| Veículos | Cadastro, detalhes, vínculos com cliente e histórico de OS |
+| Agenda | Agendamentos, confirmação e cancelamento |
+| Orçamentos | Propostas, status, compartilhamento e conversão de fluxo |
+| Pagamentos | Contas a receber, filtros, detalhes e baixa de recebimento |
+| Notificações | Central de avisos do app |
+| Menu | Acesso a módulos secundários e logout |
 
-O **DriveOn Mobile** é o app React Native do sistema de gestão DriveOn para oficinas mecânicas. Ele cobre os principais módulos operacionais:
+## Stack
 
-| Módulo | Descrição |
-|--------|-----------|
-| 📊 Dashboard | KPIs, receita mensal, OS abertas |
-| 📅 Agenda | Agendamentos por dia |
-| 🔧 Ordens de Serviço | Criação e acompanhamento de OS |
-| 👤 Clientes | Cadastro e histórico |
-| 🚗 Veículos | Frota por cliente |
-| 💰 Pagamentos | Extrato, contas a pagar/receber |
-| 📦 Estoque | Controle de peças |
-| 📋 Orçamentos | Propostas com status |
-| 🏭 Fornecedores | Contatos e categorias |
-| 🛠️ Serviços | Tabela de serviços |
-| 📈 Relatórios | Análises financeiras e operacionais |
-| ⚙️ Configurações | Dados da oficina |
-| 👥 Usuários | Equipe e permissões |
+| Tecnologia | Versão no projeto |
+| --- | --- |
+| Expo | `~54.0.33` |
+| React Native | `0.81.5` |
+| React | `19.1.0` |
+| TypeScript | `~5.9.2` |
+| React Navigation | `7.x` |
+| React Native Paper | `^5.15.1` |
+| Axios | `^1.15.2` |
+| Day.js | `^1.11.20` |
 
-> **Nota:** Esta versão usa **dados mockados** (sem backend real). Ideal para testes e demonstrações.
+## Pré-requisitos
 
----
+- Node.js 18 ou superior
+- npm
+- Android Studio/emulador Android ou dispositivo físico
+- Expo CLI via `npx expo`
 
-## ✅ Pré-requisitos
+Para Android nativo, este projeto usa `expo run:android`, então o ambiente Android precisa estar configurado.
 
-Antes de começar, certifique-se de ter instalado em sua máquina:
-
-- **[Node.js](https://nodejs.org/)** versão 18 ou superior
-  - Verifique com: `node --version`
-- **[Git](https://git-scm.com/)** para clonar o repositório
-- **[Expo Go](https://expo.dev/go)** instalado no seu celular:
-  - 📱 Android: [Google Play Store](https://play.google.com/store/apps/details?id=host.exp.exponent)
-  - 🍎 iOS: [Apple App Store](https://apps.apple.com/app/expo-go/id982107779)
-
-> ⚠️ **Importante:** Seu celular e computador precisam estar na **mesma rede Wi-Fi**.
-
----
-
-## 🚀 Como Rodar
-
-### 1. Clonar o repositório
-
-```bash
-git clone <URL-DO-REPOSITÓRIO>
-cd MobileDriveOn
-```
-
-### 2. Instalar dependências
+## Instalação
 
 ```bash
 npm install
 ```
 
-> Aguarde a instalação de todos os pacotes. Pode levar alguns minutos.
+## Rodando o App
 
-### 3. Iniciar o servidor de desenvolvimento
+Servidor Expo:
 
 ```bash
-npx expo start
+npm start
 ```
 
-Você verá uma saída parecida com esta no terminal:
+Android:
 
-```
-Starting project at ...
-Starting Metro Bundler
-Waiting on http://localhost:8081
-
-› Metro waiting on exp://192.168.x.x:8081
-› Scan the QR code above with Expo Go (Android) or the Camera app (iOS)
+```bash
+npm run android
 ```
 
-### 4. Abrir no celular
+iOS:
 
-**Android:**
-1. Abra o app **Expo Go** no celular
-2. Toque em **"Scan QR code"**
-3. Aponte a câmera para o QR Code no terminal
-
-**iOS:**
-1. Abra o app **Câmera** nativa do iPhone
-2. Aponte para o QR Code no terminal
-3. Toque na notificação que aparecer para abrir no Expo Go
-
----
-
-## 🔑 Credenciais de Acesso
-
-O app usa autenticação mockada. Use qualquer um dos acessos abaixo:
-
-| E-mail | Senha | Perfil |
-|--------|-------|--------|
-| `admin@driveon.com` | `123456` | Administrador |
-| qualquer@email.com | `123456` | Qualquer perfil |
-
-> Qualquer e-mail funciona, desde que a senha seja **`123456`**.
-
----
-
-## 🗂️ Estrutura do Projeto
-
+```bash
+npm run ios
 ```
-MobileDriveOn/
-├── App.tsx                          # Ponto de entrada
-├── app.json                         # Configurações do Expo
+
+Web, quando útil para inspeção rápida:
+
+```bash
+npm run web
+```
+
+## Configuração da API
+
+A URL da API é definida em `src/api/api.ts`.
+
+Por padrão:
+
+- Android: `http://10.0.2.2:4000/api`
+- Outras plataformas: `http://localhost:4000/api`
+
+Para sobrescrever, crie/ajuste o arquivo `.env`:
+
+```env
+EXPO_PUBLIC_API_URL=http://SEU_HOST:4000/api
+```
+
+Depois reinicie o Metro.
+
+## Scripts
+
+| Script | Descrição |
+| --- | --- |
+| `npm start` | Inicia o Expo |
+| `npm run android` | Compila e abre no Android |
+| `npm run ios` | Compila e abre no iOS |
+| `npm run web` | Abre via Expo Web |
+
+Validação TypeScript:
+
+```bash
+npx tsc --noEmit
+```
+
+## Estrutura
+
+```text
+DrivenOnmobile/
+├── App.tsx
+├── app.json
+├── android/
+├── assets/
 ├── src/
-│   ├── theme/
-│   │   └── theme.ts                 # Tema de cores (light)
-│   ├── data/
-│   │   └── mockData.ts              # Dados fictícios de demonstração
+│   ├── api/
+│   ├── components/
 │   ├── context/
-│   │   └── AuthContext.tsx          # Gerenciamento de autenticação
 │   ├── navigation/
-│   │   ├── RootNavigator.tsx        # Navegação raiz
-│   │   ├── AppTabs.tsx              # Abas principais (Bottom Navigation)
-│   │   └── stacks/                  # Stacks por módulo
-│   └── screens/                     # Todas as telas do app
-│       ├── auth/
-│       ├── dashboard/
-│       ├── agenda/
-│       ├── tarefas/
-│       ├── clientes/
-│       ├── veiculos/
-│       ├── orcamentos/
-│       ├── pagamentos/
-│       ├── estoque/
-│       ├── fornecedores/
-│       ├── servicos/
-│       ├── relatorios/
-│       ├── configuracoes/
-│       ├── usuarios/
-│       └── menu/
-└── assets/                          # Ícones e imagens
+│   ├── permissions/
+│   ├── screens/
+│   │   ├── agenda/
+│   │   ├── auth/
+│   │   ├── clientes/
+│   │   ├── dashboard/
+│   │   ├── menu/
+│   │   ├── notificacoes/
+│   │   ├── orcamentos/
+│   │   ├── pagamentos/
+│   │   ├── tarefas/
+│   │   └── veiculos/
+│   ├── services/
+│   ├── theme/
+│   └── utils/
+└── package.json
 ```
 
----
+## Observações de UI
 
-## 🛠️ Tecnologias Utilizadas
+- A Status Bar Android é preta e não translúcida.
+- A bottom bar é flutuante e usa fundo transparente ao redor.
+- Ações secundárias, como editar/remover/cancelar, devem usar o menu de três pontinhos (`ActionOverflowMenu`).
+- Cards clicáveis no mobile não usam chevron visual.
+- Modais de filtro usam `fade` para evitar o backdrop escuro subindo junto com o conteúdo.
 
-| Tecnologia | Versão | Função |
-|------------|--------|--------|
-| Expo | ~54.0 | Framework base |
-| React Native | ~0.76 | Core mobile |
-| TypeScript | ~5.8 | Tipagem estática |
-| React Navigation | ^7 | Navegação entre telas |
-| React Native Paper | ^5 | Componentes de UI (Material Design) |
-| AsyncStorage | ~2.2 | Persistência local |
-| Day.js | ^1.11 | Manipulação de datas |
-| Axios | ^1.11 | Requisições HTTP (pronto para backend) |
+## Android
 
----
+Configurações relevantes:
 
-## ❓ Solução de Problemas
+- `android.edgeToEdgeEnabled`: `false`
+- `androidStatusBar.backgroundColor`: `#000000`
+- `androidStatusBar.translucent`: `false`
+- `androidNavigationBar.backgroundColor`: `#F1F5F9`
 
-### "Unable to resolve module..."
-Execute novamente:
+Quando mudar configurações nativas, rode um novo build Android:
+
 ```bash
-npm install
+npm run android
+```
+
+Um reload do Metro pode não ser suficiente para refletir mudanças em `app.json`, `android/` ou permissões nativas.
+
+## Troubleshooting
+
+Limpar cache do Expo:
+
+```bash
 npx expo start --clear
 ```
 
-### QR Code não funciona / App não abre
-- Confirme que celular e computador estão na **mesma rede Wi-Fi**
-- Tente usar a opção de **tunnel** (mais lenta, mas funciona em redes diferentes):
-  ```bash
-  npx expo start --tunnel
-  ```
-  > Pode pedir para instalar o pacote `@expo/ngrok`. Aceite com `Y`.
+Reinstalar dependências:
 
-### App travando ou crash no celular
-- Feche e abra o Expo Go novamente
-- Agite o celular para abrir o menu de developer e toque em **"Reload"**
+```bash
+rm -rf node_modules
+npm install
+```
 
-### Erros de versão no terminal
+No PowerShell:
+
+```powershell
+Remove-Item -Recurse -Force node_modules
+npm install
+```
+
+Corrigir dependências Expo:
+
 ```bash
 npx expo install --fix
 ```
 
----
+Se a API não responder no Android Emulator, confirme que o backend está rodando na porta `4000` e use `http://10.0.2.2:4000/api`.
 
-## 🔗 Projetos Relacionados
+## Projetos Relacionados
 
-- **Backend (API REST):** [`/Back`](./Back) — Node.js + Express + Prisma + PostgreSQL
-- **Frontend Web:** [`/Front`](./Front) — React + Vite + TypeScript + MUI
+- Backend: `../Web/Back`
+- Frontend Web: `../Web/Front`
 
----
+## Status
 
-## 👨‍💻 Desenvolvimento
-
-Para conectar ao backend real quando disponível, edite o arquivo:
-
-```
-src/api/client.ts
-```
-
-E substitua a URL base:
-```ts
-baseURL: 'http://SEU-SERVIDOR:3000'
-```
-
----
-
-<div align="center">
-  <p>Feito com ❤️ — DriveOn &copy; 2026</p>
-</div>
+Projeto em desenvolvimento ativo.

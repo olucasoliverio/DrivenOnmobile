@@ -157,6 +157,7 @@ export default function AppTabs() {
       screenOptions={{
         lazy: true,
         swipeEnabled: true,
+        sceneStyle: { backgroundColor: 'transparent' },
       }}
     >
       {tabs.map(tab => (
@@ -177,7 +178,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: palette.slate100,
+    backgroundColor: 'transparent',
   },
   tabBar: {
     position: 'absolute',

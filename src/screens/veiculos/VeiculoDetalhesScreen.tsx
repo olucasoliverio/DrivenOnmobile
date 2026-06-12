@@ -5,6 +5,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { useDriveOnData } from '../../context/DriveOnDataContext';
 import { palette, spacing, borderRadius, shadows } from '../../theme/theme';
 import ScreenHeader from '../../components/ScreenHeader';
+import ActionOverflowMenu from '../../components/ActionOverflowMenu';
 import dayjs from 'dayjs';
 
 const STATUS_MAP: Record<string, { label: string; color: string; bg: string }> = {
@@ -60,13 +61,21 @@ export default function VeiculoDetalhesScreen() {
         subtitle="Detalhes do Veículo"
         showBack={true}
         rightElement={
-          <TouchableOpacity
-            style={styles.headerEditBtn}
-            onPress={() => navigation.navigate('VeiculoForm', { veiculoId: veiculo.id })}
-            activeOpacity={0.7}
-          >
-            <MaterialIcons name="edit" size={22} color={palette.slate700} />
-          </TouchableOpacity>
+          <ActionOverflowMenu
+            options={[
+              {
+                label: 'Editar veículo',
+                icon: 'edit',
+                onPress: () => navigation.navigate('VeiculoForm', { veiculoId: veiculo.id }),
+              },
+              {
+                label: 'Excluir veículo',
+                icon: 'delete',
+                destructive: true,
+                onPress: removeVeiculo,
+              },
+            ]}
+          />
         }
       />
 
@@ -122,7 +131,6 @@ export default function VeiculoDetalhesScreen() {
                 <Text style={styles.ownerName}>{cliente.nome}</Text>
                 <Text style={styles.ownerPhone}>{cliente.telefone}</Text>
               </View>
-              <MaterialIcons name="chevron-right" size={20} color={palette.slate400} />
             </TouchableOpacity>
           </View>
         )}
@@ -159,7 +167,6 @@ export default function VeiculoDetalhesScreen() {
                       <View style={[styles.osBadge, { backgroundColor: st.bg }]}>
                         <Text style={[styles.osBadgeText, { color: st.color }]}>{st.label}</Text>
                       </View>
-                      <MaterialIcons name="chevron-right" size={18} color={palette.slate400} />
                     </View>
                   </TouchableOpacity>
                 );
@@ -168,11 +175,6 @@ export default function VeiculoDetalhesScreen() {
           )}
         </View>
 
-        {/* Botão de Excluir */}
-        <TouchableOpacity style={styles.deleteBtn} activeOpacity={0.7} onPress={removeVeiculo}>
-          <MaterialIcons name="delete" size={20} color={palette.rose600} />
-          <Text style={styles.deleteBtnText}>Excluir Veículo</Text>
-        </TouchableOpacity>
       </ScrollView>
 
     </View>
@@ -183,14 +185,6 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: palette.slate100 },
   errorContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: spacing.lg },
   errorText: { fontSize: 14, color: palette.slate500, fontWeight: '500' },
-  headerEditBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: palette.slate100,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
   scrollContent: { padding: spacing.lg, paddingBottom: spacing.xxl },
 
   // Card Principal
@@ -314,19 +308,4 @@ const styles = StyleSheet.create({
   osBadge: { borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 },
   osBadgeText: { fontSize: 10, fontWeight: '700' },
 
-  // Botão excluir
-  deleteBtn: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: palette.white,
-    borderRadius: borderRadius.md,
-    borderWidth: 1.5,
-    borderColor: palette.rose100,
-    paddingVertical: 14,
-    gap: spacing.sm,
-    marginTop: spacing.md,
-    ...shadows.sm,
-  },
-  deleteBtnText: { fontSize: 14, color: palette.rose600, fontWeight: '700' },
 });

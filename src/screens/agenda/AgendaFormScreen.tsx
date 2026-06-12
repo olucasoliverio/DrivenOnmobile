@@ -539,7 +539,6 @@ export default function AgendaFormScreen() {
                     <Text style={styles.modalCreateVehicleTitle}>Cadastrar novo veículo</Text>
                     <Text style={styles.modalCreateVehicleSubtitle}>Já vinculado a {form.clienteNome || 'este cliente'}</Text>
                   </View>
-                  <MaterialIcons name="chevron-right" size={20} color={palette.slate400} />
                 </TouchableOpacity>
               ) : null
             )}

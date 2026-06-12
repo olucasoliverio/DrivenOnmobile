@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Alert, View, Text, StyleSheet, FlatList, TextInput as RNTextInput, TouchableOpacity, RefreshControl } from 'react-native';
-import { FAB, IconButton } from 'react-native-paper';
+import { FAB } from 'react-native-paper';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -10,6 +10,7 @@ import { colors, spacing, borderRadius, palette, shadows } from '../../theme/the
 import ScreenHeader from '../../components/ScreenHeader';
 import EmptyState from '../../components/EmptyState';
 import LoadingState from '../../components/LoadingState';
+import ActionOverflowMenu from '../../components/ActionOverflowMenu';
 
 export default function VeiculosScreen() {
   const insets = useSafeAreaInsets();
@@ -117,30 +118,21 @@ export default function VeiculosScreen() {
                     </View>
                   </View>
                   {(can('veiculos', 'update') || can('veiculos', 'delete')) && (
-                    <View style={styles.actionButtons}>
-                      {can('veiculos', 'update') && (
-                        <IconButton
-                          icon="pencil-outline"
-                          size={20}
-                          iconColor={palette.navy800}
-                          onPress={(event) => {
-                            event.stopPropagation();
-                            navigation.navigate('VeiculoForm', { veiculoId: v.id });
-                          }}
-                        />
-                      )}
-                      {can('veiculos', 'delete') && (
-                        <IconButton
-                          icon="delete-outline"
-                          size={20}
-                          iconColor={palette.rose600}
-                          onPress={(event) => {
-                            event.stopPropagation();
-                            remove(v.id);
-                          }}
-                        />
-                      )}
-                    </View>
+                    <ActionOverflowMenu
+                      options={[
+                        ...(can('veiculos', 'update') ? [{
+                          label: 'Editar veículo',
+                          icon: 'edit',
+                          onPress: () => navigation.navigate('VeiculoForm', { veiculoId: v.id }),
+                        } as const] : []),
+                        ...(can('veiculos', 'delete') ? [{
+                          label: 'Remover veículo',
+                          icon: 'delete-outline',
+                          destructive: true,
+                          onPress: () => remove(v.id),
+                        } as const] : []),
+                      ]}
+                    />
                   )}
                 </View>
               </View>
@@ -185,7 +177,6 @@ const styles = StyleSheet.create({
     borderBottomColor: '#ECEFF2',
   },
   cardRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  actionButtons: { flexDirection: 'row', alignItems: 'center', marginRight: -8 },
   carIcon: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#F1F5F9', justifyContent: 'center', alignItems: 'center' },
   modelo: { fontSize: 15, fontWeight: '700', color: palette.slate900 },
   placaBadge: { backgroundColor: palette.slate700, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 },

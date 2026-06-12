@@ -10,6 +10,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import ScreenHeader from '../../components/ScreenHeader';
 import ProcessingOverlay from '../../components/ProcessingOverlay';
 import WhatsAppMessagePreview from '../../components/WhatsAppMessagePreview';
+import ActionOverflowMenu from '../../components/ActionOverflowMenu';
 import api from '../../api/api';
 import { sendWhatsAppMessage } from '../../services/whatsappService';
 import { buildOSTrackingMessage, createTrackingLink, resolveTrackingLink } from '../../services/trackingShareService';
@@ -210,27 +211,24 @@ export default function OSDetalhesScreen() {
         title="Detalhes da OS"
         showBack={true}
         rightElement={
-          <View style={styles.headerActions}>
-            {(effectiveStatus === 'aguardando' || effectiveStatus === 'em_andamento') && (
-              <TouchableOpacity
-                style={[styles.headerEditBtn, styles.headerDangerBtn]}
-                onPress={() => setIsConfirmCancelModalVisible(true)}
-                activeOpacity={0.7}
-              >
-                <MaterialIcons name="cancel" size={22} color={palette.rose600} />
-              </TouchableOpacity>
-            )}
-            <TouchableOpacity
-              style={styles.headerEditBtn}
-              onPress={() => navigation.navigate('OSForm', { osId: os.id })}
-              activeOpacity={0.7}
-            >
-              <MaterialIcons name="edit" size={22} color={palette.slate700} />
-            </TouchableOpacity>
-          </View>
+          <ActionOverflowMenu
+            options={[
+              {
+                label: 'Editar OS',
+                icon: 'edit',
+                onPress: () => navigation.navigate('OSForm', { osId: os.id }),
+              },
+              ...((effectiveStatus === 'aguardando' || effectiveStatus === 'em_andamento') ? [{
+                label: 'Cancelar OS',
+                icon: 'cancel',
+                destructive: true,
+                onPress: () => setIsConfirmCancelModalVisible(true),
+              } as const] : []),
+            ]}
+          />
         }
       />
-      <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: insets.bottom + 86 }} showsVerticalScrollIndicator={false}>
+      <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: insets.bottom + 56 }} showsVerticalScrollIndicator={false}>
 
       {/* ── Cliente ── */}
       <View style={styles.section}>
@@ -367,7 +365,7 @@ export default function OSDetalhesScreen() {
           <View style={styles.financeEmpty}>
             <Text style={styles.financeEmptyText}>Nenhum registro financeiro de cobrança encontrado para esta OS.</Text>
             <TouchableOpacity 
-              style={[styles.btnPrimary, { marginTop: spacing.sm }]} 
+              style={[styles.btnPrimary, styles.chargeButton]} 
               activeOpacity={0.8}
               onPress={() => setIsPaymentModalVisible(true)}
             >
@@ -933,14 +931,6 @@ export default function OSDetalhesScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: palette.slate100 },
 
-  headerActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  headerDangerBtn: {
-    backgroundColor: 'rgba(239, 68, 68, 0.08)',
-  },
   statusBadge: { flexDirection: 'row', alignItems: 'center', gap: 5, borderRadius: borderRadius.full, paddingHorizontal: 12, paddingVertical: 6 },
   statusText: { fontSize: 12, fontWeight: '700' },
 
@@ -1088,6 +1078,7 @@ const styles = StyleSheet.create({
   btnPrimary: { borderRadius: borderRadius.md, overflow: 'hidden', ...shadows.sm },
   btnGradient: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, paddingVertical: 14 },
   btnPrimaryText: { fontSize: 15, fontWeight: '700', color: palette.white },
+  chargeButton: { alignSelf: 'stretch', marginTop: spacing.sm },
   btnOutline: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, paddingVertical: 14, borderRadius: borderRadius.md, borderWidth: 1.5, borderColor: palette.navy800, backgroundColor: palette.white },
   btnOutlineText: { fontSize: 15, fontWeight: '700', color: palette.navy800 },
   btnWhatsApp: {
@@ -1477,13 +1468,5 @@ const styles = StyleSheet.create({
   paymentStatusTextSelected: {
     color: palette.white,
     fontWeight: '800',
-  },
-  headerEditBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: palette.slate100,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
 });

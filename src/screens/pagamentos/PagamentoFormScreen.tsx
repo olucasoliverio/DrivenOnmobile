@@ -201,7 +201,6 @@ export default function PagamentoFormScreen() {
                     {dayjs(form.data_vencimento).format('DD/MM/YYYY')}
                   </Text>
                 </View>
-                <MaterialIcons name="chevron-right" size={20} color={palette.slate400} />
               </View>
             </TouchableOpacity>
 
@@ -245,7 +244,6 @@ export default function PagamentoFormScreen() {
                     {form.clienteNome || 'Nenhum selecionado'}
                   </Text>
                 </View>
-                <MaterialIcons name="chevron-right" size={20} color={palette.slate400} />
               </View>
             </TouchableOpacity>
 
@@ -277,7 +275,6 @@ export default function PagamentoFormScreen() {
                       : 'Nenhuma selecionada'}
                   </Text>
                 </View>
-                <MaterialIcons name="chevron-right" size={20} color={palette.slate400} />
               </View>
             </TouchableOpacity>
 

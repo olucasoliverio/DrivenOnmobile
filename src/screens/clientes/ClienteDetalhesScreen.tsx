@@ -282,7 +282,6 @@ export default function ClienteDetalhesScreen() {
                 <Text style={styles.veiculoNome}>{v.marca} {v.modelo} {v.ano}</Text>
                 <Text style={styles.veiculoInfo}>{v.placa} · {v.cor} · {v.km.toLocaleString()} km</Text>
               </View>
-              <MaterialIcons name="chevron-right" size={20} color={palette.slate300} />
             </View>
           </TouchableOpacity>
         ))}
@@ -335,7 +334,6 @@ export default function ClienteDetalhesScreen() {
                   </View>
                   <Text style={styles.osValor}>R$ {os.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</Text>
                 </View>
-                <MaterialIcons name="chevron-right" size={20} color={palette.slate300} style={{ marginLeft: spacing.xs }} />
               </View>
             </TouchableOpacity>
           );

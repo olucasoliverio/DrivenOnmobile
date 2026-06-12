@@ -152,7 +152,6 @@ export default function ClientesScreen() {
                         ) : null}
                       </View>
                     </View>
-                    <MaterialIcons name="chevron-right" size={20} color={palette.slate300} style={{ marginLeft: spacing.sm }} />
                   </View>
                 </View>
               </View>

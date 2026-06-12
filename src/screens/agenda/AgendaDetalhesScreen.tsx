@@ -6,6 +6,7 @@ import { useDriveOnData } from '../../context/DriveOnDataContext';
 import { useAuth } from '../../context/AuthContext';
 import { palette, spacing, borderRadius, shadows } from '../../theme/theme';
 import ScreenHeader from '../../components/ScreenHeader';
+import ActionOverflowMenu from '../../components/ActionOverflowMenu';
 import dayjs from 'dayjs';
 
 
@@ -88,15 +89,23 @@ export default function AgendaDetalhesScreen() {
         title="Agendamento"
         subtitle="Visualização do Compromisso"
         showBack={true}
-        rightElement={can('agenda', 'update') ? (
-          <TouchableOpacity
-            style={styles.headerEditBtn}
-            onPress={() => navigation.navigate('AgendaForm', { agendamentoId: ag.id })}
-            activeOpacity={0.7}
-          >
-            <MaterialIcons name="edit" size={22} color={palette.slate700} />
-          </TouchableOpacity>
-        ) : undefined}
+        rightElement={
+          <ActionOverflowMenu
+            options={[
+              ...(can('agenda', 'update') ? [{
+                label: 'Editar agendamento',
+                icon: 'edit',
+                onPress: () => navigation.navigate('AgendaForm', { agendamentoId: ag.id }),
+              } as const] : []),
+              ...(can('agenda', 'delete') ? [{
+                label: 'Cancelar agendamento',
+                icon: 'cancel',
+                destructive: true,
+                onPress: removeAgendamento,
+              } as const] : []),
+            ]}
+          />
+        }
       />
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
@@ -147,7 +156,6 @@ export default function AgendaDetalhesScreen() {
                 <Text style={styles.associationLabel}>Cliente</Text>
                 <Text style={styles.associationValue}>{cliente.nome}</Text>
               </View>
-              <MaterialIcons name="chevron-right" size={20} color={palette.slate400} />
             </TouchableOpacity>
           )}
 
@@ -164,7 +172,6 @@ export default function AgendaDetalhesScreen() {
                 <Text style={styles.associationLabel}>Veículo</Text>
                 <Text style={styles.associationValue}>{veiculo.marca} {veiculo.modelo} ({veiculo.placa})</Text>
               </View>
-              <MaterialIcons name="chevron-right" size={20} color={palette.slate400} />
             </TouchableOpacity>
           )}
         </View>
@@ -188,13 +195,6 @@ export default function AgendaDetalhesScreen() {
           </TouchableOpacity>
         )}
 
-        {/* Botão de Excluir */}
-        {can('agenda', 'delete') && (
-          <TouchableOpacity style={styles.deleteBtn} activeOpacity={0.7} onPress={removeAgendamento}>
-            <MaterialIcons name="cancel" size={20} color={palette.rose600} />
-            <Text style={styles.deleteBtnText}>Cancelar Agendamento</Text>
-          </TouchableOpacity>
-        )}
       </ScrollView>
 
     </View>
@@ -205,14 +205,6 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: palette.slate100 },
   errorContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: spacing.lg },
   errorText: { fontSize: 14, color: palette.slate500, fontWeight: '500' },
-  headerEditBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: palette.slate100,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
   scrollContent: { padding: spacing.lg, paddingBottom: spacing.xxl },
 
   // Card Principal
@@ -283,17 +275,4 @@ const styles = StyleSheet.create({
     ...shadows.sm,
   },
   confirmBtnText: { fontSize: 14, color: palette.white, fontWeight: '700' },
-  deleteBtn: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: palette.white,
-    borderRadius: borderRadius.md,
-    borderWidth: 1.5,
-    borderColor: palette.rose100,
-    paddingVertical: 14,
-    gap: spacing.sm,
-    ...shadows.sm,
-  },
-  deleteBtnText: { fontSize: 14, color: palette.rose600, fontWeight: '700' },
 });
