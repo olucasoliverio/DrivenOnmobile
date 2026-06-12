@@ -430,7 +430,7 @@ export default function HomeScreen() {
         </View>
 
         {/* Bottom spacing for tab bar */}
-        <View style={{ height: insets.bottom + 96 }} />
+        <View style={{ height: Math.max(insets.bottom, 12) + 84 }} />
       </ScrollView>
 
     </View>

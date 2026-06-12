@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Alert, View, Text, StyleSheet, FlatList, TextInput as RNTextInput, TouchableOpacity, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TextInput as RNTextInput, TouchableOpacity, RefreshControl } from 'react-native';
 import { FAB } from 'react-native-paper';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -10,13 +10,12 @@ import { colors, spacing, borderRadius, palette, shadows } from '../../theme/the
 import ScreenHeader from '../../components/ScreenHeader';
 import EmptyState from '../../components/EmptyState';
 import LoadingState from '../../components/LoadingState';
-import ActionOverflowMenu from '../../components/ActionOverflowMenu';
 
 export default function VeiculosScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
-  const { veiculos: veiculosData, clientes, deleteRecord, refresh, isLoading } = useDriveOnData();
+  const { veiculos: veiculosData, clientes, refresh, isLoading } = useDriveOnData();
   const { can } = useAuth();
   const [busca, setBusca] = useState('');
   const [refreshing, setRefreshing] = useState(false);
@@ -46,17 +45,6 @@ export default function VeiculosScreen() {
       v.modelo.toLowerCase().includes(busca.toLowerCase()) ||
       cliente?.nome.toLowerCase().includes(busca.toLowerCase());
   });
-
-  const remove = (id: number) => {
-    Alert.alert('Remover veiculo?', 'Essa acao desativa o registro.', [
-      { text: 'Cancelar', style: 'cancel' },
-      { text: 'Remover', style: 'destructive', onPress: async () => {
-        try { await deleteRecord('/veiculos', id); }
-        catch (error: any) { Alert.alert('Nao foi possivel remover', error?.response?.data?.error ?? error?.message ?? 'Tente novamente.'); }
-      } },
-    ]);
-  };
-
 
   return (
     <View style={styles.container}>
@@ -102,7 +90,7 @@ export default function VeiculosScreen() {
                   <View style={styles.carIcon}>
                     <MaterialIcons name="directions-car" size={24} color={palette.slate700} />
                   </View>
-                  <View style={{ flex: 1 }}>
+                  <View style={styles.vehicleInfo}>
                     <Text style={styles.modelo}>{v.marca} {v.modelo} {v.ano}</Text>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: 4 }}>
                       <View style={styles.placaBadge}><Text style={styles.placaText}>{v.placa}</Text></View>
@@ -117,23 +105,6 @@ export default function VeiculosScreen() {
                       <Text style={styles.kmText}>{v.km.toLocaleString('pt-BR')} km</Text>
                     </View>
                   </View>
-                  {(can('veiculos', 'update') || can('veiculos', 'delete')) && (
-                    <ActionOverflowMenu
-                      options={[
-                        ...(can('veiculos', 'update') ? [{
-                          label: 'Editar veículo',
-                          icon: 'edit',
-                          onPress: () => navigation.navigate('VeiculoForm', { veiculoId: v.id }),
-                        } as const] : []),
-                        ...(can('veiculos', 'delete') ? [{
-                          label: 'Remover veículo',
-                          icon: 'delete-outline',
-                          destructive: true,
-                          onPress: () => remove(v.id),
-                        } as const] : []),
-                      ]}
-                    />
-                  )}
                 </View>
               </View>
             </TouchableOpacity>
@@ -176,8 +147,9 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#ECEFF2',
   },
-  cardRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  cardRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, position: 'relative' },
   carIcon: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#F1F5F9', justifyContent: 'center', alignItems: 'center' },
+  vehicleInfo: { flex: 1 },
   modelo: { fontSize: 15, fontWeight: '700', color: palette.slate900 },
   placaBadge: { backgroundColor: palette.slate700, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 },
   placaText: { color: '#FFF', fontWeight: '700', fontSize: 11, letterSpacing: 0.5 },

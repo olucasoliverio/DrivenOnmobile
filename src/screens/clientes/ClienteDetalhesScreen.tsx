@@ -4,12 +4,14 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useDriveOnData } from '../../context/DriveOnDataContext';
+import { useAuth } from '../../context/AuthContext';
 import { palette, spacing, borderRadius, shadows, gradients } from '../../theme/theme';
 import dayjs from 'dayjs';
 import CrudDialog, { type CrudField } from '../../components/CrudDialog';
 import { sendWelcomeMessage, sendWhatsAppMessage, sendOSCompletedMessage, sendEstimateMessage } from '../../services/whatsappService';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import ScreenHeader from '../../components/ScreenHeader';
+import ActionOverflowMenu from '../../components/ActionOverflowMenu';
 import { Portal, Dialog, Button, TextInput } from 'react-native-paper';
 import api from '../../api/api';
 
@@ -31,7 +33,8 @@ export default function ClienteDetalhesScreen() {
   const route = useRoute<any>();
   const navigation = useNavigation<any>();
   const { clienteId } = route.params ?? { clienteId: 1 };
-  const { clientes, veiculos: veiculosData, ordens: ordensData, pagamentos, orcamentos: orcamentosData, configuracoes } = useDriveOnData();
+  const { clientes, veiculos: veiculosData, ordens: ordensData, pagamentos, orcamentos: orcamentosData, configuracoes, deleteRecord } = useDriveOnData();
+  const { can } = useAuth();
 
   // WhatsApp Dialog States
   const [isWhatsAppDialogVisible, setIsWhatsAppDialogVisible] = useState(false);
@@ -173,19 +176,47 @@ export default function ClienteDetalhesScreen() {
     );
   }
 
+  const removeCliente = () => {
+    Alert.alert('Remover cliente?', 'Essa acao remove o cadastro do cliente.', [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: 'Remover',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await deleteRecord('/clientes', cliente.id);
+            navigation.goBack();
+          } catch (error: any) {
+            Alert.alert('Nao foi possivel remover', error?.response?.data?.error ?? error?.message ?? 'Tente novamente.');
+          }
+        },
+      },
+    ]);
+  };
+
   return (
     <View style={{ flex: 1, backgroundColor: palette.slate100 }}>
       <ScreenHeader 
         title="Detalhes do Cliente" 
         showBack={true} 
         rightElement={
-          <TouchableOpacity
-            onPress={() => navigation.navigate('ClienteForm', { clienteId: cliente.id })}
-            style={styles.headerEditBtn}
-            activeOpacity={0.7}
-          >
-            <MaterialIcons name="edit" size={20} color={palette.navy800} />
-          </TouchableOpacity>
+          (can('clientes', 'update') || can('clientes', 'delete')) ? (
+            <ActionOverflowMenu
+              options={[
+                ...(can('clientes', 'update') ? [{
+                  label: 'Editar cliente',
+                  icon: 'edit',
+                  onPress: () => navigation.navigate('ClienteForm', { clienteId: cliente.id }),
+                } as const] : []),
+                ...(can('clientes', 'delete') ? [{
+                  label: 'Remover cliente',
+                  icon: 'delete-outline',
+                  destructive: true,
+                  onPress: removeCliente,
+                } as const] : []),
+              ]}
+            />
+          ) : undefined
         }
       />
       <ScrollView 

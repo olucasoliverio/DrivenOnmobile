@@ -228,7 +228,11 @@ export default function OSDetalhesScreen() {
           />
         }
       />
-      <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: insets.bottom + 56 }} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={{ paddingTop: spacing.md, paddingBottom: insets.bottom + 24 }}
+        showsVerticalScrollIndicator={false}
+      >
 
       {/* ── Cliente ── */}
       <View style={styles.section}>
@@ -299,7 +303,7 @@ export default function OSDetalhesScreen() {
       </View>
 
       {/* ── Financeiro / Cobrança ── */}
-      <View style={styles.section}>
+      <View style={[styles.section, styles.lastSection]}>
         <View style={styles.sectionHeader}>
           <MaterialIcons name="attach-money" size={16} color={palette.navy800} />
           <Text style={styles.sectionTitle}>Cobrança / Recebimento</Text>
@@ -936,6 +940,7 @@ const styles = StyleSheet.create({
 
   // Sections
   section: { marginHorizontal: spacing.lg, marginBottom: spacing.sm, backgroundColor: palette.white, borderRadius: borderRadius.lg, padding: spacing.md, ...shadows.sm },
+  lastSection: { marginBottom: 0 },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.md, paddingBottom: spacing.sm, borderBottomWidth: 1, borderBottomColor: palette.slate100 },
   sectionTitle: { fontSize: 14, fontWeight: '700', color: palette.slate900 },
   statusInfoRow: {

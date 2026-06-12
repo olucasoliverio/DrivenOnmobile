@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Alert, View, Text, StyleSheet, FlatList, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
+import { Alert, View, Text, StyleSheet, FlatList, ScrollView, TouchableOpacity, RefreshControl, Pressable } from 'react-native';
 import { Surface, FAB, IconButton } from 'react-native-paper';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRoute, useNavigation } from '@react-navigation/native';
@@ -177,8 +177,12 @@ export default function OrcamentosScreen() {
           const isVencido = dayjs(o.validade).isBefore(dayjs()) && o.status === 'analise';
           const barColor = (statusConfig[o.status] ?? statusConfig.analise).barColor;
           return (
-            <TouchableOpacity onPress={() => navigation.navigate('OrcamentoDetalhes', { orcamentoId: o.id })} activeOpacity={0.7}>
-              <View style={styles.card}>
+            <Pressable
+              onPress={() => navigation.navigate('OrcamentoDetalhes', { orcamentoId: o.id })}
+              style={({ pressed }) => [styles.cardPressable, pressed && styles.cardPressablePressed]}
+            >
+              {({ pressed }) => (
+              <View style={[styles.card, pressed && styles.cardPressed]}>
                 {/* Barra lateral por status */}
                 <View style={[styles.cardBar, { backgroundColor: barColor }]} />
                 <View style={styles.cardContent}>
@@ -220,7 +224,8 @@ export default function OrcamentosScreen() {
                   </View>
                 </View>
               </View>
-            </TouchableOpacity>
+              )}
+            </Pressable>
           );
         }}
       />
@@ -286,7 +291,12 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     flex: 1,
   },
-  card: { backgroundColor: palette.white, borderRadius: borderRadius.lg, flexDirection: 'row', overflow: 'hidden', ...shadows.sm },
+  cardPressable: { borderRadius: borderRadius.lg },
+  cardPressablePressed: {
+    transform: [{ scale: 0.975 }],
+  },
+  card: { backgroundColor: palette.white, borderRadius: borderRadius.lg, flexDirection: 'row', overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(15, 23, 42, 0.04)', ...shadows.sm },
+  cardPressed: { backgroundColor: palette.navy50, borderColor: 'rgba(37, 99, 235, 0.22)' },
   cardBar: { width: 5 },
   cardContent: { flex: 1, padding: spacing.md },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm },

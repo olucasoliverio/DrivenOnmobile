@@ -97,7 +97,7 @@ export default function ActionOverflowMenu({
                     handleSelect(option);
                   }}
                 >
-                  <View style={[styles.optionIconBox, option.destructive && styles.optionIconBoxDestructive]}>
+                  <View style={styles.optionIconBox}>
                     <MaterialIcons name={option.icon} size={18} color={color} />
                   </View>
                   <Text style={[styles.optionText, { color }]}>{option.label}</Text>
@@ -149,9 +149,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: palette.slate50,
-  },
-  optionIconBoxDestructive: {
-    backgroundColor: 'rgba(239, 68, 68, 0.08)',
   },
   optionText: {
     fontSize: 14,

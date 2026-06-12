@@ -36,6 +36,7 @@ export default function ClienteFormScreen() {
   const { clienteId } = route.params ?? {};
   const { clientes, createCliente, updateRecord } = useDriveOnData();
   const { can } = useAuth();
+  const cepRequestRef = React.useRef(0);
 
   const isEditing = clienteId != null;
   const cliente = isEditing ? clientes.find(c => c.id === Number(clienteId)) : undefined;
@@ -47,6 +48,7 @@ export default function ClienteFormScreen() {
   }, [can, isEditing, navigation]);
 
   const [saving, setSaving] = useState(false);
+  const [isFetchingCep, setIsFetchingCep] = useState(false);
   const [form, setForm] = useState({
     nome: '',
     telefone: '',
@@ -81,6 +83,8 @@ export default function ClienteFormScreen() {
   }, [isEditing, cliente]);
 
   const handleChange = async (key: keyof typeof form, value: string) => {
+    if (isFetchingCep && key !== 'cep') return;
+
     let processed = value;
     if (key === 'telefone') {
       processed = formatTelefone(value);
@@ -94,9 +98,13 @@ export default function ClienteFormScreen() {
     if (key === 'cep') {
       const cleanCep = value.replace(/\D/g, '');
       if (cleanCep.length === 8) {
+        const requestId = cepRequestRef.current + 1;
+        cepRequestRef.current = requestId;
+        setIsFetchingCep(true);
         try {
           const res = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`);
           const data = await res.json();
+          if (requestId !== cepRequestRef.current) return;
           if (!data.erro) {
             setForm(curr => ({
               ...curr,
@@ -104,15 +112,29 @@ export default function ClienteFormScreen() {
               cidade: data.localidade || '',
               uf: data.uf || '',
             }));
+          } else {
+            Alert.alert('CEP não encontrado', 'Confira o CEP informado e tente novamente.');
           }
         } catch (err) {
           console.error('Error fetching CEP:', err);
+          if (requestId === cepRequestRef.current) {
+            Alert.alert('Não foi possível buscar o CEP', 'Verifique sua conexão e tente novamente.');
+          }
+        } finally {
+          if (requestId === cepRequestRef.current) {
+            setIsFetchingCep(false);
+          }
         }
       }
     }
   };
 
   const handleSave = async () => {
+    if (isFetchingCep) {
+      Alert.alert('Aguarde a busca do CEP', 'Espere a busca do endereço terminar antes de salvar.');
+      return;
+    }
+
     if (!form.nome.trim()) {
       Alert.alert('Nome obrigatório', 'Informe o nome do cliente.');
       return;
@@ -177,6 +199,8 @@ export default function ClienteFormScreen() {
     }
   };
 
+  const isFormLocked = saving || isFetchingCep;
+
   return (
     <View style={styles.container}>
       <ScreenHeader
@@ -205,6 +229,7 @@ export default function ClienteFormScreen() {
               label="Nome completo *"
               value={form.nome}
               onChangeText={val => handleChange('nome', val)}
+              disabled={isFormLocked}
               mode="outlined"
               style={styles.input}
               autoCapitalize="words"
@@ -219,6 +244,7 @@ export default function ClienteFormScreen() {
               label="Telefone"
               value={form.telefone}
               onChangeText={val => handleChange('telefone', val)}
+              disabled={isFormLocked}
               mode="outlined"
               style={styles.input}
               keyboardType="phone-pad"
@@ -234,6 +260,7 @@ export default function ClienteFormScreen() {
               label="E-mail"
               value={form.email}
               onChangeText={val => handleChange('email', val)}
+              disabled={isFormLocked}
               mode="outlined"
               style={styles.input}
               keyboardType="email-address"
@@ -249,6 +276,7 @@ export default function ClienteFormScreen() {
               label="CPF"
               value={form.cpf}
               onChangeText={val => handleChange('cpf', val)}
+              disabled={isFormLocked}
               mode="outlined"
               style={styles.input}
               keyboardType="number-pad"
@@ -271,6 +299,7 @@ export default function ClienteFormScreen() {
               label="CEP"
               value={form.cep}
               onChangeText={val => handleChange('cep', val)}
+              disabled={isFormLocked}
               mode="outlined"
               style={styles.input}
               keyboardType="number-pad"
@@ -279,13 +308,25 @@ export default function ClienteFormScreen() {
               outlineStyle={{ borderRadius: borderRadius.md }}
               theme={{ colors: { background: palette.slate50 } }}
               left={<TextInput.Icon icon="map-marker-outline" color={palette.slate400} />}
+              right={isFetchingCep ? (
+                <TextInput.Icon
+                  icon={() => <ActivityIndicator animating size={18} color={palette.navy800} />}
+                />
+              ) : undefined}
               maxLength={9}
             />
+            {isFetchingCep && (
+              <View style={styles.cepLoadingRow}>
+                <ActivityIndicator animating size={14} color={palette.navy800} />
+                <Text style={styles.cepLoadingText}>Buscando endereço pelo CEP...</Text>
+              </View>
+            )}
 
             <TextInput
               label="Logradouro (Rua/Avenida)"
               value={form.logradouro}
               onChangeText={val => handleChange('logradouro', val)}
+              disabled={isFormLocked}
               mode="outlined"
               style={styles.input}
               autoCapitalize="words"
@@ -297,11 +338,12 @@ export default function ClienteFormScreen() {
             />
 
             <View style={styles.row}>
-              <View style={{ flex: 1 }}>
+              <View style={styles.numberField}>
                 <TextInput
                   label="Número"
                   value={form.numero}
                   onChangeText={val => handleChange('numero', val)}
+                  disabled={isFormLocked}
                   mode="outlined"
                   keyboardType="number-pad"
                   activeOutlineColor={palette.navy800}
@@ -311,11 +353,12 @@ export default function ClienteFormScreen() {
                   left={<TextInput.Icon icon="map-marker-outline" color={palette.slate400} />}
                 />
               </View>
-              <View style={{ flex: 1.5 }}>
+              <View style={styles.complementField}>
                 <TextInput
                   label="Complemento"
                   value={form.complemento}
                   onChangeText={val => handleChange('complemento', val)}
+                  disabled={isFormLocked}
                   mode="outlined"
                   autoCapitalize="sentences"
                   activeOutlineColor={palette.navy800}
@@ -328,11 +371,12 @@ export default function ClienteFormScreen() {
             </View>
 
             <View style={[styles.row, { marginTop: spacing.md }]}>
-              <View style={{ flex: 2 }}>
+              <View style={styles.cityField}>
                 <TextInput
                   label="Cidade"
                   value={form.cidade}
                   onChangeText={val => handleChange('cidade', val)}
+                  disabled={isFormLocked}
                   mode="outlined"
                   autoCapitalize="words"
                   activeOutlineColor={palette.navy800}
@@ -342,11 +386,12 @@ export default function ClienteFormScreen() {
                   left={<TextInput.Icon icon="map-marker-outline" color={palette.slate400} />}
                 />
               </View>
-              <View style={{ flex: 1 }}>
+              <View style={styles.ufField}>
                 <TextInput
                   label="UF"
                   value={form.uf}
                   onChangeText={val => handleChange('uf', val)}
+                  disabled={isFormLocked}
                   mode="outlined"
                   autoCapitalize="characters"
                   activeOutlineColor={palette.navy800}
@@ -371,6 +416,7 @@ export default function ClienteFormScreen() {
               label="Observações do Cliente"
               value={form.observacoes}
               onChangeText={val => handleChange('observacoes', val)}
+              disabled={isFormLocked}
               mode="outlined"
               multiline={true}
               numberOfLines={4}
@@ -387,7 +433,7 @@ export default function ClienteFormScreen() {
             mode="contained"
             onPress={handleSave}
             loading={saving}
-            disabled={saving}
+            disabled={isFormLocked}
             style={styles.saveButton}
             buttonColor={palette.navy800}
             textColor={palette.white}
@@ -433,9 +479,37 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
     fontSize: 14,
   },
+  cepLoadingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    marginTop: -spacing.sm,
+    marginBottom: spacing.md,
+  },
+  cepLoadingText: {
+    fontSize: 12,
+    color: palette.navy800,
+    fontWeight: '700',
+  },
   row: {
     flexDirection: 'row',
     gap: spacing.md,
+  },
+  numberField: {
+    flex: 1,
+    minWidth: 0,
+  },
+  complementField: {
+    flex: 1.5,
+    minWidth: 0,
+  },
+  cityField: {
+    flex: 2,
+    minWidth: 0,
+  },
+  ufField: {
+    flex: 1,
+    minWidth: 0,
   },
   saveButton: {
     borderRadius: borderRadius.md,

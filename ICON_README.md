@@ -1,3 +1,0 @@
-Gerar ícones do app a partir de `assets/logoIcon.png`\n\nPassos:\n\n1. Instale a dependência `sharp` (global ou no projeto):\n\n```bash\nnpm install --save-dev sharp\n```
-\n+2. Execute o script para gerar os assets Android/iOS:\n+\n+```bash\nnpm run generate:icons\n```
-\n+3. Isso criará os arquivos em `android/app/src/main/res/*` e `ios/AppIcon.appiconset`. Faça o build normalmente (Android Studio / Xcode / `expo run:android`).\n+\n+Observações:\n+- Certifique-se de que `assets/logoIcon.png` exista. O script verifica também `.jpg` e `.jpeg`.\n+- Para iOS, você ainda deve abrir o projeto no Xcode e confirmar que o `AppIcon` está apontando para `AppIcon.appiconset` se necessário.\n+
