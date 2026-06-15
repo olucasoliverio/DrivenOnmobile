@@ -147,30 +147,13 @@ DrivenOnmobile/
 └── tsconfig.json
 ```
 
-## Padrões de UI
+## Desenvolvimento
 
-- A Status Bar Android é preta e não translúcida.
-- A bottom bar é flutuante e usa fundo transparente ao redor.
-- Ações secundárias, como editar, remover e cancelar, devem usar o menu de três pontos (`ActionOverflowMenu`).
-- Cards clicáveis no mobile não usam chevron visual.
-- Modais de filtro usam `fade` para evitar que o backdrop escuro suba junto com o conteúdo.
-
-## Android
-
-Configurações relevantes em `app.json`:
-
-- `android.edgeToEdgeEnabled`: `false`
-- `androidStatusBar.backgroundColor`: `#000000`
-- `androidStatusBar.translucent`: `false`
-- `androidNavigationBar.backgroundColor`: `#F1F5F9`
-
-Quando mudar configurações nativas, rode um novo build Android:
-
-```bash
-npm run android
-```
-
-Um reload do Metro pode não ser suficiente para refletir mudanças em `app.json`, `android/` ou permissões nativas.
+- Componentes reutilizáveis ficam em `src/components`.
+- Fluxos e telas ficam organizados por módulo em `src/screens`.
+- Navegação e stacks ficam em `src/navigation`.
+- Regras de autenticação, dados globais e alertas ficam em `src/context`.
+- Integrações externas e utilitários de negócio ficam em `src/services`.
 
 ## Troubleshooting
 
