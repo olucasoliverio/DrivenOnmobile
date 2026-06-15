@@ -1,22 +1,22 @@
 # DriveOn Mobile
 
-App mobile do DriveOn para operação de oficinas mecânicas. O projeto é feito com Expo, React Native e TypeScript.
+Aplicativo mobile do DriveOn para operação de oficinas mecânicas. O projeto é desenvolvido com Expo, React Native e TypeScript.
 
 ## Visão Geral
 
-O app concentra as rotinas principais da oficina no celular:
+O app reúne as principais rotinas da oficina no celular:
 
 | Módulo | O que faz |
 | --- | --- |
-| Dashboard | Atalhos, KPIs, OS em andamento, agenda do dia e atividade recente |
-| Ordens de Serviço | Lista, filtros, criação, edição, acompanhamento e cobrança |
-| Clientes | Cadastro, detalhes, veículos, histórico e WhatsApp |
-| Veículos | Cadastro, detalhes, vínculos com cliente e histórico de OS |
-| Agenda | Agendamentos, confirmação e cancelamento |
-| Orçamentos | Propostas, status, compartilhamento e conversão de fluxo |
-| Pagamentos | Contas a receber, filtros, detalhes e baixa de recebimento |
-| Notificações | Central de avisos do app |
-| Menu | Acesso a módulos secundários e logout |
+| Dashboard | Exibe atalhos, indicadores, OS em andamento, agenda do dia e atividades recentes. |
+| Ordens de Serviço | Permite listar, filtrar, criar, editar, acompanhar e cobrar ordens de serviço. |
+| Clientes | Gerencia cadastro, detalhes, veículos, histórico e contato via WhatsApp. |
+| Veículos | Gerencia cadastro, detalhes, vínculo com cliente, histórico de OS e leitura de placas. |
+| Agenda | Controla agendamentos, confirmações, detalhes e cancelamentos. |
+| Orçamentos | Gerencia propostas, status, compartilhamento e conversão de fluxo. |
+| Pagamentos | Controla contas a receber, filtros, detalhes e baixa de recebimento. |
+| Notificações | Centraliza avisos e atualizações do app. |
+| Menu | Dá acesso a módulos secundários e logout. |
 
 ## Stack
 
@@ -30,43 +30,48 @@ O app concentra as rotinas principais da oficina no celular:
 | React Native Paper | `^5.15.1` |
 | Axios | `^1.15.2` |
 | Day.js | `^1.11.20` |
+| Zod | `^4.4.2` |
 
 ## Pré-requisitos
 
 - Node.js 18 ou superior
 - npm
+- Expo via `npx expo`
 - Android Studio/emulador Android ou dispositivo físico
-- Expo CLI via `npx expo`
+- Ambiente Android configurado para builds nativos
 
-Para Android nativo, este projeto usa `expo run:android`, então o ambiente Android precisa estar configurado.
+Este projeto usa `expo run:android`, então alterações nativas exigem o ambiente Android configurado corretamente.
 
 ## Instalação
 
+Na pasta do app mobile:
+
 ```bash
+cd DrivenOnmobile
 npm install
 ```
 
 ## Rodando o App
 
-Servidor Expo:
+Inicie o servidor Expo:
 
 ```bash
 npm start
 ```
 
-Android:
+Rode no Android:
 
 ```bash
 npm run android
 ```
 
-iOS:
+Rode no iOS:
 
 ```bash
 npm run ios
 ```
 
-Web, quando útil para inspeção rápida:
+Abra no navegador, quando útil para inspeção rápida:
 
 ```bash
 npm run web
@@ -74,29 +79,35 @@ npm run web
 
 ## Configuração da API
 
-A URL da API é definida em `src/api/api.ts`.
+A URL base da API é definida em `src/api/api.ts`.
 
-Por padrão:
+Valores padrão:
 
-- Android: `http://10.0.2.2:4000/api`
+- Android Emulator: `http://10.0.2.2:4000/api`
 - Outras plataformas: `http://localhost:4000/api`
 
-Para sobrescrever, crie/ajuste o arquivo `.env`:
+Para sobrescrever a URL, crie ou ajuste o arquivo `.env`:
 
 ```env
 EXPO_PUBLIC_API_URL=http://SEU_HOST:4000/api
 ```
 
-Depois reinicie o Metro.
+Exemplo para backend publicado:
+
+```env
+EXPO_PUBLIC_API_URL=https://seu-backend.up.railway.app/api
+```
+
+Depois de alterar variáveis de ambiente, reinicie o Metro/Expo.
 
 ## Scripts
 
 | Script | Descrição |
 | --- | --- |
-| `npm start` | Inicia o Expo |
-| `npm run android` | Compila e abre no Android |
-| `npm run ios` | Compila e abre no iOS |
-| `npm run web` | Abre via Expo Web |
+| `npm start` | Inicia o servidor Expo. |
+| `npm run android` | Compila e abre o app no Android. |
+| `npm run ios` | Compila e abre o app no iOS. |
+| `npm run web` | Abre o app via Expo Web. |
 
 Validação TypeScript:
 
@@ -132,20 +143,21 @@ DrivenOnmobile/
 │   ├── services/
 │   ├── theme/
 │   └── utils/
-└── package.json
+├── package.json
+└── tsconfig.json
 ```
 
-## Observações de UI
+## Padrões de UI
 
 - A Status Bar Android é preta e não translúcida.
 - A bottom bar é flutuante e usa fundo transparente ao redor.
-- Ações secundárias, como editar/remover/cancelar, devem usar o menu de três pontinhos (`ActionOverflowMenu`).
+- Ações secundárias, como editar, remover e cancelar, devem usar o menu de três pontos (`ActionOverflowMenu`).
 - Cards clicáveis no mobile não usam chevron visual.
-- Modais de filtro usam `fade` para evitar o backdrop escuro subindo junto com o conteúdo.
+- Modais de filtro usam `fade` para evitar que o backdrop escuro suba junto com o conteúdo.
 
 ## Android
 
-Configurações relevantes:
+Configurações relevantes em `app.json`:
 
 - `android.edgeToEdgeEnabled`: `false`
 - `androidStatusBar.backgroundColor`: `#000000`
@@ -168,14 +180,7 @@ Limpar cache do Expo:
 npx expo start --clear
 ```
 
-Reinstalar dependências:
-
-```bash
-rm -rf node_modules
-npm install
-```
-
-No PowerShell:
+Reinstalar dependências no PowerShell:
 
 ```powershell
 Remove-Item -Recurse -Force node_modules
