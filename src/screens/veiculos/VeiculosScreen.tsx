@@ -32,12 +32,12 @@ export default function VeiculosScreen() {
   }, [refresh]);
 
   useEffect(() => {
-    const detectedPlate = route.params?.detectedPlate;
+    const searchPlate = route.params?.searchPlate;
 
-    if (typeof detectedPlate === 'string') {
-      setBusca(detectedPlate);
+    if (typeof searchPlate === 'string') {
+      setBusca(searchPlate);
     }
-  }, [route.params?.detectedPlate]);
+  }, [route.params?.searchPlate]);
 
   const veiculos = veiculosData.filter(v => {
     const cliente = clientes.find(c => c.id === v.clienteId);
@@ -112,10 +112,7 @@ export default function VeiculosScreen() {
         }}
       />
       {can('veiculos', 'create') && (
-        <>
-          <FAB icon="camera" style={styles.cameraFab} color="#FFF" onPress={() => navigation.navigate('PlacaScanner')} />
-          <FAB icon="plus" style={styles.fab} color="#FFF" onPress={() => navigation.navigate('VeiculoForm')} />
-        </>
+        <FAB icon="plus" style={styles.fab} color="#FFF" onPress={() => navigation.navigate('VeiculoForm')} />
       )}
     </View>
   );
@@ -158,5 +155,4 @@ const styles = StyleSheet.create({
   clienteText: { fontSize: 12, color: palette.slate500, fontWeight: '500' },
   kmText: { fontSize: 12, color: palette.slate500, fontWeight: '500' },
   fab: { position: 'absolute', bottom: 24, right: 20, backgroundColor: colors.primary, borderRadius: 16, elevation: 8 },
-  cameraFab: { position: 'absolute', bottom: 84, right: 20, backgroundColor: colors.secondary, borderRadius: 16, elevation: 8 },
 });

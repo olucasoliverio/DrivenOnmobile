@@ -24,11 +24,7 @@
       },
       "edgeToEdgeEnabled": false,
       "softwareKeyboardLayoutMode": "resize",
-      "predictiveBackGestureEnabled": false,
-      "permissions": [
-        "android.permission.CAMERA",
-        "android.permission.RECORD_AUDIO"
-      ]
+      "predictiveBackGestureEnabled": false
     },
     "androidStatusBar": {
       "barStyle": "light-content",
@@ -44,12 +40,6 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      [
-        "expo-camera",
-        {
-          "cameraPermission": "Permita que o DriveOn use a camera para ler placas de veiculos."
-        }
-      ],
       "expo-font"
     ],
     "extra": {

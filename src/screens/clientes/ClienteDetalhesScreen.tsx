@@ -303,7 +303,7 @@ export default function ClienteDetalhesScreen() {
           <TouchableOpacity
             key={v.id}
             activeOpacity={0.7}
-            onPress={() => navigation.navigate('Veiculos', { detectedPlate: v.placa })}
+            onPress={() => navigation.navigate('Veiculos', { searchPlate: v.placa })}
           >
             <View style={styles.veiculoCard}>
               <View style={styles.veiculoIconBox}>

@@ -13,7 +13,6 @@ import ClienteDetalhesScreen from '../screens/clientes/ClienteDetalhesScreen';
 import ClienteFormScreen from '../screens/clientes/ClienteFormScreen';
 import VeiculosScreen from '../screens/veiculos/VeiculosScreen';
 import VeiculoDetalhesScreen from '../screens/veiculos/VeiculoDetalhesScreen';
-import PlacaScannerScreen from '../screens/veiculos/PlacaScannerScreen';
 import OSDetalhesScreen from '../screens/tarefas/OSDetalhesScreen';
 import OSFormScreen from '../screens/tarefas/OSFormScreen';
 import TarefasScreen from '../screens/tarefas/TarefasScreen';
@@ -62,7 +61,6 @@ export default function RootNavigator() {
             <Stack.Screen name="ClienteForm" component={ClienteFormScreen} options={{ headerShown: false, presentation: 'modal' }} />
             <Stack.Screen name="Veiculos" component={VeiculosScreen} options={{ headerShown: false }} />
             <Stack.Screen name="VeiculoDetalhes" component={VeiculoDetalhesScreen} options={{ headerShown: false }} />
-            <Stack.Screen name="PlacaScanner" component={PlacaScannerScreen} options={{ headerShown: false, presentation: 'modal' }} />
             <Stack.Screen name="OSDetalhes" component={OSDetalhesScreen} options={{ headerShown: false }} />
             <Stack.Screen name="OSForm" component={OSFormScreen} options={{ headerShown: false, presentation: 'modal' }} />
             <Stack.Screen name="OS" component={TarefasScreen} options={{ headerShown: false }} />
